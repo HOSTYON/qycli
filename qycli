@@ -1,5 +1,5 @@
 #!/bin/bash
-if [[ $1 == "testarg"]]; then
+if [[ $1 == "testarg" ]]; then
     echo "test arg worked"
     else
     echo "no argument passed but script ran"
