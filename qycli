@@ -1,1 +1,5 @@
-private repo test
+if [[ $1 == "testarg"]]; then
+    echo "test arg worked"
+    else
+    echo "no argument passed but script ran"
+fi
