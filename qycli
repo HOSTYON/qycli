@@ -22,7 +22,17 @@ sudo apt -y install mariadb-server
 sudo apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${phpv}-fpm php${phpv}-gd php${phpv}-imagick \
 php${phpv}-libsodium php${phpv}-mbstring php${phpv}-mysql php${phpv}-pcre php${ver}-redis php${phpv}-soap php${phpv}-xml php${phpv}-zip
 
-# Install newest stable Redis
+# Install Redis with Snap
+sudo fuser -vki /var/lib/dpkg/lock
+sudo apt purge snapd
+sudo dpkg --configure -a
+sudo apt update && sudo apt upgrade -y && sudo apt dist-upgrade
+sudo apt install snapd -y
+sleep 2 && sudo snap set system refresh.timer=1:00-4:00 && sleep 1
+sudo snap install redis
+
+
+
 
 
 
