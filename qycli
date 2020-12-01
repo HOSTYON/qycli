@@ -20,7 +20,7 @@ sudo apt -y install mariadb-server
 
 # Install newest stable PHP
 sudo apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${phpv}-fpm php${phpv}-gd php${phpv}-imagick \
-php${phpv}-libsodium php${phpv}-mbstring php${phpv}-mysql php${phpv}-pcre php${ver}-redis php${phpv}-soap php${phpv}-xml php${phpv}-zip
+php${phpv}-mbstring php${phpv}-mysql php${ver}-redis php${phpv}-soap php${phpv}-xml php${phpv}-zip
 
 # Install Redis with Snap
 sudo fuser -vki /var/lib/dpkg/lock
