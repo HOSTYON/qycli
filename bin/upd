@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# "qyc upd" + "qyc update" command
+
+echo "upd command ran"

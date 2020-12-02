@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# qyc mk command
-# referencing to other subcommands
+# "qyc mk"  + "qyc make" command
 
 echo "mk command ran"
