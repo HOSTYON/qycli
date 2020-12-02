@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# help library
+
+print_help_qyc() {
+    echo ""
+    echo "Description: qycli command line client"
+    echo ""
+    echo "Install WordPress on a powerful LEMP stack enhanced with Cloudflare and Redis"
+    echo ""
+    echo "Usage:"
+    echo "  qyc [command]"
+    echo ""
+    echo "Available commands:"
+    echo "  mk/make         Make a website"
+    echo "  upd/update      Update server, qycli and WordPress"
+    echo ""
+}

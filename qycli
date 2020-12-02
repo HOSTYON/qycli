@@ -7,6 +7,7 @@ phpv=7.4 # Newest PHP Version
 
 # Install scripts from GitHub
 sudo wget -qO /usr/bin/qyc qyc.li/qyc && sudo chmod 755 /usr/bin/qyc
+sudo wget -qO /opt/qycli/help qyc.li/bin/help
 sudo wget -qO /opt/qycli/mk qyc.li/bin/mk
 sudo wget -qO /opt/qycli/upd qyc.li/bin/upd
 
