@@ -41,3 +41,5 @@ sudo snap install redis
 
 # Cleaning up after updating
 sudo apt -y autoremove
+
+echo "really no cache on wget!"
