@@ -11,7 +11,7 @@ sudo wget -qO /opt/qycli/mk qyc.li/bin/mk
 sudo wget -qO /opt/qycli/upd qyc.li/bin/upd
 
 # Make sure system is up to date
-sudo apt update && sudo apt upgrade -y && sudo apt -y autoremove
+sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove 
 
 ## Install LEMP Stack - NGINX, MariaDB, PHP-FPM
 # Install NGINX
@@ -31,10 +31,6 @@ sudo apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${php
 php${phpv}-mbstring php${phpv}-mysql php${ver}-redis php${phpv}-soap php${phpv}-xml php${phpv}-zip
 
 # Install Redis with Snap
-sudo fuser -vki /var/lib/dpkg/lock
-sudo apt purge snapd
-sudo dpkg --configure -a
-sudo apt update && sudo apt -y upgrade && sudo apt -y dist-upgrade
 sudo apt install snapd -y
 sleep 2 && sudo snap set system refresh.timer=1:00-4:00 && sleep 1
 sudo snap install redis
