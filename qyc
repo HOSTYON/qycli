@@ -2,5 +2,28 @@
 
 # Reference script to run all others, placed in /usr/bin/
 # example: qyc mk wp domain.com
+source /opt/qycli/mk
+source /opt/qycli/upd
 
-if [[ $1 == "mk" ]]
+if [[ $1 == "mk" || $1 == "make" ]]; then
+    mk
+elif [[ $1 == "upd" || $1 == "update" ]]; then
+    upd
+    else
+    print_help
+fi
+
+print_help() {
+echo ""
+echo "Description: qycli command line client"
+echo ""
+echo "Install WordPress on a powerful LEMP stack enhanced with Cloudflare and Redis"
+echo ""
+echo "Usage:"
+echo "  qyc [command]"
+echo ""
+echo "Available commands:"
+echo "  mk/make         Make a website"
+echo "  upd/update      Update server, qycli and WordPress"
+echo ""
+}
