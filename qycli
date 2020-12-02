@@ -24,6 +24,7 @@ sudo apt update && sudo apt install nginx
 sudo apt -y install apt-transport-https
 curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | sudo bash -s -- --skip-maxscale
 sudo apt -y install mariadb-server
+sudo rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
 
 # Install newest stable PHP
 sudo apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${phpv}-fpm php${phpv}-gd php${phpv}-imagick \
@@ -33,11 +34,10 @@ php${phpv}-mbstring php${phpv}-mysql php${ver}-redis php${phpv}-soap php${phpv}-
 sudo fuser -vki /var/lib/dpkg/lock
 sudo apt purge snapd
 sudo dpkg --configure -a
-sudo apt update && sudo apt upgrade -y && sudo apt dist-upgrade
+sudo apt update && sudo apt -y upgrade && sudo apt -y dist-upgrade
 sudo apt install snapd -y
 sleep 2 && sudo snap set system refresh.timer=1:00-4:00 && sleep 1
 sudo snap install redis
 
-# For when updating
-sudo rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
+# Cleaning up after updating
 sudo apt -y autoremove
