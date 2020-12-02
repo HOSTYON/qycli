@@ -34,8 +34,3 @@ php${phpv}-mbstring php${phpv}-mysql php${ver}-redis php${phpv}-soap php${phpv}-
 sudo apt install snapd -y
 sleep 2 && sudo snap set system refresh.timer=1:00-4:00 && sleep 1
 sudo snap install redis
-
-# Cleaning up after updating
-sudo apt -y autoremove
-
-echo "really no cache on wget!"
