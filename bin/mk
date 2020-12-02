@@ -2,6 +2,6 @@
 
 # "qyc mk"  + "qyc make" command
 
-mk {
+mk() {
     echo "mk command ran"
 }
