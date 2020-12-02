@@ -2,4 +2,6 @@
 
 # "qyc upd" + "qyc update" command
 
-echo "upd command ran"
+upd() {
+    echo "upd command ran"
+}
