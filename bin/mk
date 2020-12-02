@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# qyc mk command
+# referencing to other subcommands
+
+echo "mk command ran"

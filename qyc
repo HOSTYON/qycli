@@ -3,4 +3,4 @@
 # Reference script to run all others, placed in /usr/bin/
 # example: qyc mk wp domain.com
 
-echo "qyc script ran"
+if [[ $1 == "mk" ]]

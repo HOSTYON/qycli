@@ -3,6 +3,9 @@
 # Variables
 phpv=7.4 # Newest PHP Version
 
+# Install scripts from GitHub
+sudo wget -qO /usr/bin/qyc https://raw.githubusercontent.com/HOSTYON/qycli/master/qyc && sudo chmod 755 /usr/bin/qyc
+
 # Make sure system is up to date
 sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y
 
