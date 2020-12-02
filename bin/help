@@ -4,6 +4,7 @@
 
 print_help_qyc() {
     echo ""
+    echo ""
     echo "Description:"
     echo "  qycli command line client"
     echo ""
@@ -15,5 +16,6 @@ print_help_qyc() {
     echo "Available commands:"
     echo "  mk/make         Make a website"
     echo "  upd/update      Update server, qycli and WordPress"
+    echo ""
     echo ""
 }
