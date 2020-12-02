@@ -33,4 +33,4 @@ php${phpv}-mbstring php${phpv}-mysql php${ver}-redis php${phpv}-soap php${phpv}-
 # Install Redis with Snap
 sudo apt install snapd -y
 sleep 2 && sudo snap set system refresh.timer=1:00-4:00 && sleep 1
-sudo snap install redis
+sudo snap install redis && sudo snap refresh
