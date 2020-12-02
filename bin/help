@@ -4,9 +4,10 @@
 
 print_help_qyc() {
     echo ""
-    echo "Description: qycli command line client"
+    echo "Description:"
+    echo "  qycli command line client"
     echo ""
-    echo "Install WordPress on a powerful LEMP stack enhanced with Cloudflare and Redis"
+    echo "  Install WordPress on a powerful LEMP stack enhanced with Cloudflare and Redis"
     echo ""
     echo "Usage:"
     echo "  qyc [command]"
