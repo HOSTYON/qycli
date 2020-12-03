@@ -6,7 +6,7 @@ source /opt/qycli/help
 source /opt/qycli/fn
 
 if [[ $1 == "mk" || $1 == "make" ]]; then
-    echo "$1" && echo "$2" && mk
+    echo "running qyc 1:$1" && echo "running qyc 2:$2" && mk $@
     else
     print_help_qyc
 fi
