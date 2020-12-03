@@ -13,7 +13,3 @@ mk() {
         print_help_mk
     fi
 }
-
-test
-
-test 2
