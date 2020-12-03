@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# stack install functions
+
+# Variables
+phpv=7.4 # Newest PHP Version
+
+upd() {
+    sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove && sudo snap refresh
+}
+
+stk_nginx() {
+    sudo apt -y install curl gnupg2 ca-certificates lsb-release
+    echo "deb http://nginx.org/packages/mainline/ubuntu `lsb_release -cs` nginx" | sudo tee /etc/apt/sources.list.d/nginx.list
+    curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo apt-key add -
+    sudo apt update && sudo apt install nginx
+}
+
+stk_mariadb() {
+    sudo apt -y install apt-transport-https
+    curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | sudo bash -s -- --skip-maxscale
+    sudo apt -y install mariadb-server
+    sudo rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
+}
+
+stk_php() {
+    sudo apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${phpv}-fpm php${phpv}-gd php${phpv}-imagick \
+    php${phpv}-mbstring php${phpv}-mysql php${ver}-redis php${phpv}-soap php${phpv}-xml php${phpv}-zip
+}
+
+stk_redis() {
+    sudo apt install snapd -y
+    sleep 2 && sudo snap set system refresh.timer=1:00-4:00 && sleep 1
+    sudo snap install redis && sudo snap refresh
+}
+
+stk_wp() {
+    upd && stk_nginx && stk_mariadb && stk_php && stk_redis
+}

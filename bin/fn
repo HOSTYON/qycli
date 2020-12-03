@@ -2,6 +2,10 @@
 
 # function library for qyc
 
+wp() {
+echo "wp ran"
+}
+
 mk() {
     if [[ $1 == "wp" ]]; then
         wp
@@ -10,6 +14,3 @@ mk() {
     fi
 }
 
-wp() {
-echo "wp ran"
-}
