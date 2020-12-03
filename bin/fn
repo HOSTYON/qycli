@@ -9,6 +9,7 @@ echo "wp ran"
 mk() {
     if [[ $2 == "wp" ]]; then
         wp
+        echo $#
         else
         print_help_mk
     fi
