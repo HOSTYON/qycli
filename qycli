@@ -10,7 +10,7 @@ prod() {
 }
 
 dev() {
-    if ! command -v svn #&> /dev/null
+    if ! command -v svn &> /dev/null
     then
         sudo apt update && sudo apt -y install subversion
     fi
