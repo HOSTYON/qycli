@@ -2,24 +2,25 @@
 
 ## Install qycli and stack with "wget -qO- qyc.li/qycli | sudo bash"
 
-# Install scripts
-sudo wget -qO /usr/bin/qyc qyc.li/bin/qyc && sudo chmod 755 /usr/bin/qyc
-sudo wget -qO /opt/qycli/stk qyc.li/bin/stk
-sudo wget -qO /opt/qycli/help qyc.li/bin/help
-sudo wget -qO /opt/qycli/fn qyc.li/bin/fn
-
-source /opt/qycli/stk
-source /opt/qycli/help
+prod() {
+    sudo wget -qO /usr/bin/qyc qyc.li/bin/qyc && sudo chmod 755 /usr/bin/qyc
+    sudo wget -qO /opt/qycli/stk qyc.li/bin/stk
+    sudo wget -qO /opt/qycli/help qyc.li/bin/help
+    sudo wget -qO /opt/qycli/fn qyc.li/bin/fn
+}
 
 dev() {
-    sudo apt -y install subversion
+    sudo apt update && sudo apt -y install subversion
     svn export --force https://github.com/HOSTYON/qycli/trunk /opt/qycli-dev/
     sudo mv /opt/qycli-dev/bin/* /opt/qycli/
     sudo mv /opt/qycli/qyc /usr/bin/qyc && sudo chmod 755 /usr/bin/qyc
 }
 
+source /opt/qycli/stk
+source /opt/qycli/help
+
 if [[ $1 == "wp" || $1 == "" ]]; then
-    stk_wp
+    prod && stk_wp
 elif [[ $1 == "dev" ]]; then
-    dev    
+    dev 
 fi
