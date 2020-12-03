@@ -1,8 +1,6 @@
 #!/bin/bash
 
-# "qyc mk"  + "qyc make" command
-source /opt/qycli/help
-source /opt/qycli/wp
+# function library for qyc
 
 mk() {
     if [[ $1 == "wp" ]]; then
@@ -10,4 +8,8 @@ mk() {
         else
         print_help_mk
     fi
+}
+
+wp() {
+echo "wp ran"
 }

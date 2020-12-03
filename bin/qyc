@@ -3,13 +3,12 @@
 # Reference script to run all others, placed in /usr/bin/
 # example: qyc mk wp domain.com
 source /opt/qycli/help
-source /opt/qycli/mk
-source /opt/qycli/upd
+source /opt/qycli/fn
 
 if [[ $1 == "mk" || $1 == "make" ]]; then
     mk
-elif [[ $1 == "upd" || $1 == "update" ]]; then
-    upd
     else
     print_help_qyc
 fi
+
+
