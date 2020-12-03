@@ -13,7 +13,7 @@ source /opt/qycli/help
 
 dev() {
     sudo apt -y install subversion
-    svn export https://github.com/HOSTYON/qycli/trunk /opt/qycli-dev/
+    svn export --force https://github.com/HOSTYON/qycli/trunk /opt/qycli-dev/
     sudo mv /opt/qycli-dev/bin/* /opt/qycli/
     sudo mv /opt/qycli/qyc /usr/bin/qyc && sudo chmod 755 /usr/bin/qyc
 }
