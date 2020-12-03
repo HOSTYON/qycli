@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# "qyc mk wp"  + "qyc make wp" command
+
+wp() {
+    echo "wp command ran"
+}

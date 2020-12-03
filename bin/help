@@ -19,3 +19,18 @@ print_help_qyc() {
     echo ""
     echo ""
 }
+
+print_help_mk() {
+    echo ""
+    echo ""
+    echo "Description:"
+    echo "  make a site with qycli"
+    echo ""
+    echo "Usage:"
+    echo "  qyc mk [command]"
+    echo ""
+    echo "Available commands:"
+    echo "  wp              Make a wordpress site"
+    echo ""
+    echo ""
+}
