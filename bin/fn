@@ -8,11 +8,11 @@ wp() {
         case "$1" in
             -o|option)
                 option="$2"
-                shift ; shift
+                shift
                 ;;
             length)
                 length="$2"
-                shift ; shift
+                shift
                 ;;
             *)
                 echo "Invalid argument: $1"
