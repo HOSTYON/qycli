@@ -3,7 +3,7 @@
 # function library for qyc
 
 wp() {
-    if [[ "$1" =~ "(?=^.{5,254}$)(^(?:(?!\d+\.)[a-zA-Z0-9_\-]{1,63}\.?)+(?:[a-zA-Z]{2,})$)" ]]; then
+    if [[ "$1" == *"."* ]]; then
         domain="$1"
         shift
     else
@@ -11,6 +11,7 @@ wp() {
         print_help_wp
         exit
     fi
+
     while [[ "$#" -gt 0 ]]
     do
         case "$1" in
