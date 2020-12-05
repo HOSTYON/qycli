@@ -5,8 +5,9 @@
 source /opt/qycli/help
 source /opt/qycli/fn
 
-if [[ $1 == "mk" || $1 == "make" ]]; then
-    mk $@
+if [[ "$1" == "mk" || "$1" == "make" ]]; then
+    shift
+    mk "$@"
     else
     print_help_qyc
 fi

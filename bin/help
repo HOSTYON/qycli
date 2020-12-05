@@ -14,8 +14,8 @@ print_help_qyc() {
     echo "  qyc [command]"
     echo ""
     echo "Available commands:"
-    echo "  mk/make         Make a website"
-    echo "  upd/update      Update server, qycli and WordPress"
+    echo "  mk | make         Make a website"
+    echo "  upd | update      Update server, qycli and WordPress"
     echo ""
     echo ""
 }
@@ -31,6 +31,24 @@ print_help_mk() {
     echo ""
     echo "Available commands:"
     echo "  wp              Make a wordpress site"
+    echo ""
+    echo ""
+}
+
+print_help_wp() {
+    echo ""
+    echo ""
+    echo "Description:"
+    echo "  make a wordpress site with qycli"
+    echo ""
+    echo "Usage:"
+    echo "  qyc mk wp <domain> [option] [option] [value] [option] [value] ..."
+    echo ""
+    echo "  <domain> has to be a valid TLD"
+    echo ""
+    echo "Available options:"
+    echo "  cache       values: on | off      Turn page and object caching on or off"
+    echo "  staging     no values             Disables caching and discourages seach engines from indexing the site"
     echo ""
     echo ""
 }

@@ -3,13 +3,35 @@
 # function library for qyc
 
 wp() {
-echo "wp ran"
+    while [[ "$#" -gt 0 ]]
+    do
+        case "$1" in
+            -o|option)
+                option="$2"
+                shift 2
+                ;;
+            length)
+                length="$2"
+                shift 2
+                ;;
+            *)
+                "Invalid argument: $1"
+                print_help_wp
+                ;;
+        esac
+        shift
+    done
+    echo "Arg 2 is $2"
+    echo "option is $option"
+    echo "length is $length"
 }
 
 mk() {
-    if [[ $2 == "wp" ]]; then
-        wp
+    if [[ "$1" == "wp" ]]; then
+        shift
+        wp "$@"
         else
         print_help_mk
     fi
 }
+

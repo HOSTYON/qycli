@@ -22,8 +22,8 @@ dev() {
 source /opt/qycli/stk
 source /opt/qycli/help
 
-if [[ $1 == "wp" || $1 == "" ]]; then
+if [[ "$1" == "wp" || "$1" == "" ]]; then
     prod && stk_wp
-elif [[ $1 == "dev" ]]; then
+elif [[ "$1" == "dev" ]]; then
     dev 
 fi
