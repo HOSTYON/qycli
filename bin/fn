@@ -8,11 +8,11 @@ wp() {
         case "$1" in
             -o|option)
                 option="$2"
-                shift 3
+                shift ; shift
                 ;;
             length)
                 length="$2"
-                shift 3
+                shift ; shift
                 ;;
             *)
                 echo "Invalid argument: $1"
@@ -21,7 +21,6 @@ wp() {
         esac
         shift
     done
-    echo "Arg 2 is $2"
     echo "option is $option"
     echo "length is $length"
 }
