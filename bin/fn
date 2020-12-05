@@ -15,7 +15,7 @@ wp() {
                 shift
                 ;;
             *)
-                echo "Invalid argument: $1"
+                echo "" ; echo "Invalid argument: $1"
                 print_help_wp
                 ;;
         esac
