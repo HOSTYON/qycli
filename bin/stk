@@ -21,6 +21,10 @@ stk_mariadb() {
     curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | sudo bash -s -- --skip-maxscale
     sudo apt -y install mariadb-server
     sudo rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
+    if ! grep -q skip-networking /etc/mysql/my.cnf; then
+    sudo bash -c 'printf "\n[mysqld]\nskip-networking\n" >> /etc/mysql/my.cnf'
+    sudo systemctl restart mysql
+    fi
 }
 
 stk_php() {
@@ -30,8 +34,10 @@ stk_php() {
 
 stk_redis() {
     sudo apt install snapd -y
-    sleep 2 && sudo snap set system refresh.timer=1:00-4:00 && sleep 1
-    sudo snap install redis && sudo snap refresh
+    sleep 2 && sudo snap set system refresh.timer=3:00-5:00 && sleep 1
+    sudo snap install redis --channel=stable
+    sudo usermod -g www-data redis
+    sudo sed -i 's+port 6379+# port 6379+g' /etc/redis/redis.conf
 }
 
 stk_wp() {
