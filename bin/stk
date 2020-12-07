@@ -3,7 +3,7 @@
 # stack install functions
 
 # Variables
-phpv=7.4 # Newest PHP Version
+phpv=7.4 # Newest safe PHP Version
 
 upd() {
     sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove && sudo snap refresh
@@ -44,11 +44,33 @@ stk_redis() {
     sudo sed -i 's+appendfsync everysec+# appendfsync everysec+g' /etc/redis/redis.conf
     sudo sed -i 's+# appendfsync no+appendfsync no+g' /etc/redis/redis.conf
     sudo sed -i 's+no-appendfsync-on-rewrite no+no-appendfsync-on-rewrite yes+g' /etc/redis/redis.conf
-    local redismem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*20))
-    sudo sed -i 's+# maxmemory <bytes>+# maxmemory ${redismem}mb+g' /etc/redis/redis.conf
+    local redismem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*20)) # 20% of all memory
+    sudo sed -i "s+# maxmemory <bytes>+# maxmemory ${redismem}mb+g" /etc/redis/redis.conf
     sudo sed -i 's+# maxmemory-policy noeviction+maxmemory-policy allkeys-lfu+g' /etc/redis/redis.conf
     sudo sed -i 's+save 900 1+save 1800 1+g' /etc/redis/redis.conf
     sudo sed -i 's+save 300 10+save 600 10+g' /etc/redis/redis.conf
+    # Disable Transparent Hugepages (For Redis)
+    cat > /usr/local/bin/disable-tph.sh <<EOF
+#!/bin/bash
+echo never > /sys/kernel/mm/transparent_hugepage/enabled
+echo never > /sys/kernel/mm/transparent_hugepage/defrag
+EOF
+    chmod u+x /usr/local/bin/disable-tph.sh
+    cat > /etc/systemd/system/disable-tph.service <<EOF
+[Unit]
+Description=Disable Transparent Hugepages
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/bin/disable-tph.sh
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    sudo systemctl start disable-tph
+    sudo systemctl enable disable-tph
+    sudo systemctl restart redis-server
 }
 
 stk_wp() {
