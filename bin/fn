@@ -5,6 +5,7 @@
 wp() {
     if [[ "$1" == *"."* ]]; then
         domain="$1"
+        [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
         shift
     else
         echo "" ; echo "Invalid domain: $1"
@@ -12,8 +13,7 @@ wp() {
         exit
     fi
 
-    while [[ "$#" -gt 0 ]]
-    do
+    while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -o|option)
                 option="$2"
