@@ -24,12 +24,14 @@ wp() {
                 shift
                 ;;
             *)
-                echo "" ; echo "Invalid option: $1"
+                printf "\nInvalid option: $1"
                 print_help_wp
                 ;;
         esac
         shift
     done
+
+    sudo cp /opt/qycli/cnf/nginx/sites/dmn.tld.conf /etc/nginx/sites-available/$domain
     echo "option is $option"
     echo "length is $length"
     echo "domain is $domain"
