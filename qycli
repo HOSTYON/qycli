@@ -16,8 +16,7 @@ dev() {
     if ! command -v svn &> /dev/null; then
         sudo apt update && sudo apt -y install subversion
     fi
-    svn export --force https://github.com/HOSTYON/qycli/trunk /opt/qycli/dev/
-    sudo mv /opt/qycli/dev/bin/* /opt/qycli/
+    svn export --force https://github.com/HOSTYON/qycli/trunk /opt/qycli/
     sudo mv /opt/qycli/qyc /usr/bin/qyc && sudo chmod 755 /usr/bin/qyc
 }
 
