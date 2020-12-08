@@ -13,8 +13,7 @@ prod() {
 }
 
 dev() {
-    if ! command -v svn &> /dev/null
-    then
+    if ! command -v svn &> /dev/null; then
         sudo apt update && sudo apt -y install subversion
     fi
     svn export --force https://github.com/HOSTYON/qycli/trunk /opt/qycli/dev/

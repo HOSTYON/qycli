@@ -3,8 +3,7 @@
 # help library
 
 print_help_qyc() {
-    echo ""
-    echo ""
+    printf "\n\n"
     echo "Description:"
     echo "  qycli command line client"
     echo ""
@@ -16,13 +15,11 @@ print_help_qyc() {
     echo "Available commands:"
     echo "  mk | make         Make a website"
     echo "  upd | update      Update server, qycli and WordPress"
-    echo ""
-    echo ""
+    printf "\n\n"
 }
 
 print_help_mk() {
-    echo ""
-    echo ""
+    printf "\n\n"
     echo "Description:"
     echo "  make a site with qycli"
     echo ""
@@ -31,13 +28,11 @@ print_help_mk() {
     echo ""
     echo "Available commands:"
     echo "  wp              Make a wordpress site"
-    echo ""
-    echo ""
+    printf "\n\n"
 }
 
 print_help_wp() {
-    echo ""
-    echo ""
+    printf "\n\n"
     echo "Description:"
     echo "  make a wordpress site with qycli"
     echo ""
@@ -49,6 +44,5 @@ print_help_wp() {
     echo "Available options:"
     echo "  cache       values: on | off      Turn page and object caching on or off"
     echo "  staging     no values             Disables caching and discourages seach engines from indexing the site"
-    echo ""
-    echo ""
+    printf "\n\n"
 }

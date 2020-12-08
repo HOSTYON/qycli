@@ -2,6 +2,7 @@
 
 # Reference script to run all others, placed in /usr/bin/
 # example: qyc mk wp domain.com
+
 source /opt/qycli/help
 source /opt/qycli/stk
 source /opt/qycli/fn
