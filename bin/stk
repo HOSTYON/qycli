@@ -82,13 +82,13 @@ stk_redis() {
     sudo sed -i 's+save 900 1+save 1800 1+g' /etc/redis/redis.conf
     sudo sed -i 's+save 300 10+save 600 10+g' /etc/redis/redis.conf
     # Disable Transparent Hugepages (For Redis)
-    cat > /usr/local/bin/disable-tph.sh <<EOF
+    sudo bash -c "cat > /usr/local/bin/disable-tph.sh <<EOF
 #!/bin/bash
 echo never > /sys/kernel/mm/transparent_hugepage/enabled
 echo never > /sys/kernel/mm/transparent_hugepage/defrag
-EOF
-    chmod u+x /usr/local/bin/disable-tph.sh
-    cat > /etc/systemd/system/disable-tph.service <<EOF
+EOF"
+    sudo chmod u+x /usr/local/bin/disable-tph.sh
+    sudo bash -c "cat > /etc/systemd/system/disable-tph.service <<EOF
 [Unit]
 Description=Disable Transparent Hugepages
 
@@ -99,7 +99,7 @@ ExecStart=/usr/local/bin/disable-tph.sh
 
 [Install]
 WantedBy=multi-user.target
-EOF
+EOF"
     sudo systemctl start disable-tph
     sudo systemctl enable disable-tph
     sudo systemctl restart redis-server
