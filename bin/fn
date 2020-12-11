@@ -32,6 +32,8 @@ wp() {
     done
 
     sudo cp /opt/qycli/cnf/nginx/sites/dmn.tld.conf /etc/nginx/sites-available/$domain
+    sudo sed -i "s/dmn.tld/$domain/g"  /etc/nginx/sites-available/$domain
+
     echo "option is $option"
     echo "length is $length"
     echo "domain is $domain"
