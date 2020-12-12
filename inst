@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## Install qycli and stack with "wget -qO- qyc.li/qycli | sudo bash"
+## Install qycli and stack with "wget -qO- qyc.li/inst | sudo bash"
 prod() {
     sudo wget -qO /usr/bin/qyc qyc.li/bin/qyc && sudo chmod 755 /usr/bin/qyc
     sudo wget -qO /opt/qycli/stk qyc.li/bin/stk
@@ -11,7 +11,7 @@ prod() {
     sudo wget -qO /opt/qycli/cnf/nginx/sites/dmn.tld.conf qyc.li/cnf/nginx/sites/dmn.tld.conf
 }
 
-## Install qycli dev version with "wget -qO- qyc.li/qycli | sudo bash -s dev"
+## Install qycli dev version with "wget -qO- qyc.li/inst | sudo bash -s dev"
 dev() {
     if ! command -v svn &> /dev/null; then
         sudo apt update && sudo apt -y install subversion
