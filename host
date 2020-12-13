@@ -2,28 +2,6 @@
 
 ## Kernel tweaks for qycli with "wget -qO- qyc.li/kernel | sudo bash"
 
-# Disable Transparent Hugepages (For Redis)
-    sudo bash -c "cat > /usr/local/bin/disable-tph.sh <<EOF
-#!/bin/bash
-echo never > /sys/kernel/mm/transparent_hugepage/enabled
-echo never > /sys/kernel/mm/transparent_hugepage/defrag
-EOF"
-    sudo chmod u+x /usr/local/bin/disable-tph.sh
-    sudo bash -c "cat > /etc/systemd/system/disable-tph.service <<EOF
-[Unit]
-Description=Disable Transparent Hugepages
-
-[Service]
-Type=oneshot
-User=root
-ExecStart=/usr/local/bin/disable-tph.sh
-
-[Install]
-WantedBy=multi-user.target
-EOF"
-    sudo systemctl start disable-tph
-    sudo systemctl enable disable-tph
-
 # Sysctl tweaks for security and performance
 sudo bash -c "cat >>/etc/sysctl.conf <<EOF
 # Based on Michiel Klaver's https://klaver.it/linux/sysctl.conf (v1.14)
