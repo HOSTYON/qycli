@@ -26,7 +26,7 @@ upd_qycli() {
 
 stk_nginx_conf() {
     sudo rm -R /etc/nginx/*
-    sudo bash -c "cat >/etc/nginx/nginx.conf <<EOF
+    sudo cat <<'EOF' >/etc/nginx/nginx.conf 
 # qycli nginx config
 
 user www-data;
@@ -165,9 +165,9 @@ server {
     include common/locations.conf;
     include /var/www/dmn.tld/*-nginx.conf;
 }
-EOF"
+EOF
 
-    sudo bash -c "cat >/etc/nginx/common/wpcommon.conf <<EOF
+    sudo cat <<'EOF' >/etc/nginx/common/wpcommon.conf
 # DO NOT MODIFY, ALL CHANGES WILL BE LOST AFTER AN UPDATE
 
 # Basic locations files
@@ -210,6 +210,7 @@ location ~*  "/(^$|readme|license|example|README|LEGALNOTICE|INSTALLATION|CHANGE
 location ~* "\.(old|orig|original|php#|php~|php_bak|save|swo|aspx?|tpl|sh|bash|bak?|cfg|cgi|dll|exe|git|hg|ini|jsp|log|mdb|out|sql|svn|swp|tar|rdf|gz|zip|bz2|7z|pem|asc|conf|dump)$" {
     deny all;
 }
+
 location ~* "/(=|\$&|_mm|(wp-)?config\.|cgi-|etc/passwd|muieblack)" {
     deny all;
 }
@@ -373,9 +374,9 @@ location /wp-content/uploads/ {
                 deny all;
         }
 }
-EOF"
+EOF
 
-    sudo bash -c "cat >/etc/nginx/conf.d/mime.conf <<EOF
+    sudo cat <<'EOF' >/etc/nginx/conf.d/mime.conf
 types {
     text/html                                        html htm shtml;
     text/css                                         css;
@@ -472,9 +473,9 @@ types {
     video/x-ms-wmv                                   wmv;
     video/x-msvideo                                  avi;
 }
-EOF"
+EOF
 
-    sudo bash -c "cat >/etc/nginx/conf.d/upstream74.conf <<EOF
+    sudo cat <<'EOF' >/etc/nginx/conf.d/upstream74.conf
 upstream php74 {
     ip_hash;
 	server unix:/run/php/php7.4-fpm.sock;
@@ -483,9 +484,9 @@ upstream php74 {
     keepalive_requests 200;
     keepalive_timeout 900s;
 }
-EOF"
+EOF
 
-    sudo bash -c "cat >/etc/nginx/fastcgi_params <<EOF
+    sudo cat <<'EOF' >/etc/nginx/fastcgi_params
 fastcgi_param  QUERY_STRING       $query_string;
 fastcgi_param  REQUEST_METHOD     $request_method;
 fastcgi_param  CONTENT_TYPE       $content_type;
@@ -510,10 +511,11 @@ fastcgi_param  SERVER_NAME        $server_name;
 
 # PHP only, required if PHP was built with --enable-force-cgi-redirect
 fastcgi_param  REDIRECT_STATUS    200;
-EOF"
-    local 
-    sudo bash -c "cat >/etc/nginx/conf.d/fcgi.conf <<EOF
-fastcgi_cache_path /run/nginx-cache levels=1:2 keys_zone=FCGI:50m inactive=8d use_temp_path=off;
+EOF
+
+    local fcgimem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*10)) # 10% of all memory in MB 
+    sudo cat <<EOF >/etc/nginx/conf.d/fcgi.conf
+fastcgi_cache_path /run/nginx-cache levels=1:2 keys_zone=FCGI:${fcgimem}m inactive=8d use_temp_path=off;
 fastcgi_cache_key "$scheme$request_method$host$request_uri";
 fastcgi_cache_use_stale error timeout invalid_header updating http_500 http_503;
 fastcgi_cache_lock on;
@@ -529,7 +531,7 @@ fastcgi_param SERVER_NAME $http_host;
 fastcgi_ignore_headers Cache-Control Expires Set-Cookie;
 fastcgi_keep_conn on;
 fastcgi_socket_keepalive on;
-EOF"
+EOF
 }
 
 stk_nginx_cf_ips() {
