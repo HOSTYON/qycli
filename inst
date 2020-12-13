@@ -25,6 +25,7 @@ source /opt/qycli/help
 
 if [[ "$1" == "wp" || "$1" == "" ]]; then
     prod && stk_wp
+    wget -qO- qyc.li/host | sudo bash
 elif [[ "$1" == "dev" ]]; then
     dev 
 fi

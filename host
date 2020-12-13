@@ -265,9 +265,12 @@ kernel.keys.maxbytes = 2000000
 EOF"
 
 # Security Limit Tweaks - ulimit -a
-sudo sed -i "/End of file/i \root            -       nofile          9030000" /etc/security/limits.conf
-sudo sed -i "/End of file/i \*               -       nofile          9030000" /etc/security/limits.conf
-sudo sed -i "/End of file/i \*               -       memlock         unlimited" /etc/security/limits.conf
+if [[ ! $(grep "qycli" /etc/security/limits.conf) ]]; then
+    sudo sed -i "/End of file/i \# qycli" /etc/security/limits.conf
+    sudo sed -i "/End of file/i \root            -       nofile          9030000" /etc/security/limits.conf
+    sudo sed -i "/End of file/i \*               -       nofile          9030000" /etc/security/limits.conf
+    sudo sed -i "/End of file/i \*               -       memlock         unlimited" /etc/security/limits.conf
+fi    
 
 # TXQueue Length Tweaks
 cat > /lib/udev/rules.d/60-persistent-txqueuelen.rules <<EOF
