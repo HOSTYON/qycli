@@ -571,7 +571,7 @@ stk_mariadb() {
 }
 
 stk_php_conf() {
-    sudo bash -c "cat >/etc/php/${phpv}/fpm/php.ini <<EOF
+    sudo cat <<'EOF' >/etc/php/${phpv}/fpm/php.ini
 [PHP]
 engine = On
 short_open_tag = Off
@@ -757,7 +757,7 @@ opcache.validate_timestamps = 1
 [curl]
 
 [openssl]
-EOF"
+EOF
 }
 
 stk_php() {
@@ -766,11 +766,7 @@ stk_php() {
     stk_php_conf
 }
 
-stk_redis() {
-    sudo apt install snapd -y
-    sleep 2 && sudo snap set system refresh.timer=3:00-5:00 && sleep 1
-    sudo snap install redis --channel=stable
-    sudo usermod -g www-data redis
+stk_redis_conf() {
     sudo sed -i 's+*port 6379+# port 6379+g' /etc/redis/redis.conf
     sudo sed -i 's+tcp-backlog 511+# tcp-backlog 511+g' /etc/redis/redis.conf
     sudo sed -i 's+# unixsocket /var/run/redis/redis-server.sock+unixsocket /run/redis/redis-server.sock+g' /etc/redis/redis.conf
@@ -783,6 +779,14 @@ stk_redis() {
     sudo sed -i 's+# maxmemory-policy noeviction+maxmemory-policy allkeys-lfu+g' /etc/redis/redis.conf
     sudo sed -i 's+save 900 1+save 1800 1+g' /etc/redis/redis.conf
     sudo sed -i 's+save 300 10+save 600 10+g' /etc/redis/redis.conf
+}
+
+stk_redis() {
+    sudo apt install snapd -y
+    sleep 2 && sudo snap set system refresh.timer=3:00-5:00 && sleep 1
+    sudo snap install redis --channel=stable
+    sudo usermod -g www-data redis
+    stk_redis_conf
     sudo systemctl restart redis-server
 }
 
