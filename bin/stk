@@ -9,16 +9,6 @@ upd() {
     sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove && sudo snap refresh
 }
 
-cf_ips_nginx() {
-    if [[ -f /etc/nginx/conf.d/cloudflare.conf ]]; then 
-        sudo rm /etc/nginx/conf.d/cloudflare.conf; 
-    fi
-    for cfip in $(wget -qO- cloudflare.com/ips-v4; wget -qO- cloudflare.com/ips-v6); do
-        sudo bash -c "echo 'set_real_ip_from "$cfip";' >> /etc/nginx/conf.d/cloudflare.conf"
-    done
-    sudo bash -c "echo 'real_ip_header CF-Connecting-IP;' >> /etc/nginx/conf.d/cloudflare.conf"
-}
-
 upd_qycli() {
     # Same as prod() in qycli
     sudo wget -qO /usr/bin/qyc qyc.li/bin/qyc && sudo chmod 755 /usr/bin/qyc
@@ -34,18 +24,327 @@ upd_qycli() {
     cf_ips_nginx
 }
 
+stk_nginx_conf() {
+    sudo rm -R /etc/nginx/*
+    sudo bash -c "cat >/etc/nginx/nginx.conf <<EOF
+# qycli nginx config
+
+user www-data;
+worker_processes auto;
+worker_rlimit_nofile 131072;
+pcre_jit on;
+pid /run/nginx.pid;
+
+events {
+    worker_connections 8192;
+    use epoll;
+    # multi_accept on;
+}
+
+http {
+
+    # Basics
+    charset utf8;
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    http2_chunk_size 16k;
+    http2_idle_timeout 900s;
+    http2_max_concurrent_pushes 50;
+    http2_max_concurrent_streams 256;
+    http2_max_field_size 8k;
+    http2_max_header_size 32k;
+    http2_max_requests 10000;
+    http2_push_preload on;
+    http2_recv_timeout 90s;
+    server_tokens off;
+    server_name_in_redirect off;
+    server_names_hash_bucket_size 256;
+
+    # Limits
+    reset_timedout_connection on;
+    send_timeout 15s;
+    client_body_timeout 15s;
+    client_header_timeout 15s;
+    keepalive_timeout 900s;
+    keepalive_requests 120000;
+    client_body_buffer_size 128k;
+    client_header_buffer_size 13k;
+    large_client_header_buffers 4 52k;
+    open_file_cache max=200000 inactive=30s;
+    open_file_cache_valid 60s;
+    open_file_cache_min_uses 2;
+    open_file_cache_errors on;
+    types_hash_max_size 2048;
+    client_max_body_size 512m;
+
+    # Rate Limiting
+    limit_req_status 403;
+    limit_req_zone $binary_remote_addr zone=zoneone:10m rate=1r/s;
+    limit_req_zone $binary_remote_addr zone=zonetwo:10m rate=5r/s;
+
+    # SSL config
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_buffer_size 8k;
+    ssl_session_tickets on;
+    ssl_session_timeout 7h;
+    ssl_session_cache shared:SSL:35m;
+    ssl_dhparam /etc/ssl/dhparam.pem;
+    ssl_ecdh_curve prime256v1:secp384r1:secp521r1;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:TLS_AES_256_GCM_SHA384:TLS-AES-256-GCM-SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS-CHACHA20-POLY1305-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA;
+
+    # DNS
+    resolver 2606:4700:4700::1111 2001:4860:4860::8888 2606:4700:4700::1001 2001:4860:4860::8844 1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4 valid=360s;
+    resolver_timeout 15s;
+
+    # GZip
+    gzip on;
+    gzip_disable "msie6";
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 3;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_types application/atom+xml application/geo+json application/javascript application/json application/ld+json application/manifest+json
+    application/rdf+xml application/rss+xml application/vnd.ms-fontobject application/wasm application/x-font-opentype application/x-font-truetype 
+    application/x-font-ttf application/x-javascript application/x-web-app-manifest+json application/xhtml+xml application/xml application/xml+rss
+    font/eot font/opentype font/otf image/bmp image/svg+xml image/vnd.microsoft.icon image/x-icon image/x-win-bitmap text/cache-manifest
+    text/calendar text/css text/javascript text/markdown text/plain text/vcard text/vnd.rim.location.xloc text/vtt text/x-component
+    text/x-cross-domain-policy text/xml;
+
+    # Logging
+    access_log off;
+    error_log /var/log/nginx/error.log;
+
+    # Additional Configuration
+    include /etc/nginx/conf.d/*.conf;
+
+    # Server Blocks
+    include /etc/nginx/sites-enabled/*;
+}
+EOF"
+
+    sudo bash -c "cat >/etc/nginx/sites-available/wp.tld <<EOF
+server {
+
+    listen [::]:80;
+    listen 80;
+    server_name dmn.tld www.dmn.tld;
+    return 301 https://$host$request_uri;
+
+}
+
+server {
+
+    listen [::]:443 ssl http2;
+    listen 443 ssl http2;
+
+    ssl_certificate /etc/ssl/openssl.crt;
+    ssl_certificate_key /etc/ssl/openssl.key;
+
+    server_name dmn.tld www.dmn.tld;
+
+    root /var/www/dmn.tld/htdocs;
+    index index.php index.html index.htm;
+
+    access_log off;
+    error_log /var/log/nginx/dmn.tld.error.log;
+
+    add_header Cache-Control "public, stale-while-revalidate=3s";
+    add_header Referrer-Policy "strict-origin-when-cross-origin";
+    add_header X-Cache-Status $upstream_cache_status;
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+
+    include common/auth.conf;
+
+    include common/wpfc.conf;
+    include common/wpcommon.conf;
+    include common/locations.conf;
+    include /var/www/dmn.tld/*-nginx.conf;
+}
+EOF"
+
+    sudo bash -c "cat >/etc/nginx/conf.d/mime.conf <<EOF
+types {
+    text/html                                        html htm shtml;
+    text/css                                         css;
+    text/xml                                         xml;
+    image/gif                                        gif;
+    image/jpeg                                       jpeg jpg;
+    application/javascript                           js;
+    application/atom+xml                             atom;
+    application/rss+xml                              rss;
+
+    text/mathml                                      mml;
+    text/plain                                       txt;
+    text/vnd.sun.j2me.app-descriptor                 jad;
+    text/vnd.wap.wml                                 wml;
+    text/x-component                                 htc;
+
+    image/png                                        png;
+    image/svg+xml                                    svg svgz;
+    image/tiff                                       tif tiff;
+    image/vnd.wap.wbmp                               wbmp;
+    image/webp                                       webp;
+    image/x-icon                                     ico;
+    image/x-jng                                      jng;
+    image/x-ms-bmp                                   bmp;
+
+    font/woff                                        woff;
+    font/woff2                                       woff2;
+
+    application/java-archive                         jar war ear;
+    application/json                                 json;
+    application/mac-binhex40                         hqx;
+    application/msword                               doc;
+    application/pdf                                  pdf;
+    application/postscript                           ps eps ai;
+    application/rtf                                  rtf;
+    application/vnd.apple.mpegurl                    m3u8;
+    application/vnd.google-earth.kml+xml             kml;
+    application/vnd.google-earth.kmz                 kmz;
+    application/vnd.ms-excel                         xls;
+    application/vnd.ms-fontobject                    eot;
+    application/vnd.ms-powerpoint                    ppt;
+    application/vnd.oasis.opendocument.graphics      odg;
+    application/vnd.oasis.opendocument.presentation  odp;
+    application/vnd.oasis.opendocument.spreadsheet   ods;
+    application/vnd.oasis.opendocument.text          odt;
+    application/vnd.openxmlformats-officedocument.presentationml.presentation
+                                                     pptx;
+    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+                                                     xlsx;
+    application/vnd.openxmlformats-officedocument.wordprocessingml.document
+                                                     docx;
+    application/vnd.wap.wmlc                         wmlc;
+    application/x-7z-compressed                      7z;
+    application/x-cocoa                              cco;
+    application/x-java-archive-diff                  jardiff;
+    application/x-java-jnlp-file                     jnlp;
+    application/x-makeself                           run;
+    application/x-perl                               pl pm;
+    application/x-pilot                              prc pdb;
+    application/x-rar-compressed                     rar;
+    application/x-redhat-package-manager             rpm;
+    application/x-sea                                sea;
+    application/x-shockwave-flash                    swf;
+    application/x-stuffit                            sit;
+    application/x-tcl                                tcl tk;
+    application/x-x509-ca-cert                       der pem crt;
+    application/x-xpinstall                          xpi;
+    application/xhtml+xml                            xhtml;
+    application/xspf+xml                             xspf;
+    application/zip                                  zip;
+
+    application/octet-stream                         bin exe dll;
+    application/octet-stream                         deb;
+    application/octet-stream                         dmg;
+    application/octet-stream                         iso img;
+    application/octet-stream                         msi msp msm;
+
+    audio/midi                                       mid midi kar;
+    audio/mpeg                                       mp3;
+    audio/ogg                                        ogg;
+    audio/x-m4a                                      m4a;
+    audio/x-realaudio                                ra;
+
+    video/3gpp                                       3gpp 3gp;
+    video/mp2t                                       ts;
+    video/mp4                                        mp4;
+    video/mpeg                                       mpeg mpg;
+    video/quicktime                                  mov;
+    video/webm                                       webm;
+    video/x-flv                                      flv;
+    video/x-m4v                                      m4v;
+    video/x-mng                                      mng;
+    video/x-ms-asf                                   asx asf;
+    video/x-ms-wmv                                   wmv;
+    video/x-msvideo                                  avi;
+}
+EOF"
+
+    sudo bash -c "cat >/etc/nginx/conf.d/upstream74.conf <<EOF
+upstream php74 {
+    ip_hash;
+	server unix:/run/php/php7.4-fpm.sock;
+    server unix:/run/php/php7.4-fpm-2.sock;
+    keepalive 64;
+    keepalive_requests 200;
+    keepalive_timeout 900s;
+}
+EOF"
+
+    sudo bash -c "cat >/etc/nginx/fastcgi_params <<EOF
+fastcgi_param  QUERY_STRING       $query_string;
+fastcgi_param  REQUEST_METHOD     $request_method;
+fastcgi_param  CONTENT_TYPE       $content_type;
+fastcgi_param  CONTENT_LENGTH     $content_length;
+
+fastcgi_param  SCRIPT_NAME        $fastcgi_script_name;
+fastcgi_param  REQUEST_URI        $request_uri;
+fastcgi_param  DOCUMENT_URI       $document_uri;
+fastcgi_param  DOCUMENT_ROOT      $document_root;
+fastcgi_param  SERVER_PROTOCOL    $server_protocol;
+fastcgi_param  REQUEST_SCHEME     $scheme;
+fastcgi_param  HTTPS              $https if_not_empty;
+
+fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
+fastcgi_param  SERVER_SOFTWARE    nginx/$nginx_version;
+
+fastcgi_param  REMOTE_ADDR        $remote_addr;
+fastcgi_param  REMOTE_PORT        $remote_port;
+fastcgi_param  SERVER_ADDR        $server_addr;
+fastcgi_param  SERVER_PORT        $server_port;
+fastcgi_param  SERVER_NAME        $server_name;
+
+# PHP only, required if PHP was built with --enable-force-cgi-redirect
+fastcgi_param  REDIRECT_STATUS    200;
+EOF"
+    local 
+    sudo bash -c "cat >/etc/nginx/conf.d/fcgi.conf <<EOF
+fastcgi_cache_path /run/nginx-cache levels=1:2 keys_zone=FCGI:50m inactive=8d use_temp_path=off;
+fastcgi_cache_key "$scheme$request_method$host$request_uri";
+fastcgi_cache_use_stale error timeout invalid_header updating http_500 http_503;
+fastcgi_cache_lock on;
+fastcgi_cache_lock_age 2s;
+fastcgi_cache_lock_timeout 3s;
+fastcgi_cache_background_update on;
+fastcgi_cache_valid 200 8d;
+fastcgi_cache_valid 301 302 30m;
+fastcgi_cache_valid 499 502 503 1m;
+fastcgi_cache_valid 404 1h;
+fastcgi_cache_valid any 1h;
+fastcgi_param SERVER_NAME $http_host;
+fastcgi_ignore_headers Cache-Control Expires Set-Cookie;
+fastcgi_keep_conn on;
+fastcgi_socket_keepalive on;
+EOF"
+}
+
+stk_nginx_cf_ips() {
+    if [[ -f /etc/nginx/conf.d/cloudflare.conf ]]; then 
+        sudo rm /etc/nginx/conf.d/cloudflare.conf; 
+    fi
+    for cfip in $(wget -qO- cloudflare.com/ips-v4; wget -qO- cloudflare.com/ips-v6); do
+        sudo bash -c "echo 'set_real_ip_from "$cfip";' >> /etc/nginx/conf.d/cloudflare.conf"
+    done
+    sudo bash -c "echo 'real_ip_header CF-Connecting-IP;' >> /etc/nginx/conf.d/cloudflare.conf"
+}
+
+
 stk_nginx() {
     sudo apt -y install curl gnupg2 ca-certificates lsb-release
     echo "deb http://nginx.org/packages/mainline/ubuntu `lsb_release -cs` nginx" | sudo tee /etc/apt/sources.list.d/nginx.list
     curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo apt-key add -
     sudo apt update && sudo apt install nginx
-    sudo cp /opt/qycli/cnf/nginx/nginx.conf /etc/nginx/nginx.conf
-    sudo cp /opt/qycli/cnf/nginx/conf.d/mime-types.conf /etc/nginx/conf.d/mime-types.conf
-    cf_ips_nginx
-    nginx -t && systemctl restart nginx
-    # Add self signed certificate
+    stk_nginx_conf
+    stk_nginx_cf_ips
     sudo openssl req -new -x509 -nodes -days 7300 -newkey rsa:2048 -keyout /etc/ssl/openssl.key -out /etc/ssl/openssl.crt \
     -subj "/ST=qycli/L=qycli/O=qycli/OU=qycli/CN=qycli"
+    nginx -t && systemctl restart nginx
 }
 
 stk_mariadb() {
@@ -59,10 +358,200 @@ stk_mariadb() {
     fi
 }
 
+stk_php_conf() {
+    sudo bash -c "cat >/etc/php/${phpv}/fpm/php.ini <<EOF
+[PHP]
+engine = On
+short_open_tag = Off
+precision = 14
+output_buffering = 4096
+zlib.output_compression = Off
+implicit_flush = Off
+unserialize_callback_func = 
+serialize_precision = -1
+disable_functions = pcntl_alarm,pcntl_fork,pcntl_waitpid,pcntl_wait,pcntl_wifexited,pcntl_wifstopped,pcntl_wifsignaled,pcntl_wifcontinued,pcntl_wexitstatus,pcntl_wtermsig,pcntl_wstopsig,pcntl_signal,pcntl_signal_get_handler,pcntl_signal_dispatch,pcntl_get_last_error,pcntl_strerror,pcntl_sigprocmask,pcntl_sigwaitinfo,pcntl_sigtimedwait,pcntl_exec,pcntl_getpriority,pcntl_setpriority,pcntl_async_signals,
+disable_classes = 
+zend.enable_gc = On
+expose_php = Off
+max_execution_time = 300
+max_input_time = 300
+memory_limit = 128M
+error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT
+display_errors = Off
+display_startup_errors = Off
+log_errors = On
+log_errors_max_len = 1024
+ignore_repeated_errors = Off
+ignore_repeated_source = Off
+report_memleaks = On
+html_errors = On
+variables_order = "GPCS"
+request_order = "GP"
+register_argc_argv = Off
+auto_globals_jit = On
+post_max_size = 100M
+auto_prepend_file = 
+auto_append_file = 
+default_mimetype = "text/html"
+default_charset = "UTF-8"
+doc_root = 
+user_dir = 
+enable_dl = Off
+file_uploads = On
+upload_max_filesize = 100M
+max_file_uploads = 20
+allow_url_fopen = On
+allow_url_include = Off
+default_socket_timeout = 60
+max_input_vars = 20000
+
+[CLI Server]
+cli_server.color = On
+
+[Date]
+date.timezone = UTC
+
+[filter]
+
+[iconv]
+
+[imap]
+
+[intl]
+
+[sqlite3]
+
+[Pcre]
+
+[Pdo]
+
+[Pdo_mysql]
+pdo_mysql.default_socket = 
+
+[Phar]
+
+[mail function]
+smtp = localhost
+smtp_port = 25
+mail.add_x_header = Off
+
+[ODBC]
+odbc.allow_persistent = On
+odbc.check_persistent = On
+odbc.max_persistent = -1
+odbc.max_links = -1
+odbc.defaultlrl = 4096
+odbc.defaultbinmode = 1
+
+[Interbase]
+ibase.allow_persistent = 1
+ibase.max_persistent = -1
+ibase.max_links = -1
+ibase.timestampformat = "%Y-%m-%d %H:%M:%S"
+ibase.dateformat = "%Y-%m-%d"
+ibase.timeformat = "%H:%M:%S"
+
+[MySQLi]
+mysqli.max_persistent = -1
+mysqli.allow_persistent = On
+mysqli.max_links = -1
+mysqli.default_port = 3306
+mysqli.default_socket = 
+mysqli.default_host = 
+mysqli.default_user = 
+mysqli.default_pw = 
+mysqli.reconnect = Off
+
+[mysqlnd]
+mysqlnd.collect_statistics = On
+mysqlnd.collect_memory_statistics = Off
+
+[OCI8]
+
+[PostgreSQL]
+pgsql.allow_persistent = On
+pgsql.auto_reset_persistent = Off
+pgsql.max_persistent = -1
+pgsql.max_links = -1
+pgsql.ignore_notice = 0
+pgsql.log_notice = 0
+
+[bcmath]
+bcmath.scale = 0
+
+[browscap]
+
+[Session]
+session.save_handler = files
+session.use_strict_mode = 0
+session.use_cookies = 1
+session.use_only_cookies = 1
+session.name = PHPSESSID
+session.auto_start = 0
+session.cookie_lifetime = 0
+session.cookie_path = /
+session.cookie_domain = 
+session.cookie_httponly = 
+session.cookie_samesite = 
+session.serialize_handler = php
+session.gc_probability = 0
+session.gc_divisor = 1000
+session.gc_maxlifetime = 1440
+session.referer_check = 
+session.cache_limiter = nocache
+session.cache_expire = 180
+session.use_trans_sid = 0
+session.sid_length = 26
+session.trans_sid_tags = "a=href,area=href,frame=src,form="
+session.sid_bits_per_character = 5
+
+[Assertion]
+zend.assertions = -1
+
+[COM]
+
+[mbstring]
+
+[gd]
+
+[exif]
+
+[Tidy]
+tidy.clean_output = Off
+
+[soap]
+soap.wsdl_cache_enabled = 1
+soap.wsdl_cache_dir = "/tmp"
+soap.wsdl_cache_ttl = 86400
+soap.wsdl_cache_limit = 5
+
+[sysvshm]
+
+[ldap]
+ldap.max_links = -1
+
+[dba]
+
+[opcache]
+opcache.enable = 1
+opcache.interned_strings_buffer = 8
+opcache.max_accelerated_files = 10000
+opcache.memory_consumption = 256
+opcache.save_comments = 1
+opcache.revalidate_freq = 5
+opcache.consistency_checks = 0
+opcache.validate_timestamps = 1
+
+[curl]
+
+[openssl]
+EOF"
+}
+
 stk_php() {
     sudo apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${phpv}-fpm php${phpv}-gd php${phpv}-imagick \
     php${phpv}-mbstring php${phpv}-mysql php${ver}-redis php${phpv}-soap php${phpv}-xml php${phpv}-zip
-
+    stk_php_conf
 }
 
 stk_redis() {

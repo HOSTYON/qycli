@@ -7,7 +7,7 @@ sudo bash -c "cat >/etc/sysctl.conf <<EOF
 # Based on Michiel Klaver's https://klaver.it/linux/sysctl.conf (v1.14)
 
 
-### GENERAL SYSTEM SECURITY OPTIONS ###
+### GENERAL SYSTEM SECURITY OPTIONS
 
 # Controls the System Request debugging functionality of the kernel
 kernel.sysrq = 0
@@ -40,7 +40,7 @@ fs.suid_dumpable = 0
 kernel.kptr_restrict = 1
 
 
-### IMPROVE SYSTEM MEMORY MANAGEMENT ###
+### IMPROVE SYSTEM MEMORY MANAGEMENT
 
 # Increase size of file handles and inode cache
 fs.file-max = 147433
@@ -69,7 +69,7 @@ kernel.shmall = 268435456
 vm.min_free_kbytes = 65535
 
 
-### GENERAL NETWORK SECURITY OPTIONS ###
+### GENERAL NETWORK SECURITY OPTIONS
 
 #Prevent SYN attack, enable SYNcookies (they will kick-in when the max_syn_backlog reached)
 net.ipv4.tcp_syncookies = 1
@@ -130,7 +130,7 @@ net.ipv4.ip_local_port_range = 1024 65535
 net.ipv4.tcp_rfc1337 = 1
 
 
-### TUNING NETWORK PERFORMANCE ###
+### TUNING NETWORK PERFORMANCE
 
 # For high-bandwidth low-latency networks, use 'bbr' congestion control (kernel > 4.9)
 # Only enabled in bionic (at least v4.15)
@@ -230,7 +230,7 @@ net.ipv4.route.flush = 1
 net.ipv6.route.flush = 1
 
 
-### CUSTOM ###
+### CUSTOM
 
 fs.nr_open=12000000
 net.ipv4.tcp_sack = 1
