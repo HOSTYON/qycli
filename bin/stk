@@ -2,26 +2,27 @@
 
 # stack install functions
 
-# Variables
 phpv=7.4 # Newest safe PHP Version
+
+source /opt/qycli/inst
 
 upd() {
     sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove && sudo snap refresh
 }
 
-upd_qycli() {
-    # Same as prod() in qycli
-    sudo wget -qO /usr/bin/qyc qyc.li/bin/qyc && sudo chmod 755 /usr/bin/qyc
-    sudo wget -qO /opt/qycli/stk qyc.li/bin/stk
-    sudo wget -qO /opt/qycli/help qyc.li/bin/help
-    sudo wget -qO /opt/qycli/fn qyc.li/bin/fn
-    sudo wget -qO /opt/qycli/cnf/nginx/nginx.conf qyc.li/cnf/nginx/nginx.conf
-    sudo wget -qO /opt/qycli/cnf/nginx/conf.d/mime-types.conf qyc.li/cnf/nginx/conf.d/mime-types.conf
-    sudo wget -qO /opt/qycli/cnf/nginx/sites/dmn.tld.conf qyc.li/cnf/nginx/sites/dmn.tld.conf
+stk_nginx_cf_ips() {
+    if [[ -f /etc/nginx/conf.d/cloudflare.conf ]]; then 
+        sudo rm /etc/nginx/conf.d/cloudflare.conf; 
+    fi
+    for cfip in $(wget -qO- cloudflare.com/ips-v4; wget -qO- cloudflare.com/ips-v6); do
+        sudo bash -c "echo 'set_real_ip_from "$cfip";' >> /etc/nginx/conf.d/cloudflare.conf"
+    done
+    sudo bash -c "echo 'real_ip_header CF-Connecting-IP;' >> /etc/nginx/conf.d/cloudflare.conf"
+}
 
-    # Additional things
-    sudo cp /opt/qycli/cnf/nginx/nginx.conf /etc/nginx/nginx.conf
-    cf_ips_nginx
+upd_qycli() {
+    prod
+    stk_nginx_cf_ips
 }
 
 stk_nginx_conf() {
@@ -123,9 +124,9 @@ http {
     # Server Blocks
     include /etc/nginx/sites-enabled/*;
 }
-EOF"
+EOF
 
-    sudo bash -c "cat >/etc/nginx/sites-available/wp.tld <<EOF
+    sudo cat <<'EOF' >/etc/nginx/sites-available/wp.tld
 server {
 
     listen [::]:80;
@@ -162,7 +163,6 @@ server {
 
     include common/wpfc.conf;
     include common/wpcommon.conf;
-    include common/locations.conf;
     include /var/www/dmn.tld/*-nginx.conf;
 }
 EOF
@@ -177,9 +177,11 @@ location = /favicon.ico {
     log_not_found off;
     expires max;
 }
+
 location @empty_gif {
     empty_gif;
 }
+
 # Cache static files
 location ~* \.(ogg|ogv|svg|svgz|eot|otf|woff|woff2|ttf|m4a|mp4|ttf|rss|atom|jpe?g|gif|cur|heic|png|tiff|ico|webm|mp3|aac|tgz|doc|xls|exe|ppt|tar|mid|midi|wav|bmp|rtf|swf|webp|json|webmanifest|cast)$ {
     more_set_headers 'Access-Control-Allow-Origin : *';
@@ -188,6 +190,7 @@ location ~* \.(ogg|ogv|svg|svgz|eot|otf|woff|woff2|ttf|m4a|mp4|ttf|rss|atom|jpe?
     log_not_found off;
     expires max;
 }
+
 # Cache css & js files
 location ~* \.(?:css(\.map)?|js(\.map)?)$ {
     more_set_headers 'Access-Control-Allow-Origin : *';
@@ -196,6 +199,7 @@ location ~* \.(?:css(\.map)?|js(\.map)?)$ {
     log_not_found off;
     expires 30d;
 }
+
 # Security settings for better privacy
 # Deny hidden files
 location ~ /\.(?!well-known\/) {
@@ -206,6 +210,7 @@ location ~ /\.(?!well-known\/) {
 location ~*  "/(^$|readme|license|example|README|LEGALNOTICE|INSTALLATION|CHANGELOG)\.(txt|html|md)" {
     deny all;
 }
+
 # Deny backup extensions & log files and return 403 forbidden
 location ~* "\.(old|orig|original|php#|php~|php_bak|save|swo|aspx?|tpl|sh|bash|bak?|cfg|cgi|dll|exe|git|hg|ini|jsp|log|mdb|out|sql|svn|swp|tar|rdf|gz|zip|bz2|7z|pem|asc|conf|dump)$" {
     deny all;
@@ -297,18 +302,21 @@ location = /wp-cron.php {
     include fastcgi_params;
     fastcgi_pass {{upstream}};
 }
+
 # Prevent DoS attacks with xmlrpc.php
 location = /xmlrpc.php {
     limit_req zone=zonetwo burst=1 nodelay;
     include fastcgi_params;
     fastcgi_pass {{upstream}};
 }
+
 # Disable wp-config.txt
 location = /wp-config.txt {
     deny all;
     access_log off;
     log_not_found off;
 }
+
 location = /robots.txt {
 # Some WordPress plugin gererate robots.txt file
 # Refer #340 issue
@@ -316,10 +324,12 @@ location = /robots.txt {
     access_log off;
     log_not_found off;
 }
+
 # fallback for robots.txt with default wordpress rules
 location @robots {
     return 200 "User-agent: *\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php\n";
 }
+
 # webp rewrite rules for jpg and png images
 # try to load alternative image.png.webp before image.png
 location /wp-content/uploads {
@@ -351,18 +361,21 @@ location /wp-content/cache {
         deny all;
     }
 }
+
 # Deny access to any files with a .php extension in the uploads directory
 # Works in sub-directory installs and also in multisite network
 # Keep logging the requests to parse later (or to pass to firewall utilities such as fail2ban)
 location ~* /(?:uploads|files)/.*\.php$ {
     deny all;
 }
+
 # mitigate DoS attack CVE with WordPress script concatenation
 # add the following line to wp-config.php
 # define( 'CONCATENATE_SCRIPTS', false );
 location ~ \/wp-admin\/load-(scripts|styles).php {
     deny all;
 }
+
 # Protect Easy Digital Download files from being accessed directly.
 location ~ ^/wp-content/uploads/edd/(.*?)\.zip$ {
     rewrite / permanent;
@@ -476,7 +489,7 @@ types {
 EOF
 
     sudo cat <<'EOF' >/etc/nginx/conf.d/upstream74.conf
-upstream php74 {
+upstream php {
     ip_hash;
 	server unix:/run/php/php7.4-fpm.sock;
     server unix:/run/php/php7.4-fpm-2.sock;
@@ -533,17 +546,6 @@ fastcgi_keep_conn on;
 fastcgi_socket_keepalive on;
 EOF
 }
-
-stk_nginx_cf_ips() {
-    if [[ -f /etc/nginx/conf.d/cloudflare.conf ]]; then 
-        sudo rm /etc/nginx/conf.d/cloudflare.conf; 
-    fi
-    for cfip in $(wget -qO- cloudflare.com/ips-v4; wget -qO- cloudflare.com/ips-v6); do
-        sudo bash -c "echo 'set_real_ip_from "$cfip";' >> /etc/nginx/conf.d/cloudflare.conf"
-    done
-    sudo bash -c "echo 'real_ip_header CF-Connecting-IP;' >> /etc/nginx/conf.d/cloudflare.conf"
-}
-
 
 stk_nginx() {
     sudo apt -y install curl gnupg2 ca-certificates lsb-release

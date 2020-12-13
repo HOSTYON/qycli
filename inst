@@ -3,12 +3,10 @@
 ## Install qycli and stack with "wget -qO- qyc.li/inst | sudo bash"
 prod() {
     sudo wget -qO /usr/bin/qyc qyc.li/bin/qyc && sudo chmod 755 /usr/bin/qyc
-    sudo wget -qO /opt/qycli/stk qyc.li/bin/stk
-    sudo wget -qO /opt/qycli/help qyc.li/bin/help
-    sudo wget -qO /opt/qycli/fn qyc.li/bin/fn
-    sudo wget -qO /opt/qycli/cnf/nginx/nginx.conf qyc.li/cnf/nginx/nginx.conf
-    sudo wget -qO /opt/qycli/cnf/nginx/conf.d/mime-types.conf qyc.li/cnf/nginx/conf.d/mime-types.conf
-    sudo wget -qO /opt/qycli/cnf/nginx/sites/dmn.tld.conf qyc.li/cnf/nginx/sites/dmn.tld.conf
+    sudo wget -qO /opt/qycli/inst qyc.li/inst
+    sudo wget -qO /opt/qycli/bin/stk qyc.li/bin/stk
+    sudo wget -qO /opt/qycli/bin/help qyc.li/bin/help
+    sudo wget -qO /opt/qycli/bin/fn qyc.li/bin/fn
 }
 
 ## Install qycli dev version with "wget -qO- qyc.li/inst | sudo bash -s dev"
