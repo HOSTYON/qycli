@@ -664,9 +664,8 @@ fastcgi_param  SERVER_NAME        $server_name;
 fastcgi_param  REDIRECT_STATUS    200;
 EOF
 
-    local fcgimem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*10)) # 10% of all memory in MB 
-    sudo cat <<EOF >/etc/nginx/conf.d/fcgi.conf
-fastcgi_cache_path /run/nginx-cache levels=1:2 keys_zone=FCGI:${fcgimem}m inactive=8d use_temp_path=off;
+    sudo cat <<'EOF' >/etc/nginx/conf.d/fcgi.conf
+fastcgi_cache_path /run/nginx-cache levels=1:2 keys_zone=FCGI:64m inactive=8d use_temp_path=off;
 fastcgi_cache_key "$scheme$request_method$host$request_uri";
 fastcgi_cache_use_stale error timeout invalid_header updating http_500 http_503;
 fastcgi_cache_lock on;
@@ -709,7 +708,8 @@ stk_mariadb() {
 }
 
 stk_php_conf() {
-    sudo cat <<'EOF' >/etc/php/${phpv}/fpm/php.ini
+    local opmem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*15)) # 15% of all memory in MB
+    sudo cat <<EOF >/etc/php/${phpv}/fpm/php.ini
 [PHP]
 engine = On
 short_open_tag = Off
@@ -739,7 +739,7 @@ variables_order = "GPCS"
 request_order = "GP"
 register_argc_argv = Off
 auto_globals_jit = On
-post_max_size = 100M
+post_max_size = 128M
 auto_prepend_file = 
 auto_append_file = 
 default_mimetype = "text/html"
@@ -748,7 +748,7 @@ doc_root =
 user_dir = 
 enable_dl = Off
 file_uploads = On
-upload_max_filesize = 100M
+upload_max_filesize = 128M
 max_file_uploads = 20
 allow_url_fopen = On
 allow_url_include = Off
@@ -885,16 +885,74 @@ ldap.max_links = -1
 [opcache]
 opcache.enable = 1
 opcache.interned_strings_buffer = 8
-opcache.max_accelerated_files = 10000
-opcache.memory_consumption = 256
+opcache.max_accelerated_files = 130986
+opcache.max_wasted_percentage = 15
+opcache.memory_consumption = ${opmem}
 opcache.save_comments = 1
-opcache.revalidate_freq = 5
 opcache.consistency_checks = 0
-opcache.validate_timestamps = 1
+opcache.validate_timestamps = 0
+opcache.revalidate_freq = 0
 
 [curl]
 
 [openssl]
+EOF
+
+    local maxchil=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)/3)) # pm.max_children = 80% Total Memory / 80MB / 3
+    sudo cat <<EOF >/etc/php/${phpv}/fpm/pool.d/www.conf
+[www-php${phpv}-1]
+user = www-data
+group = www-data
+listen = php${phpv}-fpm-1.sock
+listen.owner = root
+listen.group = www-data
+pm = static
+pm.max_children = ${maxchil}
+ping.path = /ping
+pm.status_path = /status
+pm.max_requests = 2048
+request_terminate_timeout = 300
+chdir = /
+prefix = /run/php
+listen.mode = 0660
+listen.backlog = 32768
+catch_workers_output = yes
+
+[www-php${phpv}-2]
+user = www-data
+group = www-data
+listen = php${phpv}-fpm-2.sock
+listen.owner = root
+listen.group = www-data
+pm = static
+pm.max_children = ${maxchil}
+ping.path = /ping
+pm.status_path = /status
+pm.max_requests = 2048
+request_terminate_timeout = 300
+chdir = /
+prefix = /run/php
+listen.mode = 0660
+listen.backlog = 32768
+catch_workers_output = yes
+
+[www-php${phpv}-3]
+user = www-data
+group = www-data
+listen = php${phpv}-fpm-3.sock
+listen.owner = root
+listen.group = www-data
+pm = static
+pm.max_children = ${maxchil}
+ping.path = /ping
+pm.status_path = /status
+pm.max_requests = 2048
+request_terminate_timeout = 300
+chdir = /
+prefix = /run/php
+listen.mode = 0660
+listen.backlog = 32768
+catch_workers_output = yes
 EOF
 }
 
