@@ -27,17 +27,19 @@ upd_qycli() {
 
 stk_nginx_conf() {
     sudo rm -R /etc/nginx/*
-    sudo cat <<'EOF' >/etc/nginx/nginx.conf 
+    local workers=$(grep processor /proc/cpuinfo | wc -l)
+    local workerconn=$((($(grep processor /proc/cpuinfo | wc -l)*10240)))
+    sudo cat <<EOF >/etc/nginx/nginx.conf 
 # qycli nginx config
 
 user www-data;
-worker_processes auto;
+worker_processes ${workers};
 worker_rlimit_nofile 131072;
 pcre_jit on;
 pid /run/nginx.pid;
 
 events {
-    worker_connections 8192;
+    worker_connections ${workerconn};
     use epoll;
     # multi_accept on;
 }
