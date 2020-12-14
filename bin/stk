@@ -695,7 +695,7 @@ stk_nginx() {
     stk_nginx_cf_ips
     sudo openssl req -new -x509 -nodes -days 7300 -newkey rsa:2048 -keyout /etc/ssl/openssl.key -out /etc/ssl/openssl.crt \
     -subj "/ST=qycli/L=qycli/O=qycli/OU=qycli/CN=qycli"
-    nginx -t && systemctl restart nginx
+    nginx -t && sudo systemctl restart nginx
 }
 
 stk_mariadb() {
@@ -962,6 +962,7 @@ stk_php() {
     sudo apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${phpv}-fpm php${phpv}-gd php${phpv}-imagick \
     php${phpv}-mbstring php${phpv}-mysql php${ver}-redis php${phpv}-soap php${phpv}-xml php${phpv}-zip
     stk_php_conf
+    sudo systemctl restart php${phpv}-fpm
 }
 
 stk_redis_conf() {
