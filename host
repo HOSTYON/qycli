@@ -3,7 +3,7 @@
 ## Kernel tweaks for qycli with "wget -qO- qyc.li/kernel | sudo bash"
 
 # Sysctl tweaks for security and performance
-sudo bash -c "cat >/etc/sysctl.conf <<EOF
+sudo cat <<'EOF' >/etc/sysctl.conf
 # Based on Michiel Klaver's https://klaver.it/linux/sysctl.conf (v1.14)
 
 
@@ -73,8 +73,8 @@ vm.min_free_kbytes = 65535
 
 #Prevent SYN attack, enable SYNcookies (they will kick-in when the max_syn_backlog reached)
 net.ipv4.tcp_syncookies = 1
-net.ipv4.tcp_syn_retries = 2
-net.ipv4.tcp_synack_retries = 2
+net.ipv4.tcp_syn_retries = 3
+net.ipv4.tcp_synack_retries = 3
 net.ipv4.tcp_max_syn_backlog = 65536
 
 # Disables IP source routing
@@ -98,12 +98,12 @@ net.ipv6.conf.all.accept_redirects = 0
 net.ipv6.conf.default.accept_redirects = 0
 
 # Decrease the time default value for tcp_fin_timeout connection
-net.ipv4.tcp_fin_timeout = 7
+net.ipv4.tcp_fin_timeout = 15
 
 # Decrease the time default value for connections to keep alive
 net.ipv4.tcp_keepalive_time = 900
-net.ipv4.tcp_keepalive_probes = 10
-net.ipv4.tcp_keepalive_intvl = 30
+net.ipv4.tcp_keepalive_probes = 15
+net.ipv4.tcp_keepalive_intvl = 90
 
 # Don't relay bootp
 net.ipv4.conf.all.bootp_relay = 0
@@ -132,9 +132,9 @@ net.ipv4.tcp_rfc1337 = 1
 
 ### TUNING NETWORK PERFORMANCE
 
-# For high-bandwidth low-latency networks, use 'bbr' congestion control (kernel > 4.9)
-# Only enabled in bionic (at least v4.15)
-# Do a 'sudo modprobe tcp_bbr' first
+# Use BBR TCP congestion control and set tcp_notsent_lowat to 16384 to ensure HTTP/2 prioritization works optimally
+# Do a 'modprobe tcp_bbr' first (kernel > 4.9)
+# Fall-back to htcp if bbr is unavailable (older kernels)
 net.ipv4.tcp_congestion_control = bbr
 net.ipv4.tcp_notsent_lowat = 16384
 
@@ -170,7 +170,7 @@ net.core.optmem_max = 65535
 net.ipv4.tcp_mem=8388608 8388608 8388608
 
 # Increase the tcp-time-wait buckets pool size to prevent simple DOS attacks
-net.ipv4.tcp_max_tw_buckets = 6000000
+net.ipv4.tcp_max_tw_buckets = 1440000
 
 # try to reuse time-wait connections, but don't recycle them (recycle can break clients behind NAT)
 #net.ipv4.tcp_tw_recycle = 0
@@ -187,7 +187,7 @@ net.ipv4.ipfrag_high_thresh = 262144
 net.ipv6.ip6frag_high_thresh = 262144
 
 # don't cache ssthresh from previous connection
-net.ipv4.tcp_no_metrics_save = 1
+net.ipv4.tcp_no_metrics_save = 0
 net.ipv4.tcp_moderate_rcvbuf = 1
 
 # Increase size of RPC datagram queue length
@@ -230,39 +230,33 @@ net.ipv4.route.flush = 1
 net.ipv6.route.flush = 1
 
 
-### CUSTOM
+### ADDITIONS
 
-fs.nr_open=12000000
-net.ipv4.tcp_sack = 1
-net.ipv4.tcp_mtu_probing = 1
-net.ipv4.tcp_base_mss = 1024
-net.ipv4.tcp_challenge_ack_limit = 999999999
-net.ipv6.conf.default.router_solicitations = 0
-net.ipv6.conf.default.accept_ra_rtr_pref = 0
-net.ipv6.conf.default.accept_ra_pinfo = 0
-net.ipv6.conf.default.accept_ra_defrtr = 0
-net.ipv6.conf.default.dad_transmits = 0
-#net.ipv6.conf.default.max_addresses = 1
-
-
-### Additional
-
-net.core.bpf_jit_limit = 3000000000
-
+# Allow ipv6 forwarding for Linux Container Networking
 net.ipv6.conf.all.forwarding=1
 net.ipv6.conf.eth0.forwarding=1
 net.ipv6.conf.all.proxy_ndp=1
 net.ipv6.conf.eth0.proxy_ndp=1
 
+# Furthe TCP enhancments
+net.ipv4.tcp_sack = 1
+net.ipv4.tcp_dsack = 1
+net.ipv4.tcp_mtu_probing = 1
+net.ipv4.tcp_base_mss = 1024
+net.ipv4.tcp_challenge_ack_limit = 999999999
+
+net.core.bpf_jit_limit = 3000000000
+
 fs.inotify.max_queued_events = 1048576
 fs.inotify.max_user_instances = 1048576
 fs.inotify.max_user_watches = 1048576
 fs.aio-max-nr = 1048576
+fs.nr_open=12000000
 
 kernel.dmesg_restrict = 1
 kernel.keys.maxkeys = 2000
 kernel.keys.maxbytes = 2000000
-EOF"
+EOF
 
 # Security Limit Tweaks - ulimit -a
 if [[ ! $(grep "qycli" /etc/security/limits.conf) ]]; then
@@ -273,7 +267,7 @@ if [[ ! $(grep "qycli" /etc/security/limits.conf) ]]; then
 fi    
 
 # TXQueue Length Tweaks
-cat > /lib/udev/rules.d/60-persistent-txqueuelen.rules <<EOF
+sudo cat <<'EOF' >/lib/udev/rules.d/60-persistent-txqueuelen.rules
 KERNEL=="eth[0,1]", RUN+="/sbin/ip link set %k txqueuelen 10000"
 KERNEL=="lxdbr0", RUN+="/sbin/ip link set %k txqueuelen 10000"
 EOF
