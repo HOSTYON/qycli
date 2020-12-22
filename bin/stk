@@ -707,10 +707,7 @@ stk_mariadb_conf() {
     else    
         local dbrootpw=$(sudo openssl rand -base64 16)
         local dbqycpw=$(sudo openssl rand -base64 16)
-        sudo mkdir /etc/qycli
-        sudo touch /etc/qycli/qycli.cnf
-        sudo tee /etc/qycli/qycli.cnf >/dev/null <<EOF 
-# qycli configuration storage file        
+        sudo tee -a /etc/qycli/qycli.cnf >/dev/null <<EOF       
 MariaDB root password: ${dbrootpw} 
 MariaDB qyc (admin) password: ${dbqycpw}
 EOF

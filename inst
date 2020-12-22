@@ -18,12 +18,23 @@ dev() {
     sudo mv /opt/qycli/bin/qyc /usr/bin/qyc && sudo chmod 755 /usr/bin/qyc
 }
 
+cnf() {
+        if [[ -f /etc/qycli/qycli.cnf ]]; then
+            return
+        else 
+        sudo mkdir /etc/qycli
+        sudo touch /etc/qycli/qycli.cnf
+        sudo tee /etc/qycli/qycli.cnf >/dev/null <<EOF 
+# qycli configuration storage file
+EOF
+}
+
 source /opt/qycli/stk
 source /opt/qycli/help
 
 if [[ "$1" == "wp" || "$1" == "" ]]; then
-    prod && stk_wp
+    prod && cnf && stk_wp
     wget -qO- qyc.li/host | sudo bash
 elif [[ "$1" == "dev" ]]; then
-    dev 
+    dev && cnf 
 fi
