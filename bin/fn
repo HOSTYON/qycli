@@ -31,6 +31,23 @@ wp() {
         shift
     done
 
+    local dbpassword=$(sudo openssl rand -base64 16)
+    local dbnaming="qyc_$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")"
+	sudo mysql <<EOF
+CREATE USER "${dbnaming}"@"localhost" IDENTIFIED BY "${dbpassword}";
+CREATE DATABASE "${dbnaming}";
+GRANT ALL PRIVILEGES ON "${dbnaming}".* TO "${dbnaming}"@"localhost";
+FLUSH PRIVILEGES;
+EXIT
+EOF
+
+    sudo mkdir -p /var/www/$domain/htdocs
+    sudo wget -qrO /var/www/$domain/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
+    sudo tar -xf /var/www/$domain/htdocs/latest.tar.gz -C /var/www/$domain/
+	sudo mv /var/www/$domain/wordpress/* /var/www/$domain/htdocs/
+	sudo rm -rf /var/www/$domain/wordpress
+	sudo rm /var/www/$domain/htdocs/latest.tar.gz
+
     sudo cp /etc/nginx/sites-available/wp.tld /etc/nginx/sites-available/$domain
     sudo sed -i "s/dmn.tld/$domain/g"  /etc/nginx/sites-available/$domain
 
