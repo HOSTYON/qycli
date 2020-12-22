@@ -711,8 +711,8 @@ stk_mariadb_conf() {
 MariaDB root password: ${dbrootpw} 
 MariaDB qyc (admin) password: ${dbqycpw}
 EOF
-        sudo mysql -u root <<EOF
-UPDATE mysql.user SET Password=PASSWORD('$dbrootpw') WHERE User='root';
+        sudo mysql <<EOF
+SET PASSWORD FOR 'root'@'localhost' = PASSWORD('$dbrootpw');
 CREATE USER IF NOT EXISTS 'qyc'@'localhost' IDENTIFIED BY '${dbqycpw}';
 GRANT ALL PRIVILEGES ON *.* TO 'qyc'@'localhost' WITH GRANT OPTION;
 DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');

@@ -12,3 +12,6 @@ Features will include:
   - Added speed through CDN
   - Making IPv6 only hosts compatible to IPv4
   - No worrying Let's Encrypt certificates might not renew properly after 90 days
+
+  More to come soon...
+  This project is far from finished and cannot be used at the moment.
