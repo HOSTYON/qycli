@@ -696,13 +696,12 @@ stk_nginx() {
 }
 
 stk_mariadb_conf() {
-    if ! grep -q skip-networking /etc/mysql/my.cnf; then
-        local innodbbps=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*80)) # 80% of all memory in MB
-        local innodblfs=$(((${innodbbps}/100*25)))
-        local dbmaxconn=$((($(grep processor /proc/cpuinfo | wc -l)*512))) # 512 times CPU cores
-        local tmpsizes=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/1000000)*64)) # Per GB RAM 64MB
-        local querycachesize=$((($(grep processor /proc/cpuinfo | wc -l)*64))) # 64 times CPU cores
-        sudo tee -a /etc/mysql/my.cnf >/dev/null <<EOF
+    local innodbbps=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*80)) # 80% of all memory in MB
+    local innodblfs=$(((${innodbbps}/100*25)))
+    local dbmaxconn=$((($(grep processor /proc/cpuinfo | wc -l)*512))) # 512 times CPU cores
+    local tmpsizes=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/1000000)*64)) # Per GB RAM 64MB
+    local querycachesize=$((($(grep processor /proc/cpuinfo | wc -l)*64))) # 64 times CPU cores
+    sudo tee /etc/mysql/mariadb.conf.d/99-qyc.cnf >/dev/null <<EOF
 [mysqld]
 skip-networking
 skip-name-resolve
@@ -717,11 +716,16 @@ max_allowed_packet = 512M
 query_cache_type = 1
 query_cache_limit = 1M
 query_cache_size = ${querycachesize}M
+read_rnd_buffer_size=192K  # from 256K to reduce handler_read_rnd_next RPS of 1,683,707
+read_buffer_size=256K  # from 128K to reduce handler_read_next RPS of 21,522
+thread_cache_size=100  # from 13 to reduce threads_created of 2,763 in 15 days
+innodb_io_capacity=1800  # from 200 to allow higher IOPS on your SSD storage devices
+key_cache_age_threshold=7200   # from 300 seconds to reduce key_reads RPS of 16+
+key_buffer_size=64M  # from 8M to reduce key_reads RPS of 16+
 EOF
-    fi
-    if [[ -f /etc/qycli/qycli.cnf ]]; then
-        return
-    else    
+    #if [[ -f /etc/qycli/qycli.cnf ]]; then
+        #return
+    #else    
         #local dbrootpw=$(sudo openssl rand -base64 16)
         #local dbqycpw=$(sudo openssl rand -base64 16)
         #sudo tee -a /etc/qycli/qycli.cnf >/dev/null <<EOF       
@@ -732,12 +736,9 @@ EOF
 DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
 DELETE FROM mysql.user WHERE User='';
 DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';
-DROP USER ''@'localhost';
-DROP USER ''@'$(hostname)';
 FLUSH PRIVILEGES;
 EXIT
 EOF
-    fi
 }
 
 stk_mariadb() {
