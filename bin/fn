@@ -31,11 +31,11 @@ wp() {
         shift
     done
 
-    local dbpassword=$(sudo openssl rand -base64 16)
+    #local dbpassword=$(sudo openssl rand -base64 16)
+    #local qycpw=$(grep "MariaDB qyc" /etc/qycli/qycli.cnf | sed 's/^.*: //')
     local dbnaming="qyc_$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")"
-    local qycpw=$(grep "MariaDB qyc" /etc/qycli/qycli.cnf | sed 's/^.*: //')
 	sudo mysql -u qyc -p ${qycpw} <<EOF
-CREATE USER "${dbnaming}"@"localhost" IDENTIFIED BY "${dbpassword}";
+CREATE USER "${dbnaming}"@"localhost" IDENTIFIED BY unix_socket;
 CREATE DATABASE "${dbnaming}";
 GRANT ALL PRIVILEGES ON "${dbnaming}".* TO "${dbnaming}"@"localhost";
 FLUSH PRIVILEGES;

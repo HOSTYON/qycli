@@ -27,7 +27,7 @@ upd_qycli() {
 
 stk_nginx_conf() {
     sudo rm -R /etc/nginx/*
-    local workers=$(grep processor /proc/cpuinfo | wc -l)
+    local workers=$(grep processor /proc/cpuinfo | wc -l) # 1 worker per CPU
     local workerconn=$((($(grep processor /proc/cpuinfo | wc -l)*10240)))
     sudo cat <<EOF >/etc/nginx/nginx.conf 
 # qycli nginx config
@@ -182,11 +182,8 @@ EOF
 
     sudo cat <<EOF >/etc/nginx/conf.d/upstream${phpv}.conf
 upstream php${phpv} {
-    ip_hash;
-	server unix:/run/php/php${phpv}-fpm-1.sock;
-    server unix:/run/php/php${phpv}-fpm-2.sock;
-    server unix:/run/php/php${phpv}-fpm-3.sock;
-    keepalive 64;
+	server unix:/run/php/php${phpv}-fpm.sock;
+    keepalive 256;
     keepalive_requests 200;
     keepalive_timeout 900s;
 }
@@ -700,21 +697,38 @@ stk_nginx() {
 
 stk_mariadb_conf() {
     if ! grep -q skip-networking /etc/mysql/my.cnf; then
-        sudo bash -c 'printf "\n[mysqld]\nskip-networking\n" >> /etc/mysql/my.cnf'
+        local innodbbps=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*80)) # 80% of all memory in MB
+        local innodblfs=$(((${innodbbps}/100*25)))
+        local dbmaxconn=$((($(grep processor /proc/cpuinfo | wc -l)*512))) # 512 times CPU cores
+        local tmpsizes=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/1000000)*64)) # Per GB RAM 64MB
+        local querycachesize=$((($(grep processor /proc/cpuinfo | wc -l)*64))) # 64 times CPU cores
+        sudo tee -a /etc/mysql/my.cnf >/dev/null <<EOF
+[mysqld]
+skip-networking
+skip-name-resolve
+innodb_file_per_table=1
+innodb_buffer_pool_size = ${innodbbps}M
+innodb_log_file_size = ${innodblfs}M
+max_connections = ${dbmaxconn}
+tmp_table_size = ${tmpsizes}M
+max_heap_table_size = ${tmpsizes}M
+wait_timeout = 900
+max_allowed_packet = 512M
+query_cache_type = 1
+query_cache_limit = 1M
+query_cache_size = ${querycachesize}M
+EOF
     fi
     if [[ -f /etc/qycli/qycli.cnf ]]; then
         return
     else    
-        local dbrootpw=$(sudo openssl rand -base64 16)
-        local dbqycpw=$(sudo openssl rand -base64 16)
-        sudo tee -a /etc/qycli/qycli.cnf >/dev/null <<EOF       
-MariaDB root password: ${dbrootpw} 
-MariaDB qyc (admin) password: ${dbqycpw}
-EOF
-        sudo mysql <<EOF
-SET PASSWORD FOR 'root'@'localhost' = PASSWORD('$dbrootpw');
-CREATE USER IF NOT EXISTS 'qyc'@'localhost' IDENTIFIED BY '${dbqycpw}';
-GRANT ALL PRIVILEGES ON *.* TO 'qyc'@'localhost' WITH GRANT OPTION;
+        #local dbrootpw=$(sudo openssl rand -base64 16)
+        #local dbqycpw=$(sudo openssl rand -base64 16)
+        #sudo tee -a /etc/qycli/qycli.cnf >/dev/null <<EOF       
+#MariaDB root password: ${dbrootpw} 
+#MariaDB qyc (admin) password: ${dbqycpw}
+#EOF
+        sudo mysql <<'EOF'
 DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
 DELETE FROM mysql.user WHERE User='';
 DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';
@@ -833,7 +847,6 @@ ibase.timeformat = "%H:%M:%S"
 mysqli.max_persistent = -1
 mysqli.allow_persistent = On
 mysqli.max_links = -1
-mysqli.default_port = 3306
 mysqli.default_socket = 
 mysqli.default_host = 
 mysqli.default_user = 
@@ -926,12 +939,12 @@ opcache.revalidate_freq = 0
 [openssl]
 EOF
 
-    local maxchil=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)/3)) # pm.max_children = 80% Total Memory / 80MB / 3
+    local maxchil=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*70/80)) # pm.max_children = 70% Total Memory / 80MB
     sudo cat <<EOF >/etc/php/${phpv}/fpm/pool.d/www.conf
 [www-php${phpv}-1]
 user = www-data
 group = www-data
-listen = php${phpv}-fpm-1.sock
+listen = php${phpv}-fpm.sock
 listen.owner = root
 listen.group = www-data
 pm = static
@@ -939,43 +952,7 @@ pm.max_children = ${maxchil}
 ping.path = /ping
 pm.status_path = /status
 pm.max_requests = 2048
-request_terminate_timeout = 300
-chdir = /
-prefix = /run/php
-listen.mode = 0660
-listen.backlog = 32768
-catch_workers_output = yes
-
-[www-php${phpv}-2]
-user = www-data
-group = www-data
-listen = php${phpv}-fpm-2.sock
-listen.owner = root
-listen.group = www-data
-pm = static
-pm.max_children = ${maxchil}
-ping.path = /ping
-pm.status_path = /status
-pm.max_requests = 2048
-request_terminate_timeout = 300
-chdir = /
-prefix = /run/php
-listen.mode = 0660
-listen.backlog = 32768
-catch_workers_output = yes
-
-[www-php${phpv}-3]
-user = www-data
-group = www-data
-listen = php${phpv}-fpm-3.sock
-listen.owner = root
-listen.group = www-data
-pm = static
-pm.max_children = ${maxchil}
-ping.path = /ping
-pm.status_path = /status
-pm.max_requests = 2048
-request_terminate_timeout = 300
+request_terminate_timeout = 900
 chdir = /
 prefix = /run/php
 listen.mode = 0660
