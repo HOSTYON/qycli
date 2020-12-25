@@ -699,7 +699,7 @@ stk_nginx() {
     stk_nginx_cf_ips
     sudo openssl req -new -x509 -nodes -days 7300 -newkey rsa:2048 -keyout /etc/ssl/qycli.key -out /etc/ssl/qycli.crt \
     -subj "/ST=qycli/L=qycli/O=qycli/OU=qycli/CN=qycli"
-    nginx -t && sudo systemctl restart nginx
+    sudo nginx -t && sudo systemctl restart nginx
 }
 
 stk_mariadb_conf() {
