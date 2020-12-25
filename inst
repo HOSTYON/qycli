@@ -19,9 +19,9 @@ dev() {
 }
 
 cnf() {
-        if [[ -f /etc/qycli/qycli.cnf ]]; then
-            return
-        else 
+    if [[ -f /etc/qycli/qycli.cnf ]]; then
+        return
+    else 
         sudo mkdir /etc/qycli
         sudo touch /etc/qycli/qycli.cnf
         sudo tee /etc/qycli/qycli.cnf >/dev/null <<EOF 
@@ -29,6 +29,7 @@ cnf() {
 qycli Version: 0.1
 PHP Version: ${phpv}
 EOF
+    fi
 }
 
 source /opt/qycli/stk
