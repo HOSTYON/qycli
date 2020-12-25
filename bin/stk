@@ -25,18 +25,16 @@ upd_qycli() {
 
 stk_nginx_conf() {
     sudo rm -R /etc/nginx/*
-    local workers=$(grep processor /proc/cpuinfo | wc -l) # 1 worker per CPU
-    local workerconn=$((($(grep processor /proc/cpuinfo | wc -l)*10240)))
     sudo tee /etc/nginx/nginx.conf >/dev/null <<'EOF'
 # qycli nginx config
 
-worker_processes ${workers};
+worker_processes workerprocs;
 worker_rlimit_nofile 131072;
 pcre_jit on;
 pid /run/nginx.pid;
 
 events {
-    worker_connections ${workerconn};
+    worker_connections workerconn;
     use epoll;
     # multi_accept on;
 }
@@ -124,6 +122,10 @@ http {
     include /etc/nginx/sites-enabled/*;
 }
 EOF
+    local workerprocs=$(grep processor /proc/cpuinfo | wc -l) # 1 worker per CPU
+    local workerconn=$((($(grep processor /proc/cpuinfo | wc -l)*10240)))
+    sudo sed -i "s+workerprocs+${workerprocs}+g" /etc/nginx/nginx.conf
+    sudo sed -i "s+workerconn+${workerconn}+g" /etc/nginx/nginx.conf
 
     sudo mkdir /etc/nginx/sites-available
     sudo tee /etc/nginx/sites-available/wp.tld >/dev/null <<'EOF'
