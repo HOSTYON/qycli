@@ -27,7 +27,7 @@ stk_nginx_conf() {
     sudo rm -R /etc/nginx/*
     local workers=$(grep processor /proc/cpuinfo | wc -l) # 1 worker per CPU
     local workerconn=$((($(grep processor /proc/cpuinfo | wc -l)*10240)))
-    sudo cat <<EOF >/etc/nginx/nginx.conf 
+    sudo tee /etc/nginx/nginx.conf >/dev/null <<EOF
 # qycli nginx config
 
 user www-data;
@@ -126,7 +126,8 @@ http {
 }
 EOF
 
-    sudo cat <<EOF >/etc/nginx/sites-available/wp.tld
+    sudo mkdir /etc/nginx/sites-available
+    sudo tee /etc/nginx/sites-available/wp.tld >/dev/null <<EOF
 server {
 
     listen [::]:80;
@@ -178,7 +179,7 @@ location ~ \.php$ {
 }
 EOF
 
-    sudo cat <<EOF >/etc/nginx/conf.d/upstream${phpv}.conf
+    sudo tee /etc/nginx/conf.d/upstream${phpv}.conf >/dev/null <<EOF
 upstream php${phpv} {
 	server unix:/run/php/php${phpv}-fpm.sock;
     keepalive 256;
@@ -187,7 +188,7 @@ upstream php${phpv} {
 }
 EOF
 
-    sudo cat <<EOF >/etc/nginx/common/wpfcgi${phpv}.conf
+    sudo tee /etc/nginx/common/wpfcgi${phpv}.conf >/dev/null <<EOF
 add_header X-fastcgi-cache $upstream_cache_status;
 
 # Use cached or actual file if they exists, Otherwise pass request to WordPress
@@ -313,7 +314,7 @@ map $http_upgrade $connection_upgrade {
 }
 EOF
 
-    sudo cat <<EOF >/etc/nginx/common/wpcommon${phpv}.conf
+    sudo tee /etc/nginx/common/wpcommon${phpv}.conf >/dev/null <<EOF
 # DO NOT MODIFY, ALL CHANGES WILL BE LOST AFTER AN UPDATE
 
 # Basic locations files
@@ -535,7 +536,7 @@ location /wp-content/uploads/ {
 }
 EOF
 
-    sudo cat <<'EOF' >/etc/nginx/conf.d/mime.conf
+    sudo tee /etc/nginx/conf.d/mime.conf >/dev/null <<'EOF'
 types {
     text/html                                        html htm shtml;
     text/css                                         css;
@@ -634,7 +635,7 @@ types {
 }
 EOF
 
-    sudo cat <<'EOF' >/etc/nginx/fastcgi_params
+    sudo tee /etc/nginx/fastcgi_params >/dev/null <<'EOF'
 fastcgi_param  QUERY_STRING       $query_string;
 fastcgi_param  REQUEST_METHOD     $request_method;
 fastcgi_param  CONTENT_TYPE       $content_type;
@@ -661,7 +662,7 @@ fastcgi_param  SERVER_NAME        $server_name;
 fastcgi_param  REDIRECT_STATUS    200;
 EOF
 
-    sudo cat <<'EOF' >/etc/nginx/conf.d/fcgi.conf
+    sudo tee /etc/nginx/conf.d/fcgi.conf >/dev/null <<'EOF'
 fastcgi_cache_path /run/nginx-cache levels=1:2 keys_zone=FCGI:64m inactive=8d use_temp_path=off;
 fastcgi_cache_key "$scheme$request_method$host$request_uri";
 fastcgi_cache_use_stale error timeout invalid_header updating http_500 http_503;
@@ -748,7 +749,7 @@ stk_mariadb() {
 
 stk_php_conf() {
     local opmem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*15)) # 15% of all memory in MB
-    sudo cat <<EOF >/etc/php/${phpv}/fpm/php.ini
+    sudo tee /etc/php/${phpv}/fpm/php.ini >/dev/null <<EOF
 [PHP]
 engine = On
 short_open_tag = Off
@@ -937,7 +938,7 @@ opcache.revalidate_freq = 0
 EOF
 
     local maxchil=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*70/80)) # pm.max_children = 70% Total Memory / 80MB
-    sudo cat <<EOF >/etc/php/${phpv}/fpm/pool.d/www.conf
+    sudo tee /etc/php/${phpv}/fpm/pool.d/www.conf >/dev/null <<EOF
 [www-php${phpv}]
 user = www-data
 group = www-data
