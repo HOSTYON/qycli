@@ -2,8 +2,6 @@
 
 # stack install functions
 
-phpv=7.4 # Newest safe PHP Version
-
 source /opt/qycli/inst
 
 upd() {
@@ -959,6 +957,8 @@ listen.backlog = 32768
 catch_workers_output = yes
 EOF
 }
+
+phpv=$(grep "PHP Version" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
 
 stk_php() {
     sudo apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${phpv}-fpm php${phpv}-gd php${phpv}-imagick \

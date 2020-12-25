@@ -26,6 +26,8 @@ cnf() {
         sudo touch /etc/qycli/qycli.cnf
         sudo tee /etc/qycli/qycli.cnf >/dev/null <<EOF 
 # qycli configuration storage file
+qycli Version: 0.1
+PHP Version: ${phpv}
 EOF
 }
 
@@ -33,8 +35,10 @@ source /opt/qycli/stk
 source /opt/qycli/help
 
 if [[ "$1" == "wp" || "$1" == "" ]]; then
+    phpv=7.4 # Newest safe PHP Version
     prod && cnf && stk_wp
     wget -qO- qyc.li/host | sudo bash
 elif [[ "$1" == "dev" ]]; then
+    phpv=7.4 # Newest safe PHP Version
     dev && cnf 
 fi
