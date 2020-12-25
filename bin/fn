@@ -48,12 +48,19 @@ EOF
 	sudo rm -rf /var/www/$domain/wordpress
 	sudo rm /var/www/$domain/htdocs/latest.tar.gz
 
+    sudo cp /var/www/$domain/htdocs/wp-config-sample.php /var/www/$domain/wp-config.php
+    sudo sed -i "s+'DB_NAME', 'database_name_here'+'DB_NAME', '${dbnaming}'+g" /var/www/$domain/wp-config.php
+    sudo sed -i "s+'DB_USER', 'username_here'+'DB_USER', '${dbnaming}'+g" /var/www/$domain/wp-config.php
+    sudo sed -i "s+'DB_PASSWORD', 'password_here'+'DB_PASSWORD', ''+g" /var/www/$domain/wp-config.php
+    sudo sed -i "s+'DB_HOST', 'localhost'+'DB_HOST', ':/run/mysqld/mysqld.sock'+g" /var/www/$domain/wp-config.php
+
     sudo cp /etc/nginx/sites-available/wp.tld /etc/nginx/sites-available/$domain
     sudo sed -i "s/dmn.tld/$domain/g"  /etc/nginx/sites-available/$domain
+    sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
 
-    echo "option is $option"
-    echo "length is $length"
-    echo "domain is $domain"
+    #echo "option is $option"
+    #echo "length is $length"
+    #echo "domain is $domain"
 }
 
 mk() {
