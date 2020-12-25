@@ -24,7 +24,6 @@ upd_qycli() {
 }
 
 stk_nginx_conf() {
-    sudo rm -R /etc/nginx/*
     sudo tee /etc/nginx/nginx.conf >/dev/null <<'EOF'
 # qycli nginx config
 
