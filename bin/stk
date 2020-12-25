@@ -1015,9 +1015,8 @@ stk_redis() {
 }
 
 stk_wpcli() {
-    sudo curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
-    sudo chmod +x wp-cli.phar
-    sudo mv wp-cli.phar /usr/local/bin/wp
+    sudo wget -qO /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    sudo chmod +x /usr/local/bin/wp
 }
 
 stk_wp() {
