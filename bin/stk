@@ -189,7 +189,7 @@ EOF
     sudo mkdir /etc/nginx/conf.d
     sudo tee /etc/nginx/conf.d/upstream${phpv}.conf >/dev/null <<EOF
 upstream php${phpv} {
-	server unix:/run/php/php${phpv}-fpm.sock;
+    server unix:/run/php/php${phpv}-fpm.sock;
     keepalive 256;
     keepalive_requests 200;
     keepalive_timeout 900s;
