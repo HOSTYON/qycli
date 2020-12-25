@@ -1,23 +1,6 @@
 #!/bin/bash
 
-## Install qycli and stack with "wget -qO- qyc.li/inst | sudo bash"
-prod() {
-    sudo wget -qO /usr/bin/qyc qyc.li/bin/qyc && sudo chmod 755 /usr/bin/qyc
-    sudo wget -qO /opt/qycli/inst qyc.li/inst
-    sudo wget -qO /opt/qycli/bin/stk qyc.li/bin/stk
-    sudo wget -qO /opt/qycli/bin/help qyc.li/bin/help
-    sudo wget -qO /opt/qycli/bin/fn qyc.li/bin/fn
-}
-
-## Install qycli dev version with "wget -qO- qyc.li/inst | sudo bash -s dev"
-dev() {
-    if ! command -v svn &> /dev/null; then
-        sudo apt update && sudo apt -y install subversion
-    fi
-    svn export --force https://github.com/HOSTYON/qycli/trunk /opt/qycli/
-    sudo mv /opt/qycli/bin/qyc /usr/bin/qyc && sudo chmod 755 /usr/bin/qyc
-}
-
+## Write qycli.cnf
 cnf() {
     if [[ -f /etc/qycli/qycli.cnf ]]; then
         return
@@ -32,14 +15,32 @@ EOF
     fi
 }
 
-source /opt/qycli/stk
-source /opt/qycli/help
+## Install qycli and stack with "wget -qO- qyc.li/inst | sudo bash"
+prod() {
+    sudo wget -qO /usr/bin/qyc qyc.li/bin/qyc && sudo chmod 755 /usr/bin/qyc
+    sudo wget -qO /opt/qycli/inst qyc.li/inst
+    sudo wget -qO /opt/qycli/bin/stk qyc.li/bin/stk
+    sudo wget -qO /opt/qycli/bin/help qyc.li/bin/help
+    sudo wget -qO /opt/qycli/bin/fn qyc.li/bin/fn
+    source /opt/qycli/stk
+    source /opt/qycli/help
+    stk_wp
+}
+
+## Install qycli dev version with "wget -qO- qyc.li/inst | sudo bash -s dev"
+dev() {
+    if ! command -v svn &> /dev/null; then
+        sudo apt update && sudo apt -y install subversion
+    fi
+    svn export --force https://github.com/HOSTYON/qycli/trunk /opt/qycli/
+    sudo mv /opt/qycli/bin/qyc /usr/bin/qyc && sudo chmod 755 /usr/bin/qyc
+}
 
 if [[ "$1" == "wp" || "$1" == "" ]]; then
     phpv=7.4 # Newest safe PHP Version
-    prod && cnf && stk_wp
+    cnf && prod
     wget -qO- qyc.li/host | sudo bash
 elif [[ "$1" == "dev" ]]; then
     phpv=7.4 # Newest safe PHP Version
-    dev && cnf 
+    cnf && dev
 fi
