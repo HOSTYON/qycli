@@ -165,12 +165,13 @@ server {
     include common/auth.conf;
     include common/phpver.conf
     #include common/wpfcgiver.conf;
-    include common/wpcommon.conf;
+    include common/wpcommonver.conf;
     include /var/www/dmn.tld/*-nginx.conf;
 }
 EOF
     sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/sites-available/wp.tld
     sudo sed -i "s+wpfcgiver+wpfcgi${phpv}+g" /etc/nginx/sites-available/wp.tld
+    sudo sed -i "s+wpcommonver+wpcommon${phpv}+g" /etc/nginx/sites-available/wp.tld
 
     sudo mkdir /etc/nginx/common
     sudo tee /etc/nginx/common/php${phpv}.conf >/dev/null <<'EOF'
