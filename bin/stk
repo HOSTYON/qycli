@@ -340,8 +340,8 @@ location @empty_gif {
 
 # Cache static files
 location ~* \.(ogg|ogv|svg|svgz|eot|otf|woff|woff2|ttf|m4a|mp4|ttf|rss|atom|jpe?g|gif|cur|heic|png|tiff|ico|webm|mp3|aac|tgz|doc|xls|exe|ppt|tar|mid|midi|wav|bmp|rtf|swf|webp|json|webmanifest|cast)$ {
-    more_set_headers 'Access-Control-Allow-Origin : *';
-    more_set_headers  "Cache-Control : public, no-transform";
+    add_header 'Access-Control-Allow-Origin : *';
+    add_header  "Cache-Control : public, no-transform";
     access_log off;
     log_not_found off;
     expires max;
@@ -349,8 +349,8 @@ location ~* \.(ogg|ogv|svg|svgz|eot|otf|woff|woff2|ttf|m4a|mp4|ttf|rss|atom|jpe?
 
 # Cache css & js files
 location ~* \.(?:css(\.map)?|js(\.map)?)$ {
-    more_set_headers 'Access-Control-Allow-Origin : *';
-    more_set_headers  "Cache-Control : public, no-transform";
+    add_header 'Access-Control-Allow-Origin : *';
+    add_header  "Cache-Control : public, no-transform";
     access_log off;
     log_not_found off;
     expires 30d;
@@ -491,8 +491,8 @@ location @robots {
 location /wp-content/uploads {
     location ~ \.(png|jpe?g)$ {
         add_header Vary "Accept-Encoding";
-        more_set_headers 'Access-Control-Allow-Origin : *';
-        more_set_headers  "Cache-Control : public, no-transform";
+        add_header 'Access-Control-Allow-Origin : *';
+        add_header "Cache-Control : public, no-transform";
         access_log off;
         log_not_found off;
         expires max;
@@ -507,7 +507,7 @@ location /wp-content/uploads {
 location /wp-content/cache {
 # Cache css & js files
     location ~* \.(?:css(\.map)?|js(\.map)?|.html)$ {
-        more_set_headers 'Access-Control-Allow-Origin : *';
+        add_header 'Access-Control-Allow-Origin : *';
         access_log off;
         log_not_found off;
         expires 30d;
