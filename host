@@ -3,7 +3,7 @@
 ## Kernel tweaks for qycli with "wget -qO- qyc.li/host | sudo bash"
 
 # Sysctl tweaks for security and performance
-sudo cat <<'EOF' >/etc/sysctl.conf
+sudo tee /etc/sysctl.conf >/dev/null <<'EOF'
 # Based on Michiel Klaver's https://klaver.it/linux/sysctl.conf (v1.14)
 
 
@@ -267,7 +267,7 @@ if [[ ! $(grep "qycli" /etc/security/limits.conf) ]]; then
 fi    
 
 # TXQueue Length Tweaks
-sudo cat <<'EOF' >/lib/udev/rules.d/60-persistent-txqueuelen.rules
+sudo tee /lib/udev/rules.d/60-persistent-txqueuelen.rules >/dev/null <<'EOF'
 KERNEL=="eth[0,1]", RUN+="/sbin/ip link set %k txqueuelen 10000"
 KERNEL=="lxdbr0", RUN+="/sbin/ip link set %k txqueuelen 10000"
 EOF
