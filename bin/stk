@@ -24,6 +24,7 @@ upd_qycli() {
 }
 
 stk_nginx_conf() {
+    sudo rm /etc/nginx/conf.d/default.conf
     sudo tee /etc/nginx/nginx.conf >/dev/null <<'EOF'
 # qycli nginx config
 
@@ -190,7 +191,6 @@ location ~* \.php$ {
 EOF
     sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/common/php${phpv}.conf
 
-    sudo mkdir /etc/nginx/conf.d
     sudo tee /etc/nginx/conf.d/upstream${phpv}.conf >/dev/null <<EOF
 upstream php${phpv} {
     server unix:/run/php/php${phpv}-fpm.sock;
