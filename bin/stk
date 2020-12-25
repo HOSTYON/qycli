@@ -126,6 +126,11 @@ EOF
     sudo sed -i "s+workerprocs+${workerprocs}+g" /etc/nginx/nginx.conf
     sudo sed -i "s+workerconn+${workerconn}+g" /etc/nginx/nginx.conf
 
+    if [[ ! -f /etc/ssl/dhparam.pem ]]; then
+		sudo openssl dhparam -out /etc/ssl/dhparam.pem 2048
+		sudo chmod 600 /etc/ssl/dhparam.pem
+	fi
+
     sudo mkdir /etc/nginx/sites-enabled
     sudo mkdir /etc/nginx/sites-available
     sudo tee /etc/nginx/sites-available/wp.tld >/dev/null <<'EOF'
