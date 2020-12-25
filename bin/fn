@@ -2,7 +2,7 @@
 
 # function library for qyc
 
-wp() {
+mk_wp() {
     if [[ "$1" == *"."* ]]; then
         domain="$1"
         [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
@@ -75,7 +75,7 @@ EOF
 mk() {
     if [[ "$1" == "wp" ]]; then
         shift
-        wp "$@"
+        mk_wp "$@"
         else
         print_help_mk
     fi
