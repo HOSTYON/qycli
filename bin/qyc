@@ -3,9 +3,9 @@
 # Reference script to run all others, placed in /usr/bin/
 # example: qyc mk wp domain.com
 
-source /opt/qycli/help
-source /opt/qycli/stk
-source /opt/qycli/fn
+source /opt/qycli/bin/help
+source /opt/qycli/bin/stk
+source /opt/qycli/bin/fn
 
 if [[ "$1" == "mk" || "$1" == "make" ]]; then
     shift
