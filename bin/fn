@@ -65,7 +65,7 @@ EOF
 
     sudo cp /etc/nginx/sites-available/wp.tld /etc/nginx/sites-available/$domain
     sudo sed -i "s/dmn.tld/$domain/g"  /etc/nginx/sites-available/$domain
-    sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/$domain
+    sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
 
     #echo "option is $option"
     #echo "length is $length"
