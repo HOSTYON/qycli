@@ -490,24 +490,6 @@ location @robots {
     return 200 "User-agent: *\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php\n";
 }
 
-# webp rewrite rules for jpg and png images
-# try to load alternative image.png.webp before image.png
-location /wp-content/uploads {
-    location ~ \.(png|jpe?g)$ {
-        add_header Vary "Accept-Encoding";
-        add_header "Access-Control-Allow-Origin" "*";
-        add_header "Cache-Control" "public, no-transform";
-        access_log off;
-        log_not_found off;
-        expires max;
-        try_files $uri$avif_suffix $uri$webp_suffix $uri =404;
-    }
-    location ~* \.(php|gz|log|zip|tar|rar|xz)$ {
-        #Prevent Direct Access Of PHP Files & Backups from Web Browsers
-        deny all;
-    }
-}
-
 location /wp-content/cache {
 # Cache css & js files
     location ~* \.(?:css(\.map)?|js(\.map)?|.html)$ {
