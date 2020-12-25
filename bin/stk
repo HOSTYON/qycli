@@ -992,9 +992,21 @@ stk_redis_conf() {
 }
 
 stk_redis() {
-    sudo apt install snapd -y
-    sleep 2 && sudo snap set system refresh.timer=3:00-5:00 && sleep 1
-    sudo snap install redis --channel=stable
+    #sudo apt install snapd -y
+    #sleep 2 && sudo snap set system refresh.timer=3:00-5:00 && sleep 1
+    #sudo snap install redis --channel=stable
+
+    #sudo apt -y install build-essential tcl
+    #cd /tmp
+    #curl -O http://download.redis.io/redis-stable.tar.gz
+    #tar xzvf redis-stable.tar.gz
+    #cd redis-stable
+    #sudo make
+    #sudo make test && sudo make install
+
+    sudo add-apt-repository -y ppa:redislabs/redis
+    sudo apt update
+    sudo apt -y install redis
     sudo usermod -g www-data redis
     stk_redis_conf
     sudo systemctl restart redis-server
