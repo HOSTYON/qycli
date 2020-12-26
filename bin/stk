@@ -552,6 +552,8 @@ fastcgi_ignore_headers Cache-Control Expires Set-Cookie;
 fastcgi_keep_conn on;
 fastcgi_socket_keepalive on;
 EOF
+
+    sudo tee -a /etc/nginx/fastcgi_params "fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;"
 }
 
 stk_nginx() {
@@ -872,7 +874,11 @@ stk_redis() {
 }
 
 stk_wpcli() {
-    sudo wget -qO /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    sudo wget -qO /usr/local/bin/wp-cli https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    sudo chmod +x /usr/local/bin/wp-cli
+    sudo tee /usr/local/bin/wp >/dev/null <<'EOF'
+sudo runuser -u www-data -- wp-cli $@
+EOF
     sudo chmod +x /usr/local/bin/wp
 }
 
