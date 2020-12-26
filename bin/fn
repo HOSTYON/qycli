@@ -55,15 +55,15 @@ EOF
     sudo sed -i "s+'DB_USER', 'username_here'+'DB_USER', '${dbnaming}'+g" /var/www/$domain/wp-config.php
     sudo sed -i "s+'DB_PASSWORD', 'password_here'+'DB_PASSWORD', '${dbpassword}'+g" /var/www/$domain/wp-config.php
     sudo sed -i "s+'DB_HOST', 'localhost'+'DB_HOST', ':/run/mysqld/mysqld.sock'+g" /var/www/$domain/wp-config.php
-    wp --path=/var/www/$domain/htdocs config shuffle-salts
-    #sudo sed -i "s#'AUTH_KEY',         'put your unique phrase here'#'AUTH_KEY',         '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
-    #sudo sed -i "s#'SECURE_AUTH_KEY',  'put your unique phrase here'#'SECURE_AUTH_KEY',  '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
-    #sudo sed -i "s#'LOGGED_IN_KEY',    'put your unique phrase here'#'LOGGED_IN_KEY',    '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
-    #sudo sed -i "s#'NONCE_KEY',        'put your unique phrase here'#'NONCE_KEY',        '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
-    #sudo sed -i "s#'AUTH_SALT',        'put your unique phrase here'#'AUTH_SALT',        '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
-    #sudo sed -i "s#'SECURE_AUTH_SALT', 'put your unique phrase here'#'SECURE_AUTH_SALT', '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
-    #sudo sed -i "s#'LOGGED_IN_SALT',   'put your unique phrase here'#'LOGGED_IN_SALT',   '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
-    #sudo sed -i "s#'NONCE_SALT',       'put your unique phrase here'#'NONCE_SALT',       '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
+    #wp --path=/var/www/$domain/htdocs config shuffle-salts
+    sudo sed -i "s#'AUTH_KEY',         'put your unique phrase here'#'AUTH_KEY',         '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
+    sudo sed -i "s#'SECURE_AUTH_KEY',  'put your unique phrase here'#'SECURE_AUTH_KEY',  '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
+    sudo sed -i "s#'LOGGED_IN_KEY',    'put your unique phrase here'#'LOGGED_IN_KEY',    '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
+    sudo sed -i "s#'NONCE_KEY',        'put your unique phrase here'#'NONCE_KEY',        '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
+    sudo sed -i "s#'AUTH_SALT',        'put your unique phrase here'#'AUTH_SALT',        '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
+    sudo sed -i "s#'SECURE_AUTH_SALT', 'put your unique phrase here'#'SECURE_AUTH_SALT', '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
+    sudo sed -i "s#'LOGGED_IN_SALT',   'put your unique phrase here'#'LOGGED_IN_SALT',   '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
+    sudo sed -i "s#'NONCE_SALT',       'put your unique phrase here'#'NONCE_SALT',       '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
     sudo sed -i "s+$table_prefix = 'wp_';+$table_prefix = 'qyc_';+" /var/www/$domain/wp-config.php
 
     sudo cp /etc/nginx/sites-available/wp.tld /etc/nginx/sites-available/$domain
