@@ -65,9 +65,9 @@ EOF
     sudo sed -i "s#'NONCE_SALT',       'put your unique phrase here'#'NONCE_SALT',       '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
     sudo sed -i "s+$table_prefix = 'wp_';+$table_prefix = 'qyc_';+" /var/www/$domain/wp-config.php
 
-    sudo chmod 664 /var/www/$domain/wp-config.php
+    #sudo chmod 664 /var/www/$domain/wp-config.php
     sudo chown www-data:www-data -R /var/www/$domain/*
-    sudo chgrp -R www-data /var/www/$domain/*
+    #sudo chgrp -R www-data /var/www/$domain/*
 
     sudo cp /etc/nginx/sites-available/wp.tld /etc/nginx/sites-available/$domain
     sudo sed -i "s/dmn.tld/$domain/g"  /etc/nginx/sites-available/$domain
