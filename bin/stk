@@ -28,6 +28,7 @@ stk_nginx_conf() {
     sudo tee /etc/nginx/nginx.conf >/dev/null <<'EOF'
 # qycli nginx config
 
+user       web web;
 worker_processes workerprocs;
 worker_rlimit_nofile 131072;
 pcre_jit on;
@@ -753,10 +754,8 @@ precision = 14
 output_buffering = 4096
 zlib.output_compression = Off
 implicit_flush = Off
-unserialize_callback_func = 
 serialize_precision = -1
-disable_functions = pcntl_alarm,pcntl_fork,pcntl_waitpid,pcntl_wait,pcntl_wifexited,pcntl_wifstopped,pcntl_wifsignaled,pcntl_wifcontinued,pcntl_wexitstatus,pcntl_wtermsig,pcntl_wstopsig,pcntl_signal,pcntl_signal_get_handler,pcntl_signal_dispatch,pcntl_get_last_error,pcntl_strerror,pcntl_sigprocmask,pcntl_sigwaitinfo,pcntl_sigtimedwait,pcntl_exec,pcntl_getpriority,pcntl_setpriority,pcntl_async_signals,
-disable_classes = 
+disable_functions = pcntl_alarm,pcntl_fork,pcntl_waitpid,pcntl_wait,pcntl_wifexited,pcntl_wifstopped,pcntl_wifsignaled,pcntl_wifcontinued,pcntl_wexitstatus,pcntl_wtermsig,pcntl_wstopsig,pcntl_signal,pcntl_signal_get_handler,pcntl_signal_dispatch,pcntl_get_last_error,pcntl_strerror,pcntl_sigprocmask,pcntl_sigwaitinfo,pcntl_sigtimedwait,pcntl_exec,pcntl_getpriority,pcntl_setpriority,pcntl_async_signals
 zend.enable_gc = On
 expose_php = Off
 max_execution_time = 300
@@ -776,12 +775,8 @@ request_order = "GP"
 register_argc_argv = Off
 auto_globals_jit = On
 post_max_size = 128M
-auto_prepend_file = 
-auto_append_file = 
 default_mimetype = "text/html"
 default_charset = "UTF-8"
-doc_root = 
-user_dir = 
 enable_dl = Off
 file_uploads = On
 upload_max_filesize = 128M
@@ -932,11 +927,11 @@ EOF
     local maxchil=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*70/80)) # pm.max_children = 70% Total Memory / 80MB
     sudo tee /etc/php/${phpv}/fpm/pool.d/www.conf >/dev/null <<EOF
 [www-php${phpv}]
-user = www-data
-group = www-data
+user = web
+group = web
 listen = php${phpv}-fpm.sock
-listen.owner = root
-listen.group = www-data
+listen.owner = web
+listen.group = web
 pm = static
 pm.max_children = ${maxchil}
 ping.path = /ping
@@ -991,7 +986,7 @@ stk_redis() {
     sudo add-apt-repository -y ppa:redislabs/redis
     sudo apt update
     sudo apt -y install redis
-    sudo usermod -g www-data redis
+    sudo usermod -g web redis
     stk_redis_conf
     sudo systemctl restart redis-server
 }
