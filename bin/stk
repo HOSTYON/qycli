@@ -28,7 +28,7 @@ stk_nginx_conf() {
     sudo tee /etc/nginx/nginx.conf >/dev/null <<'EOF'
 # qycli nginx config
 
-user       web web;
+user       www-data www-data;
 worker_processes workerprocs;
 worker_rlimit_nofile 131072;
 pcre_jit on;
@@ -927,11 +927,11 @@ EOF
     local maxchil=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*70/80)) # pm.max_children = 70% Total Memory / 80MB
     sudo tee /etc/php/${phpv}/fpm/pool.d/www.conf >/dev/null <<EOF
 [www-php${phpv}]
-user = web
-group = web
+user = www-data
+group = www-data
 listen = php${phpv}-fpm.sock
-listen.owner = web
-listen.group = web
+listen.owner = www-data
+listen.group = www-data
 pm = static
 pm.max_children = ${maxchil}
 ping.path = /ping
@@ -986,7 +986,7 @@ stk_redis() {
     sudo add-apt-repository -y ppa:redislabs/redis
     sudo apt update
     sudo apt -y install redis
-    sudo usermod -g web redis
+    sudo usermod -g www-data redis
     stk_redis_conf
     sudo systemctl restart redis-server
 }
