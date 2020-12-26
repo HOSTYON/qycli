@@ -50,6 +50,7 @@ EOF
 	sudo rm /var/www/$domain/htdocs/latest.tar.gz
 
     sudo cp /var/www/$domain/htdocs/wp-config-sample.php /var/www/$domain/wp-config.php
+    sudo chown www-data:www-data -R /var/www/$domain/*
     sudo sed -i "s+'DB_NAME', 'database_name_here'+'DB_NAME', '${dbnaming}'+g" /var/www/$domain/wp-config.php
     sudo sed -i "s+'DB_USER', 'username_here'+'DB_USER', '${dbnaming}'+g" /var/www/$domain/wp-config.php
     sudo sed -i "s+'DB_PASSWORD', 'password_here'+'DB_PASSWORD', '${dbpassword}'+g" /var/www/$domain/wp-config.php
@@ -65,18 +66,10 @@ EOF
     #sudo sed -i "s#'NONCE_SALT',       'put your unique phrase here'#'NONCE_SALT',       '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
     sudo sed -i "s+$table_prefix = 'wp_';+$table_prefix = 'qyc_';+" /var/www/$domain/wp-config.php
 
-    #sudo chmod 664 /var/www/$domain/wp-config.php
-    sudo chown www-data:www-data -R /var/www/$domain/*
-    #sudo chgrp -R www-data /var/www/$domain/*
-
     sudo cp /etc/nginx/sites-available/wp.tld /etc/nginx/sites-available/$domain
     sudo sed -i "s/dmn.tld/$domain/g"  /etc/nginx/sites-available/$domain
     sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
     sudo nginx -s reload
-
-    #echo "option is $option"
-    #echo "length is $length"
-    #echo "domain is $domain"
 }
 
 mk() {
