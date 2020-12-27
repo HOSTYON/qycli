@@ -570,6 +570,7 @@ fastcgi_socket_keepalive on;
 EOF
 
     sudo tee -a /etc/nginx/fastcgi_params "fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;"
+    echo "stk_nginx_conf completed"
 }
 
 cert() {
