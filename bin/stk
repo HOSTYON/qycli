@@ -582,6 +582,7 @@ cert() {
 
 stk_nginx() {
     sudo apt -y install nginx
+    echo "nginx install completed completed"
     stk_nginx_conf
     stk_nginx_cf_ips
 
