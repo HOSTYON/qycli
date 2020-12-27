@@ -5,21 +5,21 @@
 source /opt/qycli/inst
 
 add_repos() {
-    sudo apt update
+    sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove
     # nginx repo
     sudo apt -y install curl gnupg2 ca-certificates lsb-release
     echo "deb http://nginx.org/packages/mainline/ubuntu `lsb_release -cs` nginx" | sudo tee /etc/apt/sources.list.d/nginx.list
     curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo apt-key add -
+    # redis repo
+    sudo add-apt-repository -y ppa:redislabs/redis
     # MariaDB repo
     sudo apt -y install apt-transport-https
     curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | sudo bash -s -- --skip-maxscale
     sudo rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
-    # redis repo
-    sudo add-apt-repository -y ppa:redislabs/redis
 }
 
 upd() {
-    sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove && sudo snap refresh
+    sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove
 }
 
 stk_nginx_cf_ips() {
@@ -872,6 +872,6 @@ EOF
 }
 
 stk_wp() {
-    add_repos && upd && stk_nginx && stk_mariadb && stk_php && stk_redis && stk_wpcli
+    add_repos && stk_nginx && stk_mariadb && stk_php && stk_redis && stk_wpcli
     printf "\nStack was installed.\n"
 }
