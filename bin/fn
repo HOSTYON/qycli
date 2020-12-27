@@ -131,7 +131,7 @@ ls() {
     printf "\n\n"
     for name in /etc/nginx/sites-available/*
     do
-        printf "${name}"
+        printf "${name}\n"
     done
 }
 
