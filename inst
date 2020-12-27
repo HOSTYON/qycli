@@ -24,6 +24,7 @@ prod() {
     sudo wget -qO /opt/qycli/bin/fn qyc.li/bin/fn
     source /opt/qycli/stk
     source /opt/qycli/help
+    printf "\nqycli (production) was installed.\n\nInstalling the stack now.\n\n"
     stk_wp
 }
 
@@ -34,6 +35,7 @@ dev() {
     fi
     svn export --force https://github.com/HOSTYON/qycli/trunk /opt/qycli/
     sudo mv /opt/qycli/bin/qyc /usr/bin/qyc && sudo chmod 755 /usr/bin/qyc
+    printf "\nqycli (dev) was installed.\n\n"
 }
 
 if [[ "$1" == "wp" || "$1" == "" ]]; then
