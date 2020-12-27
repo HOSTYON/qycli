@@ -137,7 +137,8 @@ EOF
 
     sudo mkdir /etc/nginx/sites-enabled
     sudo mkdir /etc/nginx/sites-available
-    sudo tee /etc/nginx/sites-available/wp.tld >/dev/null <<'EOF'
+
+    sudo tee /etc/nginx/wp.tld >/dev/null <<'EOF'
 server {
 
     listen [::]:80;
@@ -177,9 +178,9 @@ server {
     include /var/www/dmn.tld/*-nginx.conf;
 }
 EOF
-    sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/sites-available/wp.tld
-    sudo sed -i "s+wpfcgiver+wpfcgi${phpv}+g" /etc/nginx/sites-available/wp.tld
-    sudo sed -i "s+wpcommonver+wpcommon${phpv}+g" /etc/nginx/sites-available/wp.tld
+    sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/wp.tld
+    sudo sed -i "s+wpfcgiver+wpfcgi${phpv}+g" /etc/nginx/wp.tld
+    sudo sed -i "s+wpcommonver+wpcommon${phpv}+g" /etc/nginx/wp.tld
 
     sudo mkdir /etc/nginx/common
     sudo tee /etc/nginx/common/php${phpv}.conf >/dev/null <<'EOF'
