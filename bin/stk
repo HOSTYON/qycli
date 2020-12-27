@@ -600,20 +600,6 @@ innodb_io_capacity=1800  # from 200 to allow higher IOPS on your SSD storage dev
 key_cache_age_threshold=7200   # from 300 seconds to reduce key_reads RPS of 16+
 key_buffer_size=64M  # from 8M to reduce key_reads RPS of 16+
 EOF
-    #if [[ -f /etc/qycli/qycli.cnf ]]; then
-        #return
-    #else    
-        #local dbrootpw=$(sudo openssl rand -base64 16)
-        #local dbqycpw=$(sudo openssl rand -base64 16)
-        #sudo tee -a /etc/qycli/qycli.cnf >/dev/null <<EOF       
-#MariaDB root password: ${dbrootpw} 
-#MariaDB qyc (admin) password: ${dbqycpw}
-#EOF
-        sudo mysql <<'EOF'
-DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
-DELETE FROM mysql.user WHERE User='';
-DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';
-EOF
 }
 
 stk_mariadb() {
