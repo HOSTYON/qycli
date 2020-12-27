@@ -145,8 +145,6 @@ EOF
     sudo sed -i "s+workerprocs+${workerprocs}+g" /etc/nginx/nginx.conf
     sudo sed -i "s+workerconn+${workerconn}+g" /etc/nginx/nginx.conf
 
-echo "checkpoint 1"
-
     if [[ ! -f /etc/ssl/dhparam.pem ]]; then
 		sudo openssl dhparam -out /etc/ssl/dhparam.pem 2048
 		sudo chmod 600 /etc/ssl/dhparam.pem
@@ -199,7 +197,7 @@ EOF
     sudo sed -i "s+wpfcgiver+wpfcgi${phpv}+g" /etc/nginx/wp.tld
     sudo sed -i "s+wpcommonver+wpcommon${phpv}+g" /etc/nginx/wp.tld
 
-echo "checkpoint 2"
+#old checkpoint 2
 
     [[ ! -d /etc/nginx/common ]] && sudo mkdir /etc/nginx/common
     sudo tee /etc/nginx/common/php${phpv}.conf >/dev/null <<'EOF'
@@ -222,6 +220,8 @@ upstream php${phpv} {
     keepalive_timeout 900s;
 }
 EOF
+
+echo "checkpoint 1"
 
     sudo tee /etc/nginx/common/wpfcgi${phpv}.conf >/dev/null <<'EOF'
 add_header X-fastcgi-cache $upstream_cache_status;
@@ -554,6 +554,8 @@ location /wp-content/uploads/ {
 }
 EOF
     sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/common/wpcommon${phpv}.conf
+
+echo "checkpoint 2"
 
     sudo tee /etc/nginx/conf.d/fcgi.conf >/dev/null <<'EOF'
 fastcgi_cache_path /run/nginx-cache levels=1:2 keys_zone=FCGI:64m inactive=8d use_temp_path=off;
