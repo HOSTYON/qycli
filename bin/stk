@@ -579,7 +579,7 @@ cert() {
 }
 
 stk_nginx() {
-    sudo apt install nginx
+    sudo apt -y install nginx
     stk_nginx_conf
     stk_nginx_cf_ips
 
