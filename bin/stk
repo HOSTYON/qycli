@@ -197,8 +197,6 @@ EOF
     sudo sed -i "s+wpfcgiver+wpfcgi${phpv}+g" /etc/nginx/wp.tld
     sudo sed -i "s+wpcommonver+wpcommon${phpv}+g" /etc/nginx/wp.tld
 
-#old checkpoint 2
-
     [[ ! -d /etc/nginx/common ]] && sudo mkdir /etc/nginx/common
     sudo tee /etc/nginx/common/php${phpv}.conf >/dev/null <<'EOF'
 location / {
@@ -220,8 +218,6 @@ upstream php${phpv} {
     keepalive_timeout 900s;
 }
 EOF
-
-echo "checkpoint 1"
 
     sudo tee /etc/nginx/common/wpfcgi${phpv}.conf >/dev/null <<'EOF'
 add_header X-fastcgi-cache $upstream_cache_status;
@@ -555,8 +551,6 @@ location /wp-content/uploads/ {
 EOF
     sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/common/wpcommon${phpv}.conf
 
-echo "checkpoint 2"
-
     sudo tee /etc/nginx/conf.d/fcgi.conf >/dev/null <<'EOF'
 fastcgi_cache_path /run/nginx-cache levels=1:2 keys_zone=FCGI:64m inactive=8d use_temp_path=off;
 fastcgi_cache_key "$scheme$request_method$host$request_uri";
@@ -576,8 +570,9 @@ fastcgi_keep_conn on;
 fastcgi_socket_keepalive on;
 EOF
 
-    sudo tee -a /etc/nginx/fastcgi_params "fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;"
-    echo "stk_nginx_conf completed"
+    sudo tee -a /etc/nginx/fastcgi_params >/dev/null <<'EOF'
+fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+EOF
 }
 
 cert() {
@@ -880,6 +875,7 @@ EOF
 }
 
 stk_wp() {
+    phpv=$(grep "PHP Version:" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
     add_repos && stk_nginx && stk_mariadb && stk_php && stk_redis && stk_wpcli
     printf "\nStack was installed.\n"
 }
