@@ -856,7 +856,6 @@ stk_redis_conf() {
 }
 
 stk_redis() {
-    sudo apt update
     sudo apt -y install redis
     sudo usermod -g www-data redis
     stk_redis_conf

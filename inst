@@ -35,7 +35,7 @@ dev() {
     fi
     svn export --force https://github.com/HOSTYON/qycli/trunk /opt/qycli/
     sudo mv /opt/qycli/bin/qyc /usr/bin/qyc && sudo chmod 755 /usr/bin/qyc
-    printf "\nqycli (dev) was installed.\n\n"
+    printf "\nqycli (dev) was installed/updated.\n\n"
 }
 
 if [[ "$1" == "wp" || "$1" == "" ]]; then
