@@ -589,7 +589,7 @@ stk_nginx() {
 
     sudo chown www-data:www-data -R /var/www
 	sudo chown root:root /var/www
-    sudo nginx -t && sudo systemctl start nginx
+    sudo nginx -t && sudo systemctl restart nginx
 }
 
 stk_mariadb_conf() {
