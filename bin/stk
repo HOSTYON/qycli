@@ -145,6 +145,8 @@ EOF
     sudo sed -i "s+workerprocs+${workerprocs}+g" /etc/nginx/nginx.conf
     sudo sed -i "s+workerconn+${workerconn}+g" /etc/nginx/nginx.conf
 
+echo "checkpoint 1"
+
     if [[ ! -f /etc/ssl/dhparam.pem ]]; then
 		sudo openssl dhparam -out /etc/ssl/dhparam.pem 2048
 		sudo chmod 600 /etc/ssl/dhparam.pem
@@ -196,6 +198,8 @@ EOF
     sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/wp.tld
     sudo sed -i "s+wpfcgiver+wpfcgi${phpv}+g" /etc/nginx/wp.tld
     sudo sed -i "s+wpcommonver+wpcommon${phpv}+g" /etc/nginx/wp.tld
+
+echo "checkpoint 2"
 
     [[ ! -d /etc/nginx/common ]] && sudo mkdir /etc/nginx/common
     sudo tee /etc/nginx/common/php${phpv}.conf >/dev/null <<'EOF'
@@ -582,7 +586,6 @@ cert() {
 
 stk_nginx() {
     sudo apt -y install nginx
-    echo "nginx install completed completed"
     stk_nginx_conf
     stk_nginx_cf_ips
 
