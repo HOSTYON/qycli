@@ -127,6 +127,14 @@ mk() {
     fi
 }
 
+ls() {
+    printf "\n\n"
+    for name in /etc/nginx/sites-available/*
+    do
+        printf "${name}"
+    done
+}
+
 del() {
     if [[ "$1" == "" ]]; then
         print_help_del
