@@ -6,10 +6,10 @@ mk_wp() {
     if [[ "$1" == *"."* ]]; then
         domain="$1"
         [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
-        [[ -d /var/www/$domain ]] && echo "WP site already exists." && exit
+        [[ -d /var/www/$domain ]] && printf "\nWP site already exists." && exit
         shift
     else
-        echo "" ; echo "Invalid domain: $1"
+        printf "\nInvalid domain: $1"
         print_help_wp
         exit
     fi
@@ -72,12 +72,66 @@ EOF
     sudo nginx -s reload
 }
 
+del_site() {
+    sudo rm /etc/nginx/sites-enabled/$domain
+    sudo rm /etc/nginx/sites-available/$domain
+    sudo rm -r /var/www/$domain/*
+    sudo rmdir /var/www/$domain
+    echo "Files deleted"
+    local dbnaming="qyc_$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")"
+    sudo mysql <<EOF
+DROP USER ${dbnaming}@localhost;    
+DROP DATABASE ${dbnaming};
+EOF
+    echo "Database deleted"
+}
+
+del_parser() {
+    if [[ "$1" == *"."* ]]; then
+        domain="$1"
+        [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
+        [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_del && exit
+        shift
+    else
+        printf "\nInvalid domain: $1"
+        print_help_del
+        exit
+    fi
+
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            -y|yes) proceed=yes ;;
+        esac
+    done
+
+    if [[ "$proceed" == "yes" ]]; then
+        del_site
+    else
+        echo -n "Do you want to delete the site {$domain}? [y/Y/yes]: "
+        read consent
+        if [[ "$consent" == "yes" || "$consent" == "y" || "$consent" == "Y" ]]; then
+            del_site
+        else
+            echo "Not deleting site."
+            exit
+        fi
+    fi
+}
+
 mk() {
     if [[ "$1" == "wp" ]]; then
         shift
         mk_wp "$@"
         else
         print_help_mk
+    fi
+}
+
+del() {
+    if [[ "$1" == "" ]]; then
+        print_help_del
+        else
+        del_parser "$@"
     fi
 }
 

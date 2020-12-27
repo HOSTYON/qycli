@@ -10,6 +10,8 @@ source /opt/qycli/bin/fn
 if [[ "$1" == "mk" || "$1" == "make" ]]; then
     shift
     mk "$@"
+elif [[ "$1" == "del" || "$1" == "delete" ]]; then
+    del "$@"  
 elif [[ "$1" == "upd" || "$1" == "update" ]]; then
     upd ; upd_qycli
 elif [[ "$1" == "stk" || "$1" == "stack" ]]; then

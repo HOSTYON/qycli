@@ -46,3 +46,18 @@ print_help_wp() {
     echo "  staging     no values             Disables caching and discourages seach engines from indexing the site"
     printf "\n\n"
 }
+
+print_help_del() {
+    printf "\n\n"
+    echo "Description:"
+    echo "  delete a site (and database) made with qycli"
+    echo ""
+    echo "Usage:"
+    echo "  qyc del <domain> [-y]"
+    echo ""
+    echo "  <domain> has to be a valid TLD"
+    echo ""
+    echo "Available flag:"
+    echo "  -y       Deletes the site without asking for further consent."
+    printf "\n\n"
+}
