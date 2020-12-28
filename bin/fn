@@ -128,12 +128,13 @@ mk() {
 }
 
 ls() {
-    printf "\n\n"
+    printf "\n"
     printf "All sites available:\n\n"
     for name in /etc/nginx/sites-available/*
     do
         printf "    $(echo ${name} | sed "s+/etc/nginx/sites-available/++")\n"
     done
+    printf "\n"
 }
 
 del() {
