@@ -107,14 +107,14 @@ del_site() {
     sudo rm /etc/nginx/sites-available/$domain
     sudo rm -r /var/www/$domain/*
     sudo rmdir /var/www/$domain
-    echo "Files deleted."
+    printf "Files deleted."
     local dbnaming="qyc_$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")"
     sudo mysql <<EOF
 DROP USER ${dbnaming}@localhost;    
 DROP DATABASE ${dbnaming};
 EOF
-    echo "Database deleted."
-    echo "$domain deleted."
+    printf "Database deleted."
+    printf "$domain deleted.\n"
 }
 
 del_parser() {
@@ -146,7 +146,7 @@ del_parser() {
         if [[ "$consent" == "yes" || "$consent" == "y" || "$consent" == "Y" ]]; then
             del_site
         else
-            echo "Not deleting site."
+            printf "Not deleting site.\n"
             exit
         fi
     fi
