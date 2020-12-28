@@ -95,7 +95,7 @@ http {
     # Rate Limiting
     limit_req_status 403;
     limit_req_zone $binary_remote_addr zone=zoneone:10m rate=1r/s;
-    limit_req_zone $binary_remote_addr zone=zonetwo:10m rate=5r/s;
+    limit_req_zone $binary_remote_addr zone=zonetwo:10m rate=15r/s;
 
     # SSL config
     ssl_protocols TLSv1.2 TLSv1.3;
@@ -128,7 +128,7 @@ http {
     text/x-cross-domain-policy text/xml;
 
     # Logging
-    access_log off;
+    access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log;
 
     # Additional Configuration
@@ -460,7 +460,7 @@ location = /wp-login.php {
 
 location /wp-admin {
         location ~* /wp-admin/admin-ajax.php$ {
-                limit_req zone=zoneone burst=8 nodelay;
+                limit_req zone=zonetwo burst=5 nodelay;
                 try_files $uri =404;
                 include fastcgi_params;
                 fastcgi_pass phpver;

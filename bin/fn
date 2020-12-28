@@ -32,6 +32,7 @@ mk_wp() {
         shift
     done
 
+    echo "Creating database"
     local dbpassword=$(sudo openssl rand -base64 16)
     #local qycpw=$(grep "MariaDB qyc" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
     local dbnaming="qyc_$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")"
@@ -42,6 +43,7 @@ GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
 FLUSH PRIVILEGES;
 EOF
 
+    echo "Installing WordPress"
     sudo mkdir -p /var/www/$domain/htdocs
     sudo wget -qrO /var/www/$domain/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
     sudo tar -xf /var/www/$domain/htdocs/latest.tar.gz -C /var/www/$domain/
@@ -66,10 +68,15 @@ EOF
     sudo sed -i "s#'NONCE_SALT',       'put your unique phrase here'#'NONCE_SALT',       '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
     sudo sed -i "s+$table_prefix = 'wp_';+$table_prefix = 'qyc_';+" /var/www/$domain/wp-config.php
 
+    wp --path=/var/www/$domain/htdocs core install --url=$domain --title=Example --admin_user=supervisor --admin_password=strongpassword --admin_email=info@example.com
+
+    echo "Activating site"
     sudo cp /etc/nginx/wp.tld /etc/nginx/sites-available/$domain
     sudo sed -i "s/dmn.tld/$domain/g"  /etc/nginx/sites-available/$domain
     sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
     sudo nginx -s reload
+
+    echo "$domain ready."
 }
 
 del_site() {
