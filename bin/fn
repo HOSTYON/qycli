@@ -144,7 +144,7 @@ del_parser() {
     if [[ "$proceed" == "yes" ]]; then
         del_site
     else
-        echo -n "Do you want to delete the site {$domain}? [y/Y/yes]: "
+        echo -n "Do you want to delete the site $domain? [y/Y/yes]: "
         read consent
         if [[ "$consent" == "yes" || "$consent" == "y" || "$consent" == "Y" ]]; then
             del_site
