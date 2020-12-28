@@ -25,7 +25,7 @@ mk_wp() {
                 shift
                 ;;
             p|password)
-                wppw="$2"
+                wppw="$2" # Passwords with # have to be in quotes
                 shift
                 ;;
             e|email)
