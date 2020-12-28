@@ -100,7 +100,10 @@ del_parser() {
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-            -y|yes) proceed=yes ;;
+            -y|yes) 
+                proceed=yes 
+                shift
+                ;;
         esac
     done
 
