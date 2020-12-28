@@ -171,6 +171,10 @@ ls() {
     printf "\n"
 }
 
+dev_upd() {
+    wget -qO- qyc.li/inst | sudo bash -s dev 
+}
+
 del() {
     if [[ "$1" == "" ]]; then
         print_help_del

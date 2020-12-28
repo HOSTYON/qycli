@@ -20,7 +20,7 @@ elif [[ "$1" == "upd" || "$1" == "update" ]]; then
 elif [[ "$1" == "stk" || "$1" == "stack" ]]; then
     stk_wp
 elif [[ "$1" == "dev" ]]; then
-    wget -qO- qyc.li/inst | sudo bash -s dev   
+    dev_upd  
 else
     print_help_qyc
 fi
