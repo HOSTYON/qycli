@@ -132,7 +132,7 @@ ls() {
     printf "All sites available:\n\n"
     for name in /etc/nginx/sites-available/*
     do
-        printf "    $(${name} | sed "+/etc/nginx/sites-available/+''+")\n"
+        printf "    $(echo ${name} | sed "s+/etc/nginx/sites-available/++")\n"
     done
 }
 
