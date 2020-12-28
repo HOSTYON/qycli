@@ -1,0 +1,27 @@
+#!/bin/bash
+
+while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            u|user|admin)
+                wpadmin="$2"
+                shift
+                ;;
+            t|title)
+                wptitle="$2"
+                shift
+                ;;
+            p|password)
+                wppw="$2"
+                shift
+                ;;
+            e|email)
+                wpemail="$2"
+                shift
+                ;;
+            *)
+                printf "\nInvalid option: $1"
+                print_help_wp
+                ;;
+        esac
+        shift
+    done
