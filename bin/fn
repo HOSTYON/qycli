@@ -68,7 +68,7 @@ EOF
     sudo sed -i "s#'NONCE_SALT',       'put your unique phrase here'#'NONCE_SALT',       '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
     sudo sed -i "s+$table_prefix = 'wp_';+$table_prefix = 'qyc_';+" /var/www/$domain/wp-config.php
 
-    wp --path=/var/www/$domain/htdocs core install --url=$domain --title=Example --admin_user=supervisor --admin_password=strongpassword --admin_email=info@example.com
+    #wp --path=/var/www/$domain/htdocs core install --url=$domain --title=Example --admin_user=supervisor --admin_password=strongpassword --admin_email=info@example.com
 
     echo "Activating site"
     sudo cp /etc/nginx/wp.tld /etc/nginx/sites-available/$domain
