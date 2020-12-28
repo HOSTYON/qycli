@@ -8,7 +8,7 @@ utility_and_repos() {
     sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove
     # Utilities
     #sudo apt -y install curl gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https
-    DEBIAN_FRONTEND=noninteractive apt -y install curl gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https postfix
+    DEBIAN_FRONTEND=noninteractive sudo apt -y install curl gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https postfix
     # nginx repo
     echo "deb http://nginx.org/packages/mainline/ubuntu `lsb_release -cs` nginx" | sudo tee /etc/apt/sources.list.d/nginx.list
     curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo apt-key add -
