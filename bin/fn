@@ -6,19 +6,13 @@ mk_wp() {
     if [[ "$1" == *"."* ]]; then
         domain="$1"
         [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
-        [[ -d /var/www/$domain ]] && printf "\nWP site already exists." && exit
+        [[ -d /var/www/$domain ]] && printf "\nWP site already exists.\n" && exit
         shift
     else
         printf "\nInvalid domain: $1"
         print_help_wp
         exit
     fi
-
-    echo "$#"
-    echo "$1"
-    echo "$2"
-    echo "$3"
-    echo "$4"
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
@@ -101,6 +95,7 @@ EOF
     sudo nginx -s reload
 
     wp --path=/var/www/$domain/htdocs plugin uninstall hello akismet
+    wp --path=/var/www/$domain/htdocs theme update --all
 
     printf "$domain is ready.\n\n"
     printf "    User:     $wpadmin\n"
