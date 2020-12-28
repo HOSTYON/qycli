@@ -78,7 +78,7 @@ EOF
 
     [[ "$wptitle" == "" ]] && wptitle=$domain
     [[ "$wpadmin" == "" ]] && wpadmin=qycli
-    if [[ "$wppw" == "" ||  ]]; then
+    if [[ "$wppw" == "" ]]; then
         wppw=$(sudo openssl rand -base64 18)
     elif [[ ! $(echo "$wppw" | pwscore) ]]; then
         echo "Strong password is being generated."
