@@ -55,7 +55,7 @@ EOF
     sudo chown www-data:www-data -R /var/www/$domain/*
     sudo sed -i "s+'DB_NAME', 'database_name_here'+'DB_NAME', '${dbnaming}'+g" /var/www/$domain/wp-config.php
     sudo sed -i "s+'DB_USER', 'username_here'+'DB_USER', '${dbnaming}'+g" /var/www/$domain/wp-config.php
-    sudo sed -i "s+'DB_PASSWORD', 'password_here'+'DB_PASSWORD', '${dbpassword}'+g" /var/www/$domain/wp-config.php
+    sudo sed -i "s#'DB_PASSWORD', 'password_here'#'DB_PASSWORD', '${dbpassword}'#g" /var/www/$domain/wp-config.php
     sudo sed -i "s+'DB_HOST', 'localhost'+'DB_HOST', ':/run/mysqld/mysqld.sock'+g" /var/www/$domain/wp-config.php
     #wp --path=/var/www/$domain/htdocs config shuffle-salts
     sudo sed -i "s#'AUTH_KEY',         'put your unique phrase here'#'AUTH_KEY',         '$(sudo openssl rand -base64 48)'#g" /var/www/$domain/wp-config.php
