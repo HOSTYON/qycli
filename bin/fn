@@ -78,6 +78,7 @@ EOF
 
     [[ "$wptitle" == "" ]] && wptitle=$domain
     [[ "$wpadmin" == "" ]] && wpadmin=qycli
+    echo "$wppw"
     if [[ "$wppw" == "" ]]; then
         wppw=$(sudo openssl rand -base64 18)
     elif [[ ! $(echo "$wppw" | pwscore) ]]; then
