@@ -93,6 +93,8 @@ EOF
     sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
     sudo nginx -s reload
 
+    wp --path=/var/www/$domain/htdocs plugin uninstall hello akismet
+
     printf "$domain is ready.\n\n"
     printf "    User:     $wpadmin\n"
     printf "    Email:    $wpemail\n"
