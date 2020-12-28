@@ -99,7 +99,7 @@ EOF
     printf "    Password: $wppw\n\n"
     printf "Add this IPv6 address as an AAAA record in Cloudflare with proxy enabled (orange cloud):\n"
     printf "    $(ip -6 a | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80)\n\n"
-    printf "Then login here: https://$domain/wp-login.php\n"
+    printf "Then login here: https://$domain/wp-login.php\n\n"
 }
 
 del_site() {

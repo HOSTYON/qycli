@@ -4,8 +4,8 @@
 
 source /opt/qycli/inst
 
-add_repos() {
-    sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove
+utility_and_repos() {
+    sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove postfix
     # Utilities
     sudo apt -y install curl gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https
     # nginx repo
@@ -878,6 +878,6 @@ EOF
 
 stk_wp() {
     phpv=$(grep "PHP Version:" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
-    add_repos && stk_nginx && stk_mariadb && stk_php && stk_redis && stk_wpcli
+    utility_and_repos && stk_nginx && stk_mariadb && stk_php && stk_redis && stk_wpcli
     printf "\nqycli stack was installed.\n"
 }
