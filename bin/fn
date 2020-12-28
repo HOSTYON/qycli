@@ -87,7 +87,7 @@ EOF
     [[ "$wpemail" == "" ]] && wpemail=info@$domain
     wp --path=/var/www/$domain/htdocs core install --url=$domain --title=$wptitle --admin_user=$wpadmin --admin_password=$wppw --admin_email=$wpemail
 
-    echo "Activating site...\n"
+    printf "Activating site...\n"
     sudo cp /etc/nginx/wp.tld /etc/nginx/sites-available/$domain
     sudo sed -i "s/dmn.tld/$domain/g"  /etc/nginx/sites-available/$domain
     sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
