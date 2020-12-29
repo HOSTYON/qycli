@@ -99,7 +99,7 @@ EOF
     wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
     wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
 
-    printf "$domain is ready.\n\n"
+    printf "\n$domain is ready.\n\n"
     printf "    User:     $wpadmin\n"
     printf "    Email:    $wpemail\n"
     printf "    Password: $wppw\n\n"
