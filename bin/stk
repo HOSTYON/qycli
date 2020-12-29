@@ -877,8 +877,13 @@ EOF
     sudo chmod +x /usr/local/bin/wp
 }
 
+stk_www_folder() {
+    sudo mkdir -p /var/www
+    sudo chown www-data:www-data /var/www
+}
+
 stk_wp() {
     phpv=$(grep "PHP Version:" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
-    utility_and_repos && stk_nginx && stk_mariadb && stk_php && stk_redis && stk_wpcli
+    utility_and_repos && stk_nginx && stk_mariadb && stk_php && stk_redis && stk_wpcli && stk_www_folder
     printf "\nqycli stack was installed.\n"
 }

@@ -96,6 +96,7 @@ EOF
 
     wp --path=/var/www/$domain/htdocs plugin uninstall hello akismet
     wp --path=/var/www/$domain/htdocs theme update --all
+    wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
 
     printf "$domain is ready.\n\n"
     printf "    User:     $wpadmin\n"
