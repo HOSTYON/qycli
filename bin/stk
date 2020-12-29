@@ -837,8 +837,6 @@ EOF
     sudo chown www-data:www-data /run/php/php${phpv}-fpm.sock
 }
 
-phpv=$(grep "PHP Version" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
-
 stk_php() {
     sudo apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${phpv}-fpm php${phpv}-gd php${phpv}-imagick \
     php${phpv}-mbstring php${phpv}-mysql php${ver}-redis php${phpv}-soap php${phpv}-xml php${phpv}-zip

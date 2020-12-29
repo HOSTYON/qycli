@@ -119,6 +119,7 @@ del_site() {
 DROP USER ${dbnaming}@localhost;    
 DROP DATABASE ${dbnaming};
 EOF
+    sudo systemctl reload php${phpv}-fpm
     printf "Database deleted.\n"
     printf "$domain deleted.\n"
 }

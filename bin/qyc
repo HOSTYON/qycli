@@ -3,6 +3,8 @@
 # Reference script to run all others, placed in /usr/bin/
 # example: qyc mk wp domain.com
 
+phpv=$(grep "PHP Version" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
+
 source /opt/qycli/bin/help
 source /opt/qycli/bin/stk
 source /opt/qycli/bin/fn
