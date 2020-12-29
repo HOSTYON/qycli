@@ -159,11 +159,36 @@ del_parser() {
     fi
 }
 
+set_cache() {
+    if [[ "$1" == *"."* ]]; then
+        domain="$1"
+        [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
+        [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_del && exit
+        shift
+    else
+        printf "\nInvalid domain: $1"
+        print_help_set
+        exit
+    fi
+
+    if [[ "$1" == "on" ]]; then
+        sudo sed -i "s+*include common/php${phpv}.conf;+#include common/php${phpv}.conf;+" /etc/nginx/$domain
+        sudo sed -i "s+#include common/wpfcgi${phpv}.conf;+include common/wpfcgi${phpv}.conf;+" /etc/nginx/$domain
+        sudo nginx -s reload
+    elif [[ "$1" == "off" ]]; then
+        sudo sed -i "s+#include common/php${phpv}.conf;+include common/php${phpv}.conf;+" /etc/nginx/$domain
+        sudo sed -i "s+*include common/wpfcgi${phpv}.conf;+#include common/wpfcgi${phpv}.conf;+" /etc/nginx/$domain
+        sudo nginx -s reload
+    else
+        print_help_set
+    fi
+}
+
 mk() {
     if [[ "$1" == "wp" ]]; then
         shift
         mk_wp "$@"
-        else
+    else
         print_help_mk
     fi
 }
@@ -182,10 +207,19 @@ dev_upd() {
     wget -qO- qyc.li/inst | sudo bash -s dev
 }
 
+qyc_set() {
+    if [[ "$1" == "cache" ]]; then
+        shift
+        set_cache "$@"
+    else
+        print_help_set
+    fi
+}
+
 del() {
     if [[ "$1" == "" ]]; then
         print_help_del
-        else
+    else
         del_parser "$@"
     fi
 }

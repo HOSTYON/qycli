@@ -21,7 +21,7 @@ print_help_qyc() {
 print_help_mk() {
     printf "\n\n"
     echo "Description:"
-    echo "  make a site with qycli"
+    echo "  Make a site with qycli."
     echo ""
     echo "Usage:"
     echo "  qyc mk [command]"
@@ -34,23 +34,25 @@ print_help_mk() {
 print_help_wp() {
     printf "\n\n"
     echo "Description:"
-    echo "  make a wordpress site with qycli"
+    echo "  Make a wordpress site with qycli."
     echo ""
     echo "Usage:"
-    echo "  qyc mk wp <domain> [option] [option] [value] [option] [value] ..."
+    echo "  qyc mk wp <domain> [option] [value] [option] [value] ..."
     echo ""
     echo "  <domain> has to be a valid TLD"
     echo ""
     echo "Available options:"
-    echo "  cache       values: on | off      Turn page and object caching on or off"
-    echo "  staging     no values             Disables caching and discourages seach engines from indexing the site"
+    echo "  u|user|admin    Set the user name for the WordPress admin account."
+    echo "  p|password      Set the password for the WordPress admin account."
+    echo "  e|email         Set the email address for the WordPress admin account."    
+    echo "  t|title         Set the title for the WordPress site."
     printf "\n\n"
 }
 
 print_help_del() {
     printf "\n\n"
     echo "Description:"
-    echo "  delete a site (and database) made with qycli"
+    echo "  Delete a site (and database) made with qycli."
     echo ""
     echo "Usage:"
     echo "  qyc del <domain> [-y]"
@@ -59,5 +61,21 @@ print_help_del() {
     echo ""
     echo "Available flag:"
     echo "  -y       Deletes the site without asking for further consent."
+    printf "\n\n"
+}
+
+print_help_set() {
+    printf "\n\n"
+    echo "Description:"
+    echo "  Change site settings."
+    echo ""
+    echo "Usage:"
+    echo "  qyc set <domain> [option] [option] [value] [option] [value] ..."
+    echo ""
+    echo "  <domain> has to be a valid TLD"
+    echo ""
+    echo "Available options:"
+    echo "  cache       values: on | off      Turn page and object caching on or off"
+    #echo "  staging     no values             Disables caching and discourages seach engines from indexing the site"
     printf "\n\n"
 }
