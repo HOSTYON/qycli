@@ -883,5 +883,5 @@ stk_www_folder() {
 stk_wp() {
     phpv=$(grep "PHP Version:" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
     utility_and_repos && stk_nginx && stk_mariadb && stk_php && stk_redis && stk_wpcli && stk_www_folder
-    printf "\nqycli stack was installed.\n"
+    printf "\nqycli stack was installed.\n\n"
 }
