@@ -38,12 +38,12 @@ dev() {
     printf "\nqycli (dev) was installed/updated.\n\n"
 }
 
+phpv=7.4 # Newest safe PHP Version
+
 if [[ "$1" == "wp" || "$1" == "" ]]; then
-    phpv=7.4 # Newest safe PHP Version
     wget -qO- qyc.li/host | sudo bash
     cnf && prod  
 elif [[ "$1" == "dev" ]]; then
-    phpv=7.4 # Newest safe PHP Version
     wget -qO- qyc.li/host | sudo bash
     cnf && dev
 fi

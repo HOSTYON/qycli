@@ -236,11 +236,11 @@ location ~ \.php$ {
   fastcgi_pass phpver;
   fastcgi_cache_bypass $skip_cache;
   fastcgi_no_cache $skip_cache;
-  fastcgi_cache WORDPRESS;
+  fastcgi_cache FCGI;
 }
 
 location ~ /purge(/.*) {
-  fastcgi_cache_purge WORDPRESS "$scheme$request_method$host$1";
+  fastcgi_cache_purge FCGI "$scheme$request_method$host$1";
   access_log off;
 }
 
