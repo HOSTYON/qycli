@@ -239,10 +239,10 @@ location ~ \.php$ {
   fastcgi_cache FCGI;
 }
 
-location ~ /purge(/.*) {
-  fastcgi_cache_purge FCGI "$scheme$request_method$host$1";
-  access_log off;
-}
+#location ~ /purge(/.*) {
+  #fastcgi_cache_purge FCGI "$scheme$request_method$host$1";
+  #access_log off;
+#}
 
 # do not cache xhtml request
 map $http_x_requested_with $http_request_no_cache {
