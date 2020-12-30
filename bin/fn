@@ -215,7 +215,7 @@ set_cache_parser() {
         shift
         set_cache_object "$@"
         set_cache_fcgi "$@"
-    elif [[ "$1" == "" ]]; then
+    elif [[ "$1" == "on" || "$1" == "off" ]]; then
         set_cache_object "$@"
         set_cache_fcgi "$@"
     else
