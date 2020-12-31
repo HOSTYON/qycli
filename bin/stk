@@ -17,7 +17,9 @@ utility_and_repos() {
     sudo add-apt-repository -y ppa:redislabs/redis
     # MariaDB repo
     curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | sudo bash -s -- --skip-maxscale
-    [[ -f /etc/apt/sources.list.d/*.old* ]] && sudo rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
+    if [[ -f /etc/apt/sources.list.d/*.old* ]]; then
+        sudo rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
+    fi
 }
 
 upd() {
