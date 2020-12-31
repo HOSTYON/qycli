@@ -11,8 +11,10 @@ utility_and_repos() {
     sudo apt -y install curl gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https
     sudo DEBIAN_FRONTEND=noninteractive apt -y install postfix
     # nginx repo
-    #echo "deb http://nginx.org/packages/mainline/ubuntu `lsb_release -cs` nginx" | sudo tee /etc/apt/sources.list.d/nginx.list
-    #curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo apt-key add -
+    sudo add-apt-repository ppa:ondrej/nginx-mainline
+    # php repo
+	sudo apt install -y language-pack-en-base
+	sudo LC_ALL=C.UTF-8 add-apt-repository -y ppa:ondrej/php
     # redis repo
     sudo add-apt-repository -y ppa:redislabs/redis
     # MariaDB repo
@@ -843,8 +845,9 @@ EOF
 }
 
 stk_php() {
-    sudo apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${phpv}-fpm php${phpv}-gd php${phpv}-imagick \
-    php${phpv}-mbstring php${phpv}-mysql php${ver}-redis php${phpv}-soap php${phpv}-xml php${phpv}-zip
+    sudo apt -y install php${phpv}-common php${phpv}-cli php${phpv}-fpm php${phpv}-curl php${phpv}-gd php${phpv}-readline \
+    php${phpv}-mysql php${phpv}-mbstring php${phpv}-bcmath php${phpv}-mysql php${phpv}-opcache php${phpv}-zip php${phpv}-xml php${phpv}-soap \
+    php${phpv}-imagick php${phpv}-msgpack php${phpv}-igbinary php${phpv}-redis php-pear
     stk_php_conf
     sudo systemctl restart php${phpv}-fpm
 }
