@@ -11,7 +11,7 @@ utility_and_repos() {
     sudo apt -y install curl gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https
     sudo DEBIAN_FRONTEND=noninteractive apt -y install postfix
     # nginx repo
-    sudo add-apt-repository ppa:ondrej/nginx-mainline
+    echo | sudo add-apt-repository ppa:ondrej/nginx-mainline
     # php repo
 	sudo apt install -y language-pack-en-base
 	sudo LC_ALL=C.UTF-8 add-apt-repository -y ppa:ondrej/php
@@ -592,7 +592,7 @@ cert() {
 }
 
 stk_nginx() {
-    sudo apt -y install nginx-extras
+    sudo apt -y install nginx
     stk_nginx_conf
     stk_nginx_cf_ips
 
