@@ -86,6 +86,7 @@ EOF
     sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
     sudo nginx -s reload
 
+    wp --path=/var/www/$domain/htdocs rewrite structure /%postname%/
     wp --path=/var/www/$domain/htdocs plugin uninstall hello akismet
     wp --path=/var/www/$domain/htdocs theme update --all
     wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
