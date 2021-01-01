@@ -53,6 +53,7 @@ worker_processes workerprocs;
 worker_rlimit_nofile 131072;
 pcre_jit on;
 pid /run/nginx.pid;
+include modules-enabled/50-mod-http-cache-purge.conf;
 
 events {
     worker_connections workerconn;

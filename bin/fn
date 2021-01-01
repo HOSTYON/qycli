@@ -179,14 +179,14 @@ set_cache_object() {
 
 set_cache_fcgi() {
     if [[ "$1" == "on" ]]; then
-        sudo sed -i "s+*include common/php${phpv}.conf;+#include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
+        sudo sed -i "s+    include common/php${phpv}.conf;+    #include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
         sudo sed -i "s+#include common/wpfcgi${phpv}.conf;+include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
-        wp --path=/var/www/$domain/htdocs plugin install --activate nginx-cache
+        wp --path=/var/www/$domain/htdocs plugin install --activate nginx-helper
         sudo nginx -s reload
     elif [[ "$1" == "off" ]]; then
         sudo sed -i "s+#include common/php${phpv}.conf;+include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
-        sudo sed -i "s+*include common/wpfcgi${phpv}.conf;+#include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
-        wp --path=/var/www/$domain/htdocs plugin deactivate nginx-cache
+        sudo sed -i "s+    include common/wpfcgi${phpv}.conf;+    #include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
+        wp --path=/var/www/$domain/htdocs plugin deactivate nginx-helper
         sudo nginx -s reload
     else
         print_help_set
