@@ -275,6 +275,8 @@ qyc_set() {
                 echo "$2"
                 shift
                 ;;
+            on|off|o|object|f|fcgi|all|both)           
+                shift # These are valid options that are handed forward with "$@" but shouldn't print invalid and help
             *)
                 printf "\nInvalid option: $1"
                 print_help_set
