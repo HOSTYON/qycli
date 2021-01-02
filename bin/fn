@@ -283,7 +283,6 @@ qyc_set() {
                 print_help_set
                 ;;
         esac
-        shift
     done
 }
 
