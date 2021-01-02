@@ -281,11 +281,14 @@ qyc_set() {
                 ;;
             *)
                 printf "\nInvalid option: $1"
-                print_help_set
+                print_help=1
                 shift
                 ;;
         esac
     done
+    if [[ "$print_help" == "1" ]]; then
+        print_help_set
+    fi
 }
 
 del() {
