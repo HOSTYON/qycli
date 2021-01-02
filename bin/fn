@@ -270,11 +270,12 @@ qyc_set() {
             cache)
                 shift
                 set_cache_parser "$@"
+                shift
                 ;;
-            bla)
-                echo "$2"
-                shift 2
-                ;;
+            #test)
+                #echo "$2"
+                #shift 2
+                #;;
             on|off|o|object|f|fcgi|all|both)           
                 shift # These are valid options that are handed forward with "$@" but shouldn't print invalid and help
                 ;;
