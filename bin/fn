@@ -154,7 +154,7 @@ del_parser() {
 
 set_cache_object() {
     if [[ "$1" == "on" ]]; then
-        if [[ -f /var/www/$domain/htdocs/object-cache.php ]]; then
+        if [[ -f /var/www/$domain/htdocs/wp-content/object-cache.php ]]; then
             echo "Object cache is already enabled."
         else
             wp --path=/var/www/$domain/htdocs plugin install --activate wp-redis
@@ -166,7 +166,7 @@ set_cache_object() {
                 wp --path=/var/www/$domain/htdocs transient delete-all
         fi
     elif [[ "$1" == "off" ]]; then
-        if [[ ! -f /var/www/$domain/htdocs/object-cache.php ]]; then
+        if [[ ! -f /var/www/$domain/htdocs/wp-content/object-cache.php ]]; then
             echo "Object cache is already disabled."
         else
             wp --path=/var/www/$domain/htdocs plugin deactivate wp-redis
