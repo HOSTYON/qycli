@@ -75,7 +75,7 @@ print_help_set() {
     echo "  <domain> has to be a valid TLD"
     echo ""
     echo "Available options:"
-    echo "  cache       values: on | off      Turn page and object caching on or off"
+    echo "  cache       values: on | off      Turn FastCGI page and Redis object caching on or off"
     #echo "  staging     no values             Disables caching and discourages seach engines from indexing the site"
     printf "\n\n"
 }

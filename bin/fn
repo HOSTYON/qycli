@@ -210,17 +210,6 @@ set_cache_fcgi() {
 }
 
 set_cache_parser() {
-    if [[ "$1" == *"."* ]]; then
-        domain="$1"
-        [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
-        [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_del && exit
-        shift
-    else
-        printf "\nInvalid domain: $1\n"
-        print_help_set
-        exit
-    fi
-
     if [[ "$1" == "object" || "$1" == "o" ]]; then
         shift
         set_cache_object "$@"
@@ -265,6 +254,17 @@ dev_upd() {
 }
 
 qyc_set() {
+    if [[ "$1" == *"."* ]]; then
+        domain="$1"
+        [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
+        [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_del && exit
+        shift
+    else
+        printf "\nInvalid domain: $1\n"
+        print_help_set
+        exit
+    fi
+
     if [[ "$1" == "cache" ]]; then
         shift
         set_cache_parser "$@"
