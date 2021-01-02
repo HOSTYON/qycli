@@ -281,6 +281,7 @@ qyc_set() {
             *)
                 printf "\nInvalid option: $1"
                 print_help_set
+                shift
                 ;;
         esac
     done
