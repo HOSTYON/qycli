@@ -265,12 +265,23 @@ qyc_set() {
         exit
     fi
 
-    if [[ "$1" == "cache" ]]; then
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            cache)
+                shift
+                set_cache_parser "$@"
+                ;;
+            bla)
+                bla="$2"
+                shift
+                ;;
+            *)
+                printf "\nInvalid option: $1"
+                print_help_set
+                ;;
+        esac
         shift
-        set_cache_parser "$@"
-    else
-        print_help_set
-    fi
+    done
 }
 
 del() {
