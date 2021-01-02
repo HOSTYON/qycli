@@ -184,7 +184,7 @@ set_cache_object() {
 set_cache_fcgi() {
     if [[ "$1" == "on" ]]; then
         if grep "#include common/php${phpv}.conf" /etc/nginx/sites-available/$domain >/dev/null; then
-            echo "FastCGI cache is already enabled."
+            printf "\nFastCGI cache is already enabled.\n"
         else
             sudo sed -i "s+    include common/php${phpv}.conf;+    #include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
             sudo sed -i "s+#include common/wpfcgi${phpv}.conf;+include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
@@ -195,7 +195,7 @@ set_cache_fcgi() {
         fi
     elif [[ "$1" == "off" ]]; then
         if grep "#include common/wpfcgi${phpv}.conf" /etc/nginx/sites-available/$domain >/dev/null; then
-            echo "FastCGI cache is already disabled."
+            printf "\nFastCGI cache is already disabled.\n"
         else
             sudo sed -i "s+#include common/php${phpv}.conf;+include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
             sudo sed -i "s+    include common/wpfcgi${phpv}.conf;+    #include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
