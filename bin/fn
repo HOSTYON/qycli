@@ -163,8 +163,9 @@ set_cache_object() {
             if [[ ! $(grep "redis_server" /var/www/$domain/wp-config.php) ]]; then
                 sudo sed -i "/That's all, stop editing/i\$redis_server = array( 'host' => '/run/redis/redis-server.sock','port' => null,'database' => 0, );" /var/www/$domain/wp-config.php
             fi
-                sudo ln -s /var/www/$domain/htdocs/wp-content/plugins/wp-redis/object-cache.php /var/www/$domain/htdocs/wp-content/object-cache.php
-                wp --path=/var/www/$domain/htdocs transient delete-all
+            sudo ln -s /var/www/$domain/htdocs/wp-content/plugins/wp-redis/object-cache.php /var/www/$domain/htdocs/wp-content/object-cache.php
+            wp --path=/var/www/$domain/htdocs transient delete-all
+            printf "\nObject cache enabled.\n\n"
         fi
     elif [[ "$1" == "off" ]]; then
         if [[ ! -f /var/www/$domain/htdocs/wp-content/object-cache.php ]]; then
@@ -173,6 +174,7 @@ set_cache_object() {
             wp --path=/var/www/$domain/htdocs plugin deactivate wp-redis
             sudo rm /var/www/$domain/htdocs/wp-content/object-cache.php
             wp --path=/var/www/$domain/htdocs transient delete-all
+            printf "\nObject cache disabled.\n\n"
         fi
     else
         print_help_set
@@ -189,6 +191,7 @@ set_cache_fcgi() {
             wp --path=/var/www/$domain/htdocs plugin install --activate nginx-helper
             wp --path=/var/www/$domain/htdocs option add rt_wp_nginx_helper_options --format=json '{"enable_purge":"1","cache_method":"enable_fastcgi","purge_method":"get_request","enable_map":null,"enable_log":null,"log_level":"INFO","log_filesize":"5","enable_stamp":null,"purge_homepage_on_edit":"1","purge_homepage_on_del":"1","purge_archive_on_edit":"1","purge_archive_on_del":"1","purge_archive_on_new_comment":null,"purge_archive_on_deleted_comment":null,"purge_page_on_mod":"1","purge_page_on_new_comment":"1","purge_page_on_deleted_comment":"1","redis_hostname":"127.0.0.1","redis_port":"6379","redis_prefix":"nginx-cache:","purge_url":"","redis_enabled_by_constant":0,"smart_http_expire_form_nonce":"19aab78f2b"}'
             sudo nginx -s reload
+            printf "\nFastCGI cache enabled.\n\n"
         fi
     elif [[ "$1" == "off" ]]; then
         if grep "include common/php${phpv}.conf" /etc/nginx/sites-available/$domain >/dev/null; then
@@ -199,6 +202,7 @@ set_cache_fcgi() {
             wp --path=/var/www/$domain/htdocs plugin deactivate nginx-helper
             wp --path=/var/www/$domain/htdocs option delete rt_wp_nginx_helper_options
             sudo nginx -s reload
+            printf "\nFastCGI cache disabled.\n\n"
         fi
     else
         print_help_set
