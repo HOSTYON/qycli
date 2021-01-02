@@ -181,17 +181,25 @@ set_cache_object() {
 
 set_cache_fcgi() {
     if [[ "$1" == "on" ]]; then
-        sudo sed -i "s+    include common/php${phpv}.conf;+    #include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
-        sudo sed -i "s+#include common/wpfcgi${phpv}.conf;+include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
-        wp --path=/var/www/$domain/htdocs plugin install --activate nginx-helper
-        wp --path=/var/www/$domain/htdocs option add rt_wp_nginx_helper_options --format=json '{"enable_purge":"1","cache_method":"enable_fastcgi","purge_method":"get_request","enable_map":null,"enable_log":null,"log_level":"INFO","log_filesize":"5","enable_stamp":null,"purge_homepage_on_edit":"1","purge_homepage_on_del":"1","purge_archive_on_edit":"1","purge_archive_on_del":"1","purge_archive_on_new_comment":null,"purge_archive_on_deleted_comment":null,"purge_page_on_mod":"1","purge_page_on_new_comment":"1","purge_page_on_deleted_comment":"1","redis_hostname":"127.0.0.1","redis_port":"6379","redis_prefix":"nginx-cache:","purge_url":"","redis_enabled_by_constant":0,"smart_http_expire_form_nonce":"19aab78f2b"}'
-        sudo nginx -s reload
+        if grep "#include common/php${phpv}.conf" /etc/nginx/sites-available/$domain; then
+            echo "FastCGI cache is already enabled."
+        else
+            sudo sed -i "s+    include common/php${phpv}.conf;+    #include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
+            sudo sed -i "s+#include common/wpfcgi${phpv}.conf;+include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
+            wp --path=/var/www/$domain/htdocs plugin install --activate nginx-helper
+            wp --path=/var/www/$domain/htdocs option add rt_wp_nginx_helper_options --format=json '{"enable_purge":"1","cache_method":"enable_fastcgi","purge_method":"get_request","enable_map":null,"enable_log":null,"log_level":"INFO","log_filesize":"5","enable_stamp":null,"purge_homepage_on_edit":"1","purge_homepage_on_del":"1","purge_archive_on_edit":"1","purge_archive_on_del":"1","purge_archive_on_new_comment":null,"purge_archive_on_deleted_comment":null,"purge_page_on_mod":"1","purge_page_on_new_comment":"1","purge_page_on_deleted_comment":"1","redis_hostname":"127.0.0.1","redis_port":"6379","redis_prefix":"nginx-cache:","purge_url":"","redis_enabled_by_constant":0,"smart_http_expire_form_nonce":"19aab78f2b"}'
+            sudo nginx -s reload
+        fi
     elif [[ "$1" == "off" ]]; then
-        sudo sed -i "s+#include common/php${phpv}.conf;+include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
-        sudo sed -i "s+    include common/wpfcgi${phpv}.conf;+    #include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
-        wp --path=/var/www/$domain/htdocs plugin deactivate nginx-helper
-        wp --path=/var/www/$domain/htdocs option delete rt_wp_nginx_helper_options
-        sudo nginx -s reload
+        if grep "include common/php${phpv}.conf" /etc/nginx/sites-available/$domain; then
+            echo "FastCGI cache is already disabled."
+        else
+            sudo sed -i "s+#include common/php${phpv}.conf;+include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
+            sudo sed -i "s+    include common/wpfcgi${phpv}.conf;+    #include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
+            wp --path=/var/www/$domain/htdocs plugin deactivate nginx-helper
+            wp --path=/var/www/$domain/htdocs option delete rt_wp_nginx_helper_options
+            sudo nginx -s reload
+        fi
     else
         print_help_set
     fi
