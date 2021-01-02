@@ -92,7 +92,7 @@ EOF
     wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
     wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
 
-    qyc $domain cache o on
+    qyc set $domain cache o on
 
     printf "\n$domain is ready.\n\n"
     printf "    User:     $wpadmin\n"
