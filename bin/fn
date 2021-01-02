@@ -272,7 +272,7 @@ qyc_set() {
                 set_cache_parser "$@"
                 ;;
             bla)
-                bla="$2"
+                test="$2"
                 shift
                 ;;
             *)
