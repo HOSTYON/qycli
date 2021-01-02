@@ -280,7 +280,7 @@ qyc_set() {
                 shift # These are valid options that are handed forward with "$@" but shouldn't print invalid and help
                 ;;
             *)
-                printf "\nInvalid option: $1"
+                printf "\nInvalid option: $1\n\n"
                 print_help=1
                 shift
                 ;;
