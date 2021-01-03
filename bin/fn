@@ -343,6 +343,39 @@ qyc_set() {
     fi
 }
 
+qyc_clone() {
+   if [[ "$1" == *"."* ]]; then
+        domain="$1"
+        [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
+        [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_clone && exit
+        shift
+    else
+        printf "\nInvalid domain: $1\n"
+        print_help_clone
+        exit
+    fi
+
+    if [[ "$1" == "to" ]]; then
+        shift
+    elif [[ "$1" == *"."* ]]; then
+        cloneto="$1"
+    fi
+
+    if [[ -d /var/www/$cloneto ]]; then
+        echo -n "Do you want to overwrite $cloneto from $domain? [y/Y/yes]: "
+        read consent
+        if [[ "$consent" == "yes" || "$consent" == "y" || "$consent" == "Y" ]]; then
+            # delete old site
+            # mysqldump and search-and-replace the sql file
+            # import to new database
+            # copy over the files
+            # put new database details in wp-conf
+        else
+            printf "Not cloning site.\n"
+            exit
+        fi
+}
+
 del() {
     if [[ "$1" == "" ]]; then
         print_help_del

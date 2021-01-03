@@ -16,7 +16,10 @@ elif [[ "$1" == "ls" || "$1" == "list" ]]; then
     ls
 elif [[ "$1" == "set" ]]; then
     shift
-    qyc_set "$@" 
+    qyc_set "$@"
+elif [[ "$1" == "clone" ]]; then
+    shift
+    qyc_clone "$@" 
 elif [[ "$1" == "del" || "$1" == "delete" ]]; then
     shift
     del "$@"  
