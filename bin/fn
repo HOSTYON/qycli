@@ -245,7 +245,7 @@ set_alias() {
         shift
         if [[ "$1" == *"."* ]]; then
             aliasdomain="$1"
-            [[ ! -d /var/www/$domain ]] && printf "\nSite to add an alias domain name to does not exist." && print_help_set && exit
+            [[ ! -d /var/www/$domain ]] && printf "\nSite to add an alias domain name to does not exist.\n" && print_help_set && exit
             shift
         else
             printf "\nInvalid domain: $1\n"
@@ -254,17 +254,17 @@ set_alias() {
         fi
 
         if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf >/dev/null; then
-            printf "\nAlias domain name already exists.\n"
+            printf "\nAlias domain name already exists.\n\n"
         else
             sudo sed -i "/;/i$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf
             sudo nginx -s reload
-            printf "\nAlias domain name $aliasdomain successfully added to site $domain.\n"            
+            printf "\nAlias domain name $aliasdomain successfully added to site $domain.\n\n"            
         fi
     elif [[ "$1" == "del" || "$1" == "delete" ]]; then
         shift
         if [[ "$1" == *"."* ]]; then
             aliasdomain="$1"
-            [[ ! -d /var/www/$domain ]] && printf "\nSite to remove an alias domain name from does not exist." && print_help_set && exit
+            [[ ! -d /var/www/$domain ]] && printf "\nSite to remove an alias domain name from does not exist.\n" && print_help_set && exit
             shift
         else
             printf "\nInvalid domain: $1\n"
@@ -275,9 +275,9 @@ set_alias() {
         if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf >/dev/null; then
             sudo sed -i "/$aliasdomain/d" /var/www/$domain/nginx-conf/server-names.conf
             sudo nginx -s reload
-            printf "\nAlias domain name $aliasdomain successfully deleted from site $domain.\n"            
+            printf "\nAlias domain name $aliasdomain successfully deleted from site $domain.\n\n"            
         else
-            printf "\nAlias domain name does not exists.\n"
+            printf "\nAlias domain name does not exists.\n\n"
         fi
     else
         print_help_set 
