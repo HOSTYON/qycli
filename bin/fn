@@ -253,7 +253,7 @@ set_alias() {
             exit
         fi
 
-        if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf; then
+        if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf >/dev/null; then
             printf "\nAlias domain name already exists.\n"
         else
             sudo sed -i "/;/i$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf
@@ -272,7 +272,7 @@ set_alias() {
             exit
         fi
 
-        if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf; then
+        if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf >/dev/null; then
             sudo sed -i "/$aliasdomain/d" /var/www/$domain/nginx-conf/server-names.conf
             sudo nginx -s reload
             printf "\nAlias domain name $aliasdomain successfully deleted from site $domain.\n"            
