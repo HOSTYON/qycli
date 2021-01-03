@@ -52,7 +52,8 @@ FLUSH PRIVILEGES;
 EOF
 
     echo "Installing WordPress..."
-    sudo mkdir -p /var/www/$domain/htdocs/nginx-conf
+    sudo mkdir -p /var/www/$domain/htdocs
+    sudo mkdir -p /var/www/$domain/nginx-conf
     sudo tee /var/www/$domain/nginx-conf/server-names.conf >/dev/null <<'EOF'
 server_name
 ;
