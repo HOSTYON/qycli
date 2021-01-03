@@ -279,6 +279,9 @@ set_alias() {
         else
             printf "\nAlias domain name does not exists.\n\n"
         fi
+    elif [[ "$1" == "ls" || "$1" == "list" ]]; then
+        printf "\nAll domain names of site $domain:\n"
+        cat /var/www/$domain/nginx-conf/server-names.conf | sed "s/server_name//" | sed "s/;//"
     else
         print_help_set 
     fi
