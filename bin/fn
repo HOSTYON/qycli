@@ -54,10 +54,7 @@ EOF
     echo "Installing WordPress..."
     sudo mkdir -p /var/www/$domain/htdocs
     sudo mkdir -p /var/www/$domain/nginx-conf
-    sudo tee /var/www/$domain/nginx-conf/server-names.conf >/dev/null <<'EOF'
-server_name
-;
-EOF
+
     sudo wget -qrO /var/www/$domain/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
     sudo tar -xf /var/www/$domain/htdocs/latest.tar.gz -C /var/www/$domain/
 	sudo mv /var/www/$domain/wordpress/* /var/www/$domain/htdocs/
@@ -88,6 +85,12 @@ EOF
     printf "Activating site...\n"
     sudo cp /etc/nginx/wp.tld /etc/nginx/sites-available/$domain
     sudo sed -i "s/dmn.tld/$domain/g"  /etc/nginx/sites-available/$domain
+    sudo tee /var/www/$domain/nginx-conf/server-names.conf >/dev/null <<EOF
+server_name
+$domain
+www.$domain
+;
+EOF
     sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
     sudo nginx -s reload
 
@@ -242,7 +245,7 @@ set_alias() {
         shift
         if [[ "$1" == *"."* ]]; then
             aliasdomain="$1"
-            [[ ! -d /var/www/$domain ]] && printf "\nSite to add an alias to does not exist." && print_help_set && exit
+            [[ ! -d /var/www/$domain ]] && printf "\nSite to add an alias domain name to does not exist." && print_help_set && exit
             shift
         else
             printf "\nInvalid domain: $1\n"
@@ -251,7 +254,7 @@ set_alias() {
         fi
 
         if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf; then
-            printf "\nAlias domain already exists.\n"
+            printf "\nAlias domain name already exists.\n"
         else
             sudo sed -i "/;/i$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf
             sudo nginx -s reload
@@ -260,7 +263,7 @@ set_alias() {
         shift
         if [[ "$1" == *"."* ]]; then
             aliasdomain="$1"
-            [[ ! -d /var/www/$domain ]] && printf "\nSite to remove an alias from does not exist." && print_help_set && exit
+            [[ ! -d /var/www/$domain ]] && printf "\nSite to remove an alias domain name from does not exist." && print_help_set && exit
             shift
         else
             printf "\nInvalid domain: $1\n"
@@ -272,7 +275,7 @@ set_alias() {
             sudo sed -i "/$aliasdomain/d" /var/www/$domain/nginx-conf/server-names.conf
             sudo nginx -s reload
         else
-            printf "\nAlias domain does not exists.\n"
+            printf "\nAlias domain name does not exists.\n"
         fi
     else
         print_help_set 
@@ -321,7 +324,7 @@ qyc_set() {
                 set_cache_parser "$@"
                 set_success=1
                 ;;
-            alias)
+            alias|name|domain)
                 shift
                 set_alias "$@"
                 set_success=1

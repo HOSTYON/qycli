@@ -164,8 +164,7 @@ server {
 
     listen [::]:80;
     listen 80;
-    server_name dmn.tld www.dmn.tld;
-    include /var/www/dmn.tld/nginx-conf/server-names.conf;
+    include /var/www/dmn.tld/nginx-conf/server-names.conf; # server_name can be found there
 
     return 301 https://$host$request_uri;
 
@@ -179,7 +178,7 @@ server {
     ssl_certificate /etc/ssl/qycli.crt;
     ssl_certificate_key /etc/ssl/qycli.key;
 
-    server_name dmn.tld www.dmn.tld;
+    include /var/www/dmn.tld/nginx-conf/*.conf; # server_name can be found there
 
     root /var/www/dmn.tld/htdocs;
     index index.php index.html index.htm;
@@ -199,7 +198,6 @@ server {
     include common/phpver.conf;
     #include common/wpfcgiver.conf;
     include common/wpcommonver.conf;
-    include /var/www/dmn.tld/nginx-conf/*.conf;
 }
 EOF
     sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/wp.tld
