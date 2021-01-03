@@ -52,7 +52,11 @@ FLUSH PRIVILEGES;
 EOF
 
     echo "Installing WordPress..."
-    sudo mkdir -p /var/www/$domain/htdocs
+    sudo mkdir -p /var/www/$domain/htdocs/nginx-conf
+    sudo tee /var/www/$domain/nginx-conf/server-names.conf >/dev/null <<'EOF'
+server_name
+;
+EOF
     sudo wget -qrO /var/www/$domain/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
     sudo tar -xf /var/www/$domain/htdocs/latest.tar.gz -C /var/www/$domain/
 	sudo mv /var/www/$domain/wordpress/* /var/www/$domain/htdocs/
@@ -232,6 +236,48 @@ set_cache_parser() {
     fi 
 }
 
+set_alias() {
+    if [[ "$1" == "add" ]]; then
+        shift
+        if [[ "$1" == *"."* ]]; then
+            aliasdomain="$1"
+            [[ ! -d /var/www/$domain ]] && printf "\nSite to add an alias to does not exist." && print_help_set && exit
+            shift
+        else
+            printf "\nInvalid domain: $1\n"
+            print_help_set
+            exit
+        fi
+
+        if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf; then
+            printf "\nAlias domain already exists.\n"
+        else
+            sudo sed -i "/;/i$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf
+            sudo nginx -s reload
+        fi
+    elif [[ "$1" == "del" || "$1" == "delete" ]]; then
+        shift
+        if [[ "$1" == *"."* ]]; then
+            aliasdomain="$1"
+            [[ ! -d /var/www/$domain ]] && printf "\nSite to remove an alias from does not exist." && print_help_set && exit
+            shift
+        else
+            printf "\nInvalid domain: $1\n"
+            print_help_set
+            exit
+        fi
+
+        if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf; then
+            sudo sed -i "/$aliasdomain/d" /var/www/$domain/nginx-conf/server-names.conf
+            sudo nginx -s reload
+        else
+            printf "\nAlias domain does not exists.\n"
+        fi
+    else
+        print_help_set 
+    fi
+}
+
 mk() {
     if [[ "$1" == "wp" ]]; then
         shift
@@ -259,7 +305,7 @@ qyc_set() {
     if [[ "$1" == *"."* ]]; then
         domain="$1"
         [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
-        [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_del && exit
+        [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_set && exit
         shift
     else
         printf "\nInvalid domain: $1\n"
@@ -272,23 +318,18 @@ qyc_set() {
             cache)
                 shift
                 set_cache_parser "$@"
-                shift
+                set_success=1
                 ;;
-            #test)
-                #echo "$2"
-                #shift 2
-                #;;
-            on|off|o|object|f|fcgi|all|both)           
-                shift # These are valid options that are handed forward with "$@" but shouldn't print invalid and help
-                ;;
-            *)
-                printf "\nInvalid option: $1\n"
-                print_help=1
+            alias)
                 shift
+                set_alias "$@"
+                set_success=1
                 ;;
         esac
+        shift
     done
-    if [[ "$print_help" == "1" ]]; then
+    if [[ "$set_success" != "1" ]]; then
+        printf "\nNo valid option found for "qyc set".\n"
         print_help_set
     fi
 }
