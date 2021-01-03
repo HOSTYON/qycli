@@ -84,7 +84,7 @@ EOF
 
     printf "Activating site...\n"
     sudo cp /etc/nginx/wp.tld /etc/nginx/sites-available/$domain
-    sudo sed -i "s/dmn.tld/$domain/g"  /etc/nginx/sites-available/$domain
+    sudo sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/$domain
     sudo tee /var/www/$domain/nginx-conf/server-names.conf >/dev/null <<EOF
 server_name
 $domain
@@ -258,6 +258,7 @@ set_alias() {
         else
             sudo sed -i "/;/i$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf
             sudo nginx -s reload
+            printf "\nAlias domain name $aliasdomain successfully added to site $domain.\n"            
         fi
     elif [[ "$1" == "del" || "$1" == "delete" ]]; then
         shift
@@ -274,6 +275,7 @@ set_alias() {
         if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf; then
             sudo sed -i "/$aliasdomain/d" /var/www/$domain/nginx-conf/server-names.conf
             sudo nginx -s reload
+            printf "\nAlias domain name $aliasdomain successfully deleted from site $domain.\n"            
         else
             printf "\nAlias domain name does not exists.\n"
         fi
