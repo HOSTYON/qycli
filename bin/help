@@ -86,6 +86,7 @@ print_help_set() {
     echo ""
     echo "Examples:"
     echo "  qyc set domain.com cache f on"
+    echo "  qyc set domain.com name add sub.domain2.com"
     #echo "  staging     no values             Disables caching and discourages seach engines from indexing the site"
     printf "\n\n"
 }
