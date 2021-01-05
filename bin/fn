@@ -2,6 +2,34 @@
 
 # function library for qyc
 
+mk_db() {
+    dbpassword=$(sudo openssl rand -base64 12)
+    #local qycpw=$(grep "MariaDB qyc" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
+    dbnaming="qyc_$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")"
+	sudo runuser -u mysql -- mysql --user=mysql <<EOF
+CREATE USER ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
+CREATE DATABASE ${dbnaming};
+GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
+FLUSH PRIVILEGES;
+EOF
+}
+
+mk_site() {
+    sudo mkdir -p /var/www/$domain/htdocs
+    sudo mkdir -p /var/www/$domain/nginx-conf
+    sudo cp /etc/nginx/$template /etc/nginx/sites-available/$domain
+    sudo sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/$domain
+    sudo tee /var/www/$domain/nginx-conf/server-names.conf >/dev/null <<EOF
+server_name
+$domain
+www.$domain
+;
+EOF
+    sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
+    sudo chown www-data:www-data -R /var/www/$domain/*
+    sudo nginx -s reload
+}
+
 mk_wp() {
     if [[ "$1" == *"."* ]]; then
         domain="$1"
@@ -41,20 +69,13 @@ mk_wp() {
     done
 
     echo "Creating database..."
-    local dbpassword=$(sudo openssl rand -base64 12)
-    #local qycpw=$(grep "MariaDB qyc" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
-    local dbnaming="qyc_$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")"
-	sudo runuser -u mysql -- mysql --user=mysql <<EOF
-CREATE USER ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
-CREATE DATABASE ${dbnaming};
-GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
-FLUSH PRIVILEGES;
-EOF
+    mk_db
+
+    printf "Creating folders..."
+    template=wp.tld
+    mk_site
 
     echo "Installing WordPress..."
-    sudo mkdir -p /var/www/$domain/htdocs
-    sudo mkdir -p /var/www/$domain/nginx-conf
-
     sudo wget -qrO /var/www/$domain/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
     sudo tar -xf /var/www/$domain/htdocs/latest.tar.gz -C /var/www/$domain/
 	sudo mv /var/www/$domain/wordpress/* /var/www/$domain/htdocs/
@@ -81,18 +102,6 @@ EOF
     [[ "$wpemail" == "" ]] && wpemail=info@$domain
     wp --path=/var/www/$domain/htdocs core install --url=https://$domain --title=$wptitle --admin_user=$wpadmin --admin_password=$wppw --admin_email=$wpemail
     #wp --path=/var/www/$domain/htdocs search-replace 'http://$domain' 'https://$domain' --dry-run
-
-    printf "Activating site...\n"
-    sudo cp /etc/nginx/wp.tld /etc/nginx/sites-available/$domain
-    sudo sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/$domain
-    sudo tee /var/www/$domain/nginx-conf/server-names.conf >/dev/null <<EOF
-server_name
-$domain
-www.$domain
-;
-EOF
-    sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
-    sudo nginx -s reload
 
     wp --path=/var/www/$domain/htdocs rewrite structure /%postname%/
     wp --path=/var/www/$domain/htdocs plugin uninstall hello akismet
@@ -298,10 +307,10 @@ mk() {
 
 ls() {
     printf "\n"
-    printf "All sites available:\n\n"
+    printf "All sites available:\n"
     for name in /etc/nginx/sites-available/*
     do
-        printf "    $(echo ${name} | sed "s+/etc/nginx/sites-available/++")\n"
+        printf "    $(echo ${name} | sed "s+/etc/nginx/sites-available/++" | sed "s+default++" )\n"
     done
     printf "\n"
 }
@@ -343,11 +352,29 @@ qyc_set() {
     fi
 }
 
+clone_site() {
+    domain=$cloneto
+    template=wp.tld
+    mk_site
+    sudo cp -aR /var/www/$clonefrom/* /var/www/$cloneto/
+
+    local dbfrom="qyc_$(echo ${clonefrom} | sed "s+[^0-9A-Za-z]+_+g")"
+    sudo mysqldump $dbfrom | sudo tee /var/www/$clonefrom/db.sql
+    sudo cp /var/www/$clonefrom/db.sql /var/www/$cloneto/db.sql
+    sudo sed -i "s+${clonefrom}+${cloneto}+g" /var/www/$cloneto/db.sql
+    mk_db
+    sudo mysql $dbnaming < /var/www/$cloneto/db.sql
+    # put new database details in wp-conf
+    sudo sed -i "s+'DB_NAME', 'database_name_here'+'DB_NAME', '${dbnaming}'+g" /var/www/$cloneto/wp-config.php
+    sudo sed -i "s+'DB_USER', 'username_here'+'DB_USER', '${dbnaming}'+g" /var/www/$cloneto/wp-config.php
+    sudo sed -i "s#'DB_PASSWORD', 'password_here'#'DB_PASSWORD', '${dbpassword}'#g" /var/www/$cloneto/wp-config.php
+}
+
 qyc_clone() {
    if [[ "$1" == *"."* ]]; then
-        domain="$1"
-        [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
-        [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_clone && exit
+        clonefrom="$1"
+        [[ "$1" == www.* ]] && clonefrom=$(echo "$1" | cut -c 5-)
+        [[ ! -d /var/www/$clonefrom ]] && printf "\nSite does not exist." && print_help_clone && exit
         shift
     else
         printf "\nInvalid domain: $1\n"
@@ -359,21 +386,22 @@ qyc_clone() {
         shift
     elif [[ "$1" == *"."* ]]; then
         cloneto="$1"
+        [[ "$1" == www.* ]] && cloneto=$(echo "$1" | cut -c 5-)
     fi
 
     if [[ -d /var/www/$cloneto ]]; then
-        echo -n "Do you want to overwrite $cloneto from $domain? [y/Y/yes]: "
+        echo -n "Do you want to overwrite $cloneto from $clonefrom? [y/Y/yes]: "
         read consent
         if [[ "$consent" == "yes" || "$consent" == "y" || "$consent" == "Y" ]]; then
-            # delete old site
-            # mysqldump and search-and-replace the sql file
-            # import to new database
-            # copy over the files
-            # put new database details in wp-conf
+            qyc del $cloneto -y
+            clone_site
         else
             printf "Not cloning site.\n"
             exit
         fi
+    else
+        qyc_clone_site
+    fi
 }
 
 del() {
