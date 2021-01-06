@@ -383,7 +383,9 @@ qyc_clone() {
 
     if [[ "$1" == "to" ]]; then
         shift
-    elif [[ "$1" == *"."* ]]; then
+    fi
+    
+    if [[ "$1" == *"."* ]]; then
         cloneto="$1"
         [[ "$1" == www.* ]] && cloneto=$(echo "$1" | cut -c 5-)
     fi
@@ -399,7 +401,7 @@ qyc_clone() {
             exit
         fi
     else
-        qyc_clone_site
+        clone_site
     fi
 }
 
