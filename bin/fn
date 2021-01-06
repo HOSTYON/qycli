@@ -364,10 +364,9 @@ clone_site() {
     sudo sed -i "s+${clonefrom}+${cloneto}+g" /var/www/$cloneto/db.sql
     mk_db
     sudo mysql $dbnaming < /var/www/$cloneto/db.sql
-    # put new database details in wp-conf
-    sudo sed -i "s+'DB_NAME', 'database_name_here'+'DB_NAME', '${dbnaming}'+g" /var/www/$cloneto/wp-config.php
-    sudo sed -i "s+'DB_USER', 'username_here'+'DB_USER', '${dbnaming}'+g" /var/www/$cloneto/wp-config.php
-    sudo sed -i "s#'DB_PASSWORD', 'password_here'#'DB_PASSWORD', '${dbpassword}'#g" /var/www/$cloneto/wp-config.php
+    sudo sed -i "s+'DB_NAME', '*'+'DB_NAME', '${dbnaming}'+g" /var/www/$cloneto/wp-config.php
+    sudo sed -i "s+'DB_USER', '*'+'DB_USER', '${dbnaming}'+g" /var/www/$cloneto/wp-config.php
+    sudo sed -i "s#'DB_PASSWORD', '*'#'DB_PASSWORD', '${dbpassword}'#g" /var/www/$cloneto/wp-config.php
 }
 
 qyc_clone() {
