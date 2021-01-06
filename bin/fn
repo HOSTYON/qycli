@@ -71,11 +71,12 @@ mk_wp() {
     echo "Creating database..."
     mk_db
 
-    printf "Creating folders..."
+    echo "Creating folders..."
     template=wp.tld
     mk_site
 
     echo "Installing WordPress..."
+    sudo systemctl reload php${phpv}-fpm
     sudo wget -qrO /var/www/$domain/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
     sudo tar -xf /var/www/$domain/htdocs/latest.tar.gz -C /var/www/$domain/
 	sudo mv /var/www/$domain/wordpress/* /var/www/$domain/htdocs/
@@ -184,6 +185,7 @@ set_cache_object() {
             fi
             sudo ln -s plugins/wp-redis/object-cache.php /var/www/$domain/htdocs/wp-content/object-cache.php
             wp --path=/var/www/$domain/htdocs transient delete-all
+            sudo systemctl reload php${phpv}-fpm
             printf "\nObject cache enabled.\n\n"
         fi
     elif [[ "$1" == "off" ]]; then
@@ -193,6 +195,7 @@ set_cache_object() {
             wp --path=/var/www/$domain/htdocs plugin deactivate wp-redis
             sudo rm /var/www/$domain/htdocs/wp-content/object-cache.php
             wp --path=/var/www/$domain/htdocs transient delete-all
+            sudo systemctl reload php${phpv}-fpm
             printf "\nObject cache disabled.\n\n"
         fi
     else
