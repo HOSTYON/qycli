@@ -182,7 +182,7 @@ set_cache_object() {
             if [[ ! $(grep "redis_server" /var/www/$domain/wp-config.php) ]]; then
                 sudo sed -i "/That's all, stop editing/i\$redis_server = array( 'host' => '/run/redis/redis-server.sock','port' => null,'database' => 0, );" /var/www/$domain/wp-config.php
             fi
-            sudo ln -s /var/www/$domain/htdocs/wp-content/plugins/wp-redis/object-cache.php /var/www/$domain/htdocs/wp-content/object-cache.php
+            sudo ln -s plugins/wp-redis/object-cache.php /var/www/$domain/htdocs/wp-content/object-cache.php
             wp --path=/var/www/$domain/htdocs transient delete-all
             printf "\nObject cache enabled.\n\n"
         fi
