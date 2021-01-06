@@ -356,7 +356,7 @@ clone_site() {
     domain=$cloneto
     template=wp.tld
     mk_site
-    sudo cp -aR /var/www/$clonefrom/* /var/www/$cloneto/
+    sudo rsync -ar --exclude 'nginx-conf' /var/www/$clonefrom/ /var/www/$cloneto/
 
     local dbfrom="qyc_$(echo ${clonefrom} | sed "s+[^0-9A-Za-z]+_+g")"
     sudo mysqldump $dbfrom | sudo tee /var/www/$clonefrom/db.sql >/dev/null
@@ -367,6 +367,7 @@ clone_site() {
     sudo sed -i "s+'DB_NAME', '*'+'DB_NAME', '${dbnaming}'+g" /var/www/$cloneto/wp-config.php
     sudo sed -i "s+'DB_USER', '*'+'DB_USER', '${dbnaming}'+g" /var/www/$cloneto/wp-config.php
     sudo sed -i "s#'DB_PASSWORD', '*'#'DB_PASSWORD', '${dbpassword}'#g" /var/www/$cloneto/wp-config.php
+    wp --path=/var/www/$cloneto/htdocs config set WP_CACHE_KEY_SALT "qyc_$cloneto"
 }
 
 qyc_clone() {
