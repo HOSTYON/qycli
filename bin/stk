@@ -456,7 +456,7 @@ EOF
     sudo tee /etc/nginx/conf.d/fcgi.conf >/dev/null <<'EOF'
 fastcgi_cache_path /run/nginx-cache levels=1:2 keys_zone=FCGI:64m inactive=8d use_temp_path=off;
 fastcgi_cache_key "$scheme$request_method$host$request_uri";
-fastcgi_cache_use_stale error timeout invalid_header updating http_500 http_502 http_503 http_504;
+fastcgi_cache_use_stale error timeout invalid_header updating http_500 http_503 http_504;
 fastcgi_cache_lock on;
 fastcgi_cache_lock_age 2s;
 fastcgi_cache_lock_timeout 3s;
@@ -886,6 +886,6 @@ stk_www_folder() {
 
 stk_wp() {
     phpv=$(grep "PHP Version:" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
-    utility_and_repos && stk_nginx && stk_mariadb && stk_php && stk_redis && stk_wpcli && stk_www_folder
+    utility_and_repos; stk_nginx; stk_mariadb; stk_php; stk_redis; stk_wpcli; stk_www_folder
     printf "\nqycli stack was installed.\n\n"
 }
