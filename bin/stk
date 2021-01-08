@@ -251,8 +251,6 @@ EOF
     sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/common/wpfcgi${phpv}.conf
 
     sudo tee /etc/nginx/common/wpcommon${phpv}.conf >/dev/null <<'EOF'
-# DO NOT MODIFY, ALL CHANGES WILL BE LOST AFTER AN UPDATE
-
 # Basic locations files
 location = /favicon.ico {
     try_files /wp-content/uploads/fbrfg/favicon.ico $uri $uri/ /index.php?$args @empty_gif;
