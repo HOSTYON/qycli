@@ -6,7 +6,7 @@
 qycli is going to be an advanced, secure and very performant LEMP stack for Wordpress.
 Features will include:
 - 100% Shell - No dependencies
-- All apps installed from official repos only - no wierd PPAs
+- All apps compiled from original source code or installed from official repos - process will be made transparent
 - Cloudflare only
   - Added security
   - Added speed through CDN
