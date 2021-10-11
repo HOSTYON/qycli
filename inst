@@ -38,6 +38,9 @@ dev() {
     printf "\nqycli (dev) was installed/updated.\n\n"
 }
 
+## Have to disable Password prompts for the duration of the installation if not already so:
+# https://askubuntu.com/questions/896535/change-between-user-and-root-without-password
+
 phpv=7.4 # Newest safe PHP Version
 
 if [[ "$1" == "wp" || "$1" == "" ]]; then
