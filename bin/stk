@@ -4,8 +4,12 @@
 
 source /opt/qycli/inst
 
-utility_and_repos() {
+upd() {
     sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove
+}
+
+utility_and_repos() {
+    upd
     # Utilities
     #sudo apt -y install curl gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https
     sudo apt -y install curl gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https
@@ -20,10 +24,6 @@ utility_and_repos() {
     if [[ -f /etc/apt/sources.list.d/*.old* ]]; then
         sudo rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
     fi
-}
-
-upd() {
-    sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove
 }
 
 stk_nginx_cf_ips() {
