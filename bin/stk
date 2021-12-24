@@ -2,886 +2,118 @@
 
 # stack install functions
 
-source /opt/qycli/inst
+source /opt/qycli/bin/upd
 
-upd() {
-    sudo apt update && sudo apt upgrade -y && sudo apt -y dist-upgrade && sudo apt -y autoremove
-}
 
 utility_and_repos() {
     upd
     # Utilities
-    #sudo apt -y install curl gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https
-    sudo apt -y install curl gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https
-    sudo DEBIAN_FRONTEND=noninteractive apt -y install postfix
-    # nginx repo
-    #echo "deb http://nginx.org/packages/mainline/ubuntu `lsb_release -cs` nginx" | sudo tee /etc/apt/sources.list.d/nginx.list
-    #curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo apt-key add -
+    apt -y install git curl wget gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https
+    DEBIAN_FRONTEND=noninteractive apt -y install postfix
     # redis repo
-    sudo add-apt-repository -y ppa:redislabs/redis
+    add-apt-repository -y ppa:redislabs/redis
     # MariaDB repo
-    curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | sudo bash -s -- --skip-maxscale
+    curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | bash -s -- --skip-maxscale
     if [[ -f /etc/apt/sources.list.d/*.old* ]]; then
-        sudo rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
+        rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
     fi
-}
-
-stk_nginx_cf_ips() {
-    if [[ -f /etc/nginx/conf.d/cloudflare.conf ]]; then 
-        sudo rm /etc/nginx/conf.d/cloudflare.conf; 
-    fi
-    for cfip in $(wget -qO- cloudflare.com/ips-v4; wget -qO- cloudflare.com/ips-v6); do
-        echo "set_real_ip_from $cfip;" | sudo tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
-    done
-    echo 'real_ip_header CF-Connecting-IP;' | sudo tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
-    echo 'real_ip_recursive on;' | sudo tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
-    sudo nginx -s reload
-}
-
-upd_qycli() {
-    prod
-    stk_nginx_cf_ips
-}
-
-stk_nginx_conf() {
-    [[ -f /etc/nginx/conf.d/default.conf ]] && sudo rm /etc/nginx/conf.d/default.conf
-    sudo tee /etc/nginx/nginx.conf >/dev/null <<'EOF'
-# qycli nginx config
-
-user       www-data www-data;
-worker_processes workerprocs;
-worker_rlimit_nofile 131072;
-pcre_jit on;
-pid /run/nginx.pid;
-include modules-enabled/50-mod-http-cache-purge.conf;
-
-events {
-    worker_connections workerconn;
-    use epoll;
-    # multi_accept on;
-}
-
-http {
-
-    # Basics
-    charset utf8;
-    sendfile on;
-    tcp_nopush on;
-    tcp_nodelay on;
-    #http2_chunk_size 16k;
-    #http2_idle_timeout 900s;
-    #http2_max_concurrent_pushes 50;
-    #http2_max_concurrent_streams 256;
-    #http2_max_field_size 8k;
-    #http2_max_header_size 32k;
-    #http2_max_requests 10000;
-    #http2_push_preload on;
-    #http2_recv_timeout 90s;
-    server_tokens off;
-    server_name_in_redirect off;
-    server_names_hash_bucket_size 256;
-
-    # Limits
-    reset_timedout_connection on;
-    send_timeout 15s;
-    client_body_timeout 15s;
-    client_header_timeout 15s;
-    keepalive_timeout 900s;
-    keepalive_requests 120000;
-    client_body_buffer_size 128k;
-    client_header_buffer_size 13k;
-    large_client_header_buffers 4 52k;
-    open_file_cache max=200000 inactive=30s;
-    open_file_cache_valid 60s;
-    open_file_cache_min_uses 2;
-    open_file_cache_errors on;
-    types_hash_max_size 2048;
-    client_max_body_size 512m;
-
-    # Rate Limiting
-    limit_req_status 403;
-    limit_req_zone $binary_remote_addr zone=zoneone:10m rate=1r/s;
-    limit_req_zone $binary_remote_addr zone=zonetwo:10m rate=10r/s;
-
-    # SSL config
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_buffer_size 8k;
-    ssl_session_tickets on;
-    ssl_session_timeout 7h;
-    ssl_session_cache shared:SSL:35m;
-    ssl_dhparam /etc/ssl/dhparam.pem;
-    ssl_ecdh_curve prime256v1:secp384r1:secp521r1;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:TLS_AES_256_GCM_SHA384:TLS-AES-256-GCM-SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS-CHACHA20-POLY1305-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA;
-
-    # DNS
-    resolver [2606:4700:4700::1111] [2001:4860:4860::8888] [2606:4700:4700::1001] [2001:4860:4860::8844] 1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4 valid=360s;
-    resolver_timeout 15s;
-
-    # GZip
-    gzip on;
-    gzip_disable "msie6";
-    gzip_vary on;
-    gzip_proxied any;
-    gzip_comp_level 3;
-    gzip_buffers 16 8k;
-    gzip_http_version 1.1;
-    gzip_types application/atom+xml application/geo+json application/javascript application/json application/ld+json application/manifest+json
-    application/rdf+xml application/rss+xml application/vnd.ms-fontobject application/wasm application/x-font-opentype application/x-font-truetype 
-    application/x-font-ttf application/x-javascript application/x-web-app-manifest+json application/xhtml+xml application/xml application/xml+rss
-    font/eot font/opentype font/otf image/bmp image/svg+xml image/vnd.microsoft.icon image/x-icon image/x-win-bitmap text/cache-manifest
-    text/calendar text/css text/javascript text/markdown text/plain text/vcard text/vnd.rim.location.xloc text/vtt text/x-component
-    text/x-cross-domain-policy text/xml;
-
-    # Logging
-    access_log off;
-    #access_log /var/log/nginx/access.log;
-    error_log /var/log/nginx/error.log;
-
-    # Additional Configuration
-    include mime.types;
-    include /etc/nginx/conf.d/*.conf;
-
-    # Server Blocks
-    include /etc/nginx/sites-enabled/*;
-}
-EOF
-    local workerprocs=$(grep processor /proc/cpuinfo | wc -l) # 1 worker per CPU
-    local workerconn=$((($(grep processor /proc/cpuinfo | wc -l)*10240)))
-    sudo sed -i "s+workerprocs+${workerprocs}+g" /etc/nginx/nginx.conf
-    sudo sed -i "s+workerconn+${workerconn}+g" /etc/nginx/nginx.conf
-
-    if [[ ! -f /etc/ssl/dhparam.pem ]]; then
-		sudo openssl dhparam -out /etc/ssl/dhparam.pem 2048
-		sudo chmod 600 /etc/ssl/dhparam.pem
-	fi
-
-    [[ ! -d /etc/nginx/sites-enabled ]] && sudo mkdir /etc/nginx/sites-enabled
-    [[ ! -d /etc/nginx/sites-available ]] && sudo mkdir /etc/nginx/sites-available
-
-    sudo tee /etc/nginx/wp.tld >/dev/null <<'EOF'
-server {
-
-    listen [::]:80;
-    listen 80;
-    include /var/www/dmn.tld/nginx-conf/server-names.conf; # server_name can be found there
-
-    return 301 https://$host$request_uri;
-
-}
-
-server {
-
-    listen [::]:443 ssl;
-    listen 443 ssl;
-
-    ssl_certificate /etc/ssl/qycli.crt;
-    ssl_certificate_key /etc/ssl/qycli.key;
-
-    include /var/www/dmn.tld/nginx-conf/*.conf; # server_name can be found there
-
-    root /var/www/dmn.tld/htdocs;
-    index index.php index.html index.htm;
-
-    access_log off;
-    #access_log /var/log/nginx/dmn.tld.access.log;
-    error_log /var/log/nginx/dmn.tld.error.log;
-
-    add_header Cache-Control "public, stale-while-revalidate=3s";
-    add_header Referrer-Policy "strict-origin-when-cross-origin";
-    add_header X-Cache-Status $upstream_cache_status;
-    add_header X-Frame-Options SAMEORIGIN;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
-
-    #include common/auth.conf;
-    include common/phpver.conf;
-    #include common/wpfcgiver.conf;
-    include common/wpcommonver.conf;
-}
-EOF
-    sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/wp.tld
-    sudo sed -i "s+wpfcgiver+wpfcgi${phpv}+g" /etc/nginx/wp.tld
-    sudo sed -i "s+wpcommonver+wpcommon${phpv}+g" /etc/nginx/wp.tld
-
-    [[ ! -d /etc/nginx/common ]] && sudo mkdir /etc/nginx/common
-    sudo tee /etc/nginx/common/php${phpv}.conf >/dev/null <<'EOF'
-location / {
-  try_files $uri $uri/ /index.php$is_args$args;
-}
-location ~* \.php$ {
-  try_files $uri =404;
-  include fastcgi_params;
-  fastcgi_pass phpver;
-}
-EOF
-    sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/common/php${phpv}.conf
-
-    sudo tee /etc/nginx/conf.d/upstream${phpv}.conf >/dev/null <<EOF
-upstream php${phpv} {
-    server unix:/run/php/php${phpv}-fpm.sock;
-    keepalive 256;
-    keepalive_requests 200;
-    keepalive_timeout 900s;
-}
-EOF
-
-    sudo tee /etc/nginx/common/wpfcgi${phpv}.conf >/dev/null <<'EOF'
-add_header X-fastcgi-cache $upstream_cache_status;
-
-# Use cached or actual file if they exists, Otherwise pass request to WordPress
-location / {
-  try_files $uri $uri/ /index.php$is_args$args;
-}
-
-location ~ \.php$ {
-  try_files $uri =404;
-  include fastcgi_params;
-  fastcgi_pass phpver;
-  fastcgi_cache_bypass $skip_cache;
-  fastcgi_no_cache $skip_cache;
-  fastcgi_cache FCGI;
-}
-
-location ~ /purge(/.*) {
-  fastcgi_cache_purge FCGI "$scheme$request_method$host$1";
-  access_log off;
-}
-EOF
-    sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/common/wpfcgi${phpv}.conf
-
-    sudo tee /etc/nginx/common/wpcommon${phpv}.conf >/dev/null <<'EOF'
-# Basic locations files
-location = /favicon.ico {
-    try_files /wp-content/uploads/fbrfg/favicon.ico $uri $uri/ /index.php?$args @empty_gif;
-    access_log off;
-    log_not_found off;
-    expires max;
-}
-
-location @empty_gif {
-    empty_gif;
-}
-
-# Cache static files
-location ~* \.(ogg|ogv|svg|svgz|eot|otf|woff|woff2|ttf|m4a|mp4|ttf|rss|atom|jpe?g|gif|cur|heic|png|tiff|ico|webm|mp3|aac|tgz|doc|xls|exe|ppt|tar|mid|midi|wav|bmp|rtf|swf|webp|json|webmanifest|cast)$ {
-    add_header "Access-Control-Allow-Origin" "*";
-    add_header "Cache-Control" "public, no-transform";
-    access_log off;
-    log_not_found off;
-    expires max;
-}
-
-# Cache css & js files
-location ~* \.(?:css(\.map)?|js(\.map)?)$ {
-    add_header "Access-Control-Allow-Origin" "*";
-    add_header "Cache-Control" "public, no-transform";
-    access_log off;
-    log_not_found off;
-    expires 30d;
-}
-
-# Security settings for better privacy
-# Deny hidden files
-location ~ /\.(?!well-known\/) {
-    deny all;
-}
-
-# Return 403 forbidden for readme.(txt|html) or license.(txt|html) or example.(txt|html) or other common git repository files
-location ~*  "/(^$|readme|license|example|README|LEGALNOTICE|INSTALLATION|CHANGELOG)\.(txt|html|md)" {
-    deny all;
-}
-
-# Deny backup extensions & log files and return 403 forbidden
-location ~* "\.(old|orig|original|php#|php~|php_bak|save|swo|aspx?|tpl|sh|bash|bak?|cfg|cgi|dll|exe|git|hg|ini|jsp|log|mdb|out|sql|svn|swp|tar|rdf|gz|zip|bz2|7z|pem|asc|conf|dump)$" {
-    deny all;
-}
-
-location ~* "/(=|\$&|_mm|(wp-)?config\.|cgi-|etc/passwd|muieblack)" {
-    deny all;
-}
-
-# block base64_encoded content
-location ~* "(base64_encode)(.*)(\()" {
-    deny all;
-}
-
-# block javascript eval()
-location ~* "(eval\()" {
-    deny all;
-}
-
-# Additional security settings
-
-location ~* "(127\.0\.0\.1)" {
-    deny all;
-}
-location ~* "([a-z0-9]{2000})" {
-    deny all;
-}
-location ~* "(javascript\:)(.*)(\;)" {
-    deny all;
-}
-location ~* "(GLOBALS|REQUEST)(=|\[|%)" {
-    deny all;
-}
-location ~* "(<|%3C).*script.*(>|%3)" {
-    deny all;
-}
-location ~ "(\\|\.\.\.|\.\./|~|`|<|>|\|)" {
-    deny all;
-}
-location ~* "(boot\.ini|etc/passwd|self/environ)" {
-    deny all;
-}
-location ~* "(thumbs?(_editor|open)?|tim(thumb)?)\.php" {
-    deny all;
-}
-location ~* "(\'|\")(.*)(drop|insert|md5|select|union)" {
-    deny all;
-}
-location ~* "(https?|ftp|php):/" {
-    deny all;
-}
-location ~* "(=\\\'|=\\%27|/\\\'/?)\." {
-    deny all;
-}
-location ~ "(\{0\}|\(/\(|\.\.\.|\+\+\+|\\\"\\\")" {
-    deny all;
-}
-location ~ "(~|`|<|>|:|;|%|\\|\s|\{|\}|\[|\]|\|)" {
-    deny all;
-}
-
-# Rate limited and access controlled wp-login und wp-admin
-location = /wp-login.php {
-    limit_req zone=zoneone burst=1 nodelay;
-    include fastcgi_params;
-    #include common/acl.conf;
-    fastcgi_pass phpver;
-}
-
-location /wp-admin {
-        location ~* /wp-admin/admin-ajax.php$ {
-                limit_req zone=zonetwo burst=2 nodelay;
-                try_files $uri =404;
-                include fastcgi_params;
-                fastcgi_pass phpver;
-        }
-        location ~* /wp-admin/.*\.php$ {
-                limit_req zone=zonetwo burst=10 nodelay;
-                #include common/acl.conf;
-                try_files $uri =404;
-                include fastcgi_params;
-                fastcgi_pass phpver;
-        }
-}
-
-# Prevent DoS attacks on wp-cron
-location = /wp-cron.php {
-    limit_req zone=zonetwo burst=1 nodelay;
-    include fastcgi_params;
-    fastcgi_pass phpver;
-}
-
-# Prevent DoS attacks with xmlrpc.php
-location = /xmlrpc.php {
-    limit_req zone=zonetwo burst=1 nodelay;
-    include fastcgi_params;
-    fastcgi_pass phpver;
-}
-
-# Disable wp-config.txt
-location = /wp-config.txt {
-    deny all;
-    access_log off;
-    log_not_found off;
-}
-
-location = /robots.txt {
-# Some WordPress plugin gererate robots.txt file
-# Refer #340 issue
-    try_files $uri $uri/ /index.php?$args @robots;
-    access_log off;
-    log_not_found off;
-}
-
-# fallback for robots.txt with default wordpress rules
-location @robots {
-    return 200 "User-agent: *\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php\n";
-}
-
-location /wp-content/cache {
-# Cache css & js files
-    location ~* \.(?:css(\.map)?|js(\.map)?|.html)$ {
-        add_header "Access-Control-Allow-Origin" "*";
-        access_log off;
-        log_not_found off;
-        expires 30d;
-    }
-    location ~ \.php$ {
-        #Prevent Direct Access Of PHP Files From Web Browsers
-        deny all;
-    }
-}
-
-# Deny access to any files with a .php extension in the uploads directory
-# Works in sub-directory installs and also in multisite network
-# Keep logging the requests to parse later (or to pass to firewall utilities such as fail2ban)
-location ~* /(?:uploads|files)/.*\.php$ {
-    deny all;
-}
-
-# mitigate DoS attack CVE with WordPress script concatenation
-# add the following line to wp-config.php
-# define( 'CONCATENATE_SCRIPTS', false );
-location ~ \/wp-admin\/load-(scripts|styles).php {
-    deny all;
-}
-
-# Protect Easy Digital Download files from being accessed directly.
-location ~ ^/wp-content/uploads/edd/(.*?)\.zip$ {
-    rewrite / permanent;
-}
-
-# Disallow php in upload folder
-location /wp-content/uploads/ {
-        location ~* \.php$ {
-                deny all;
-        }
-}
-EOF
-    sudo sed -i "s+phpver+php${phpv}+g" /etc/nginx/common/wpcommon${phpv}.conf
-
-    sudo tee /etc/nginx/conf.d/fcgi.conf >/dev/null <<'EOF'
-fastcgi_cache_path /run/nginx-cache levels=1:2 keys_zone=FCGI:64m inactive=8d use_temp_path=off;
-fastcgi_cache_key "$scheme$request_method$host$request_uri";
-fastcgi_cache_use_stale error timeout invalid_header updating http_500 http_503;
-fastcgi_cache_lock on;
-fastcgi_cache_lock_age 2s;
-fastcgi_cache_lock_timeout 3s;
-fastcgi_cache_background_update on;
-fastcgi_cache_valid 200 8d;
-fastcgi_cache_valid 301 302 30m;
-fastcgi_cache_valid 499 502 503 1m;
-fastcgi_cache_valid 404 1h;
-fastcgi_cache_valid any 1h;
-fastcgi_param SERVER_NAME $http_host;
-fastcgi_ignore_headers Cache-Control Expires Set-Cookie;
-fastcgi_keep_conn on;
-fastcgi_socket_keepalive on;
-EOF
-
-    sudo tee /etc/nginx/conf.d/map.conf >/dev/null <<'EOF'
-# do not cache xhtml request
-map $http_x_requested_with $http_request_no_cache {
-    default 0;
-    XMLHttpRequest 1;
-}
-
-# do not cache requests on cookies
-map $http_cookie $cookie_no_cache {
-    default 0;
-    "~*wordpress_[a-f0-9]+" 1;
-    "~*wp-postpass" 1;
-    "~*wordpress_logged_in" 1;
-    "~*wordpress_no_cache" 1;
-    "~*comment_author" 1;
-    "~*woocommerce_items_in_cart" 1;
-    "~*edd_items_in_cart" 1;
-    "~*woocommerce_cart_hash" 1;
-    "~*wptouch_switch_toogle" 1;
-    "~*comment_author_email_" 1;
-    "~*wptouch_switch_toggle" 1;
-    "~*edd" 1;
-}
-
-# do not cache the following uri
-map $request_uri $uri_no_cache {
-    default 0;
-    "~*/wp-admin/" 1;
-    "~*/wp-[a-zA-Z0-9-]+.php" 1;
-    "~*/feed/" 1;
-    "~*/index.php" 1;
-    "~*/[a-z0-9_-]+-sitemap([0-9]+)?.xml" 1;
-    "~*/sitemap(_index)?.xml" 1;
-    "~*/wp-comments-popup.php" 1;
-    "~*/wp-links-opml.php" 1;
-    "~*/xmlrpc.php" 1;
-    "~*/edd-sl/*" 1;
-    "~*/add_to_cart/" 1;
-    "~*/cart/" 1;
-    "~*/account/" 1;
-    "~*/my-account/" 1;
-    "~*/checkout/" 1;
-    "~*/addons/" 1;
-    "~*/wc-api/*" 1;
-    "~*/logout/" 1;
-    "~*/lost-password/" 1;
-    "~*/panier/" 1;
-    "~*/mon-compte/" 1;
-    "~*/embed" 1;
-    "~*/commande/" 1;
-    "~*/resetpass/" 1;
-}
-
-# mobile_prefix needed for WP-Rocket
-map $http_user_agent $mobile_prefix {
-    default "";
-    "~*iphone" -mobile;
-    "~*android" -mobile;
-}
-
-# do not cache requests with query strings
-map $is_args $is_args_no_cache {
-    default 1;
-    "" 0;
-}
-
-# cache requests with query string related to analytics
-map $args $args_to_cache {
-    default 0;
-    "~*utm_" 1;
-    "~*fbclid" 1;
-}
-
-# do not cache requests with query strings excepted analytics related queries
-map $is_args_no_cache$args_to_cache $query_no_cache {
-    defaut 1;
-    00 0;
-    11 0;
-}
-
-# if all previous check are passed, $skip_cache = 0
-map $http_request_no_cache$cookie_no_cache$uri_no_cache$query_no_cache $skip_cache {
-    default 1;
-    0000 0;
-}
-
-# map $skip_cache with $cache_uri for --wpsc --wpce & --wprocket stack
-map $skip_cache $cache_uri {
-    0 $request_uri;
-    default 'null cache';
-}
-
-# http_prefix needed for WP-Rocket
-map $https $https_prefix {
-    default "";
-    on "-https";
-}
-
-# needed to proxy web-socket connections
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    ''      close;
-}
-EOF
-
-    sudo tee -a /etc/nginx/fastcgi_params >/dev/null <<'EOF'
-fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-EOF
 }
 
 cert() {
-    sudo openssl req -new -x509 -nodes -days 7300 -newkey rsa:2048 -keyout /etc/ssl/qycli.key -out /etc/ssl/qycli.crt \
+    openssl req -new -x509 -nodes -days 7300 -newkey rsa:2048 -keyout /etc/ssl/qycli.key -out /etc/ssl/qycli.crt \
     -subj "/ST=qycli/L=qycli/O=qycli/OU=qycli/CN=qycli"
-    sudo chown www-data:www-data -R /etc/ssl/*
+    chown qycli-nginx:qycli-nginx -R /etc/ssl/*
 }
 
-stk_nginx() {
-    sudo apt -y install nginx-extras
-    stk_nginx_conf
-    stk_nginx_cf_ips
+stk_nginx_install() {
+    # Copying over default nginx conf and html files
+    if [[ ! -d /etc/nginx ]] && [[ ! -d /usr/lib/nginx/modules ]]; then
+        mkdir /etc/nginx
+        mkdir -p /usr/lib/nginx/modules
+        upd_nginx_overwrite_from_snap
+    else
+        printf "\nNGINX is already installed, start on a fresh system please.\n"
+        exit
+    fi
+
+    if [[ ! -d /usr/local/nginx/html ]]; then
+        mkdir -p /usr/local/nginx/html
+        cp /snap/qycli-nginx/current/usr/local/nginx/html/* /usr/local/nginx/html/
+    fi
+
+    if [[ ! -d /var/log/nginx ]]; then
+        mkdir /var/log/nginx
+        touch /var/log/nginx/error.log
+    fi
+
+    if [[ ! -d /var/lib/nginx ]]; then
+        mkdir /var/lib/nginx
+    fi
+
+    [[ ! -d /etc/nginx/sites-enabled ]] && mkdir /etc/nginx/sites-enabled
+    [[ ! -d /etc/nginx/sites-available ]] && mkdir /etc/nginx/sites-available
+    [[ ! -d /etc/nginx/common ]] && mkdir /etc/nginx/common
+
+    cp /snap/qycli-nginx/current/usr/local/nginx/sbin/nginx /usr/sbin/nginx
+
+    upd_nginx_conf
 
     if [[ ! -f /etc/ssl/qycli.key ]]; then
         cert
     fi
 
-    sudo chown www-data:www-data -R /var/www
-	sudo chown root:root /var/www
-    sudo nginx -t && sudo systemctl restart nginx
+    chown qycli-nginx:qycli-nginx -R /var/www
+	chown root:root /var/www
+    nginx -t && systemctl restart ngin
 }
 
-stk_mariadb_conf() {
-    local innodbbps=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*80)) # 80% of all memory in MB
-    local innodblfs=$(((${innodbbps}/100*25)))
-    local dbmaxconn=$((($(grep processor /proc/cpuinfo | wc -l)*512))) # 512 times CPU cores
-    local tmpsizes=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/1000000)*64)) # Per GB RAM 64MB
-    local querycachesize=$((($(grep processor /proc/cpuinfo | wc -l)*64))) # 64 times CPU cores
-    sudo tee /etc/mysql/mariadb.conf.d/99-qyc.cnf >/dev/null <<EOF
-[mysqld]
-skip-networking
-skip-name-resolve
-innodb_file_per_table=1
-innodb_buffer_pool_size = ${innodbbps}M
-innodb_log_file_size = ${innodblfs}M
-max_connections = ${dbmaxconn}
-tmp_table_size = ${tmpsizes}M
-max_heap_table_size = ${tmpsizes}M
-wait_timeout = 900
-max_allowed_packet = 512M
-query_cache_type = 1
-query_cache_limit = 1M
-query_cache_size = ${querycachesize}M
-read_rnd_buffer_size=192K  # from 256K to reduce handler_read_rnd_next RPS of 1,683,707
-read_buffer_size=256K  # from 128K to reduce handler_read_next RPS of 21,522
-thread_cache_size=100  # from 13 to reduce threads_created of 2,763 in 15 days
-innodb_io_capacity=1800  # from 200 to allow higher IOPS on your SSD storage devices
-key_cache_age_threshold=7200   # from 300 seconds to reduce key_reads RPS of 16+
-key_buffer_size=64M  # from 8M to reduce key_reads RPS of 16+
-EOF
+stk_mariadb_install() {
+    apt -y install mariadb-server
+    upd_mariadb_conf
+    systemctl restart mysql
 }
 
-stk_mariadb() {
-    sudo apt -y install mariadb-server
-    stk_mariadb_conf
-    sudo systemctl restart mysql
-}
-
-stk_php_conf() {
-    local opmem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*15)) # 15% of all memory in MB
-    sudo tee /etc/php/${phpv}/fpm/php.ini >/dev/null <<EOF
-[PHP]
-engine = On
-short_open_tag = Off
-precision = 14
-output_buffering = 4096
-zlib.output_compression = Off
-implicit_flush = Off
-serialize_precision = -1
-disable_functions = pcntl_alarm,pcntl_fork,pcntl_waitpid,pcntl_wait,pcntl_wifexited,pcntl_wifstopped,pcntl_wifsignaled,pcntl_wifcontinued,pcntl_wexitstatus,pcntl_wtermsig,pcntl_wstopsig,pcntl_signal,pcntl_signal_get_handler,pcntl_signal_dispatch,pcntl_get_last_error,pcntl_strerror,pcntl_sigprocmask,pcntl_sigwaitinfo,pcntl_sigtimedwait,pcntl_exec,pcntl_getpriority,pcntl_setpriority,pcntl_async_signals
-zend.enable_gc = On
-expose_php = Off
-max_execution_time = 300
-max_input_time = 300
-memory_limit = 128M
-error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT
-display_errors = Off
-display_startup_errors = Off
-log_errors = On
-log_errors_max_len = 1024
-ignore_repeated_errors = Off
-ignore_repeated_source = Off
-report_memleaks = On
-html_errors = On
-variables_order = "GPCS"
-request_order = "GP"
-register_argc_argv = Off
-auto_globals_jit = On
-post_max_size = 128M
-default_mimetype = "text/html"
-default_charset = "UTF-8"
-enable_dl = Off
-file_uploads = On
-upload_max_filesize = 128M
-max_file_uploads = 20
-allow_url_fopen = On
-allow_url_include = Off
-default_socket_timeout = 60
-max_input_vars = 20000
-
-[CLI Server]
-cli_server.color = On
-
-[Date]
-date.timezone = UTC
-
-[filter]
-
-[iconv]
-
-[imap]
-
-[intl]
-
-[sqlite3]
-
-[Pcre]
-
-[Pdo]
-
-[Pdo_mysql]
-pdo_mysql.default_socket = 
-
-[Phar]
-
-[mail function]
-smtp = localhost
-smtp_port = 25
-mail.add_x_header = Off
-
-[ODBC]
-odbc.allow_persistent = On
-odbc.check_persistent = On
-odbc.max_persistent = -1
-odbc.max_links = -1
-odbc.defaultlrl = 4096
-odbc.defaultbinmode = 1
-
-[Interbase]
-ibase.allow_persistent = 1
-ibase.max_persistent = -1
-ibase.max_links = -1
-ibase.timestampformat = "%Y-%m-%d %H:%M:%S"
-ibase.dateformat = "%Y-%m-%d"
-ibase.timeformat = "%H:%M:%S"
-
-[MySQLi]
-mysqli.max_persistent = -1
-mysqli.allow_persistent = On
-mysqli.max_links = -1
-mysqli.reconnect = Off
-
-[mysqlnd]
-mysqlnd.collect_statistics = On
-mysqlnd.collect_memory_statistics = Off
-
-[OCI8]
-
-[PostgreSQL]
-pgsql.allow_persistent = On
-pgsql.auto_reset_persistent = Off
-pgsql.max_persistent = -1
-pgsql.max_links = -1
-pgsql.ignore_notice = 0
-pgsql.log_notice = 0
-
-[bcmath]
-bcmath.scale = 0
-
-[browscap]
-
-[Session]
-session.save_handler = files
-session.use_strict_mode = 0
-session.use_cookies = 1
-session.use_only_cookies = 1
-session.name = PHPSESSID
-session.auto_start = 0
-session.cookie_lifetime = 0
-session.cookie_path = /
-session.cookie_domain = 
-session.cookie_httponly = 
-session.cookie_samesite = 
-session.serialize_handler = php
-session.gc_probability = 0
-session.gc_divisor = 1000
-session.gc_maxlifetime = 1440
-session.referer_check = 
-session.cache_limiter = nocache
-session.cache_expire = 180
-session.use_trans_sid = 0
-session.sid_length = 26
-session.trans_sid_tags = "a=href,area=href,frame=src,form="
-session.sid_bits_per_character = 5
-
-[Assertion]
-zend.assertions = -1
-
-[COM]
-
-[mbstring]
-
-[gd]
-
-[exif]
-
-[Tidy]
-tidy.clean_output = Off
-
-[soap]
-soap.wsdl_cache_enabled = 1
-soap.wsdl_cache_dir = "/tmp"
-soap.wsdl_cache_ttl = 86400
-soap.wsdl_cache_limit = 5
-
-[sysvshm]
-
-[ldap]
-ldap.max_links = -1
-
-[dba]
-
-[opcache]
-opcache.enable = 1
-opcache.interned_strings_buffer = 8
-opcache.max_accelerated_files = 130986
-opcache.max_wasted_percentage = 15
-opcache.memory_consumption = ${opmem}
-opcache.save_comments = 1
-opcache.consistency_checks = 0
-opcache.validate_timestamps = 0
-opcache.revalidate_freq = 0
-
-[curl]
-
-[openssl]
-EOF
-
-    local maxchil=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*70/80)) # pm.max_children = 70% Total Memory / 80MB
-    sudo tee /etc/php/${phpv}/fpm/pool.d/www.conf >/dev/null <<EOF
-[www-php${phpv}]
-user = www-data
-group = www-data
-listen = php${phpv}-fpm.sock
-listen.owner = www-data
-listen.group = www-data
-pm = static
-pm.max_children = ${maxchil}
-ping.path = /ping
-pm.status_path = /status
-pm.max_requests = 2048
-request_terminate_timeout = 900
-chdir = /
-prefix = /run/php
-listen.mode = 0660
-listen.backlog = 32768
-catch_workers_output = yes
-EOF
-    sudo chown www-data:www-data /run/php/php${phpv}-fpm.sock
-}
-
-stk_php() {
-    sudo apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${phpv}-fpm php${phpv}-gd php${phpv}-imagick \
+stk_php_install() {
+    apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${phpv}-fpm php${phpv}-gd php${phpv}-imagick \
     php${phpv}-mbstring php${phpv}-mysql php${ver}-redis php${phpv}-soap php${phpv}-xml php${phpv}-zip
-    stk_php_conf
-    sudo systemctl restart php${phpv}-fpm
+    upd_php_conf
+    systemctl restart php${phpv}-fpm
 }
 
 stk_redis_conf() {
-    sudo sed -i 's+port 6379+port 0+g' /etc/redis/redis.conf
-    sudo sed -i 's+tcp-backlog 511+# tcp-backlog 511+g' /etc/redis/redis.conf
-    sudo sed -i 's+# unixsocket /var/run/redis/redis-server.sock+unixsocket /run/redis/redis-server.sock+g' /etc/redis/redis.conf
-    sudo sed -i 's+# unixsocketperm 700+unixsocketperm 775+g' /etc/redis/redis.conf
-    sudo sed -i 's+*appendfsync everysec+# appendfsync everysec+g' /etc/redis/redis.conf
-    sudo sed -i 's+# appendfsync no+appendfsync no+g' /etc/redis/redis.conf
-    sudo sed -i 's+no-appendfsync-on-rewrite no+no-appendfsync-on-rewrite yes+g' /etc/redis/redis.conf
+    sed -i 's+port 6379+port 0+g' /etc/redis/redis.conf
+    sed -i 's+tcp-backlog 511+# tcp-backlog 511+g' /etc/redis/redis.conf
+    sed -i 's+# unixsocket /var/run/redis/redis-server.sock+unixsocket /run/redis/redis-server.sock+g' /etc/redis/redis.conf
+    sed -i 's+# unixsocketperm 700+unixsocketperm 775+g' /etc/redis/redis.conf
+    sed -i 's+*appendfsync everysec+# appendfsync everysec+g' /etc/redis/redis.conf
+    sed -i 's+# appendfsync no+appendfsync no+g' /etc/redis/redis.conf
+    sed -i 's+no-appendfsync-on-rewrite no+no-appendfsync-on-rewrite yes+g' /etc/redis/redis.conf
     local redismem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*20)) # 20% of all memory in MB
-    sudo sed -i "s+# maxmemory <bytes>+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
-    sudo sed -i 's+# maxmemory-policy noeviction+maxmemory-policy allkeys-lfu+g' /etc/redis/redis.conf
-    sudo sed -i 's+save 900 1+save 1800 1+g' /etc/redis/redis.conf
-    sudo sed -i 's+save 300 10+save 600 10+g' /etc/redis/redis.conf
+    sed -i "s+# maxmemory <bytes>+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
+    sed -i 's+# maxmemory-policy noeviction+maxmemory-policy allkeys-lfu+g' /etc/redis/redis.conf
+    sed -i 's+save 900 1+save 1800 1+g' /etc/redis/redis.conf
+    sed -i 's+save 300 10+save 600 10+g' /etc/redis/redis.conf
 }
 
 stk_redis() {
-    sudo apt -y install redis
-    sudo usermod -g www-data redis
+    apt -y install redis
+    usermod -g www-data redis
     stk_redis_conf
-    sudo systemctl restart redis-server
+    systemctl restart redis-server
 }
 
 stk_wpcli() {
-    sudo wget -qO /usr/local/bin/wp-cli https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
-    sudo chmod +x /usr/local/bin/wp-cli
-    sudo tee /usr/local/bin/wp >/dev/null <<'EOF'
-sudo runuser -u www-data -- wp-cli $@
+    wget -qO /usr/local/bin/wp-cli https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    chmod +x /usr/local/bin/wp-cli
+    tee /usr/local/bin/wp >/dev/null <<'EOF'
+runuser -u www-data -- wp-cli $@
 EOF
-    sudo chmod +x /usr/local/bin/wp
+    chmod +x /usr/local/bin/wp
 }
 
 stk_www_folder() {
-    sudo mkdir -p /var/www
-    sudo chown www-data:www-data /var/www
+    mkdir -p /var/www
+    chown qycli-nginx:qycli-nginx /var/www
 }
 
 stk_wp() {

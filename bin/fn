@@ -3,10 +3,10 @@
 # function library for qyc
 
 mk_db() {
-    dbpassword=$(sudo openssl rand -base64 12)
+    dbpassword=$(openssl rand -base64 12)
     #local qycpw=$(grep "MariaDB qyc" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
     dbnaming="qyc_$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")"
-	sudo runuser -u mysql -- mysql --user=mysql <<EOF
+	runuser -u mysql -- mysql --user=mysql <<EOF
 CREATE USER ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
 CREATE DATABASE ${dbnaming};
 GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
@@ -15,19 +15,19 @@ EOF
 }
 
 mk_site() {
-    sudo mkdir -p /var/www/$domain/htdocs
-    sudo mkdir -p /var/www/$domain/nginx-conf
-    sudo cp /etc/nginx/$template /etc/nginx/sites-available/$domain
-    sudo sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/$domain
-    sudo tee /var/www/$domain/nginx-conf/server-names.conf >/dev/null <<EOF
+    mkdir -p /var/www/$domain/htdocs
+    mkdir -p /var/www/$domain/nginx-conf
+    cp /etc/nginx/$template /etc/nginx/sites-available/$domain
+    sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/$domain
+    tee /var/www/$domain/nginx-conf/server-names.conf >/dev/null <<EOF
 server_name
 $domain
 www.$domain
 ;
 EOF
-    sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
-    sudo chown www-data:www-data -R /var/www/$domain/*
-    sudo nginx -s reload
+    ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
+    chown www-data:www-data -R /var/www/$domain/*
+    nginx -s reload
 }
 
 mk_wp() {
@@ -76,29 +76,29 @@ mk_wp() {
     mk_site
 
     echo "Installing WordPress..."
-    sudo systemctl reload php${phpv}-fpm
-    sudo wget -qrO /var/www/$domain/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
-    sudo tar -xf /var/www/$domain/htdocs/latest.tar.gz -C /var/www/$domain/
-	sudo mv /var/www/$domain/wordpress/* /var/www/$domain/htdocs/
-	sudo rm -rf /var/www/$domain/wordpress
-	sudo rm /var/www/$domain/htdocs/latest.tar.gz
+    systemctl reload php${phpv}-fpm
+    wget -qrO /var/www/$domain/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
+    tar -xf /var/www/$domain/htdocs/latest.tar.gz -C /var/www/$domain/
+	mv /var/www/$domain/wordpress/* /var/www/$domain/htdocs/
+	rm -rf /var/www/$domain/wordpress
+	rm /var/www/$domain/htdocs/latest.tar.gz
 
-    sudo cp /var/www/$domain/htdocs/wp-config-sample.php /var/www/$domain/wp-config.php
-    sudo chown www-data:www-data -R /var/www/$domain/*
+    cp /var/www/$domain/htdocs/wp-config-sample.php /var/www/$domain/wp-config.php
+    chown www-data:www-data -R /var/www/$domain/*
     wp --path=/var/www/$domain/htdocs config set DB_NAME ${dbnaming}
     wp --path=/var/www/$domain/htdocs config set DB_USER ${dbnaming}
     wp --path=/var/www/$domain/htdocs config set DB_PASSWORD ${dbpassword}
     wp --path=/var/www/$domain/htdocs config set DB_HOST :/run/mysqld/mysqld.sock
     wp --path=/var/www/$domain/htdocs config shuffle-salts
-    sudo sed -i "s+$table_prefix = 'wp_';+$table_prefix = 'qyc_';+" /var/www/$domain/wp-config.php
+    sed -i "s+$table_prefix = 'wp_';+$table_prefix = 'qyc_';+" /var/www/$domain/wp-config.php
 
     [[ "$wptitle" == "" ]] && wptitle=$domain
     [[ "$wpadmin" == "" ]] && wpadmin=qycli
     if [[ "$wppw" == "" ]]; then
-        wppw=$(sudo openssl rand -base64 18)
+        wppw=$(openssl rand -base64 18)
     elif [[ ! $(echo "$wppw" | pwscore) ]]; then
         echo "Strong password is being generated."
-        wppw=$(sudo openssl rand -base64 18)
+        wppw=$(openssl rand -base64 18)
     fi
     [[ "$wpemail" == "" ]] && wpemail=info@$domain
     wp --path=/var/www/$domain/htdocs core install --url=https://$domain --title=$wptitle --admin_user=$wpadmin --admin_password=$wppw --admin_email=$wpemail
@@ -121,17 +121,17 @@ mk_wp() {
 }
 
 del_site() {
-    sudo rm /etc/nginx/sites-enabled/$domain
-    sudo rm /etc/nginx/sites-available/$domain
-    sudo rm -r /var/www/$domain/*
-    sudo rmdir /var/www/$domain
+    rm /etc/nginx/sites-enabled/$domain
+    rm /etc/nginx/sites-available/$domain
+    rm -r /var/www/$domain/*
+    rmdir /var/www/$domain
     printf "Files deleted.\n"
     local dbnaming="qyc_$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")"
-    sudo mysql <<EOF
+    mysql <<EOF
 DROP USER ${dbnaming}@localhost;    
 DROP DATABASE ${dbnaming};
 EOF
-    sudo systemctl reload php${phpv}-fpm
+    systemctl reload php${phpv}-fpm
     printf "Database deleted.\n"
     printf "$domain deleted.\n"
 }
@@ -176,15 +176,15 @@ set_cache_object() {
         if [[ -f /var/www/$domain/htdocs/wp-content/object-cache.php ]]; then
             echo "Object cache is already enabled."
         else
-            sudo usermod -aG redis www-data
+            usermod -aG redis www-data
             wp --path=/var/www/$domain/htdocs plugin install --activate wp-redis
             wp --path=/var/www/$domain/htdocs config set WP_CACHE_KEY_SALT "qyc_$domain"
             if [[ ! $(grep "redis_server" /var/www/$domain/wp-config.php) ]]; then
-                sudo sed -i "/That's all, stop editing/i\$redis_server = array( 'host' => '/run/redis/redis-server.sock','port' => null,'database' => 0, );" /var/www/$domain/wp-config.php
+                sed -i "/That's all, stop editing/i\$redis_server = array( 'host' => '/run/redis/redis-server.sock','port' => null,'database' => 0, );" /var/www/$domain/wp-config.php
             fi
-            sudo ln -s plugins/wp-redis/object-cache.php /var/www/$domain/htdocs/wp-content/object-cache.php
+            ln -s plugins/wp-redis/object-cache.php /var/www/$domain/htdocs/wp-content/object-cache.php
             wp --path=/var/www/$domain/htdocs transient delete-all
-            sudo systemctl reload php${phpv}-fpm
+            systemctl reload php${phpv}-fpm
             printf "\nObject cache enabled.\n\n"
         fi
     elif [[ "$1" == "off" ]]; then
@@ -192,9 +192,9 @@ set_cache_object() {
             echo "Object cache is already disabled."
         else
             wp --path=/var/www/$domain/htdocs plugin deactivate wp-redis
-            sudo rm /var/www/$domain/htdocs/wp-content/object-cache.php
+            rm /var/www/$domain/htdocs/wp-content/object-cache.php
             wp --path=/var/www/$domain/htdocs transient delete-all
-            sudo systemctl reload php${phpv}-fpm
+            systemctl reload php${phpv}-fpm
             printf "\nObject cache disabled.\n\n"
         fi
     else
@@ -207,22 +207,22 @@ set_cache_fcgi() {
         if grep "#include common/php${phpv}.conf" /etc/nginx/sites-available/$domain >/dev/null; then
             printf "\nFastCGI cache is already enabled.\n"
         else
-            sudo sed -i "s+    include common/php${phpv}.conf;+    #include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
-            sudo sed -i "s+#include common/wpfcgi${phpv}.conf;+include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
+            sed -i "s+    include common/php${phpv}.conf;+    #include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
+            sed -i "s+#include common/wpfcgi${phpv}.conf;+include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
             wp --path=/var/www/$domain/htdocs plugin install --activate nginx-helper
             wp --path=/var/www/$domain/htdocs option add rt_wp_nginx_helper_options --format=json '{"enable_purge":"1","cache_method":"enable_fastcgi","purge_method":"get_request","enable_map":null,"enable_log":null,"log_level":"INFO","log_filesize":"5","enable_stamp":null,"purge_homepage_on_edit":"1","purge_homepage_on_del":"1","purge_archive_on_edit":"1","purge_archive_on_del":"1","purge_archive_on_new_comment":null,"purge_archive_on_deleted_comment":null,"purge_page_on_mod":"1","purge_page_on_new_comment":"1","purge_page_on_deleted_comment":"1","redis_hostname":"127.0.0.1","redis_port":"6379","redis_prefix":"nginx-cache:","purge_url":"","redis_enabled_by_constant":0,"smart_http_expire_form_nonce":"19aab78f2b"}'
-            sudo nginx -s reload
+            nginx -s reload
             printf "\nFastCGI cache enabled.\n\n"
         fi
     elif [[ "$1" == "off" ]]; then
         if grep "#include common/wpfcgi${phpv}.conf" /etc/nginx/sites-available/$domain >/dev/null; then
             printf "\nFastCGI cache is already disabled.\n"
         else
-            sudo sed -i "s+#include common/php${phpv}.conf;+include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
-            sudo sed -i "s+    include common/wpfcgi${phpv}.conf;+    #include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
+            sed -i "s+#include common/php${phpv}.conf;+include common/php${phpv}.conf;+" /etc/nginx/sites-available/$domain
+            sed -i "s+    include common/wpfcgi${phpv}.conf;+    #include common/wpfcgi${phpv}.conf;+" /etc/nginx/sites-available/$domain
             wp --path=/var/www/$domain/htdocs plugin deactivate nginx-helper
             wp --path=/var/www/$domain/htdocs option delete rt_wp_nginx_helper_options
-            sudo nginx -s reload
+            nginx -s reload
             printf "\nFastCGI cache disabled.\n\n"
         fi
     else
@@ -267,8 +267,8 @@ set_alias() {
         if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf >/dev/null; then
             printf "\nAlias domain name already exists.\n\n"
         else
-            sudo sed -i "/;/i$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf
-            sudo nginx -s reload
+            sed -i "/;/i$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf
+            nginx -s reload
             printf "\nAlias domain name $aliasdomain successfully added to site $domain.\n\n"            
         fi
     elif [[ "$1" == "del" || "$1" == "delete" ]]; then
@@ -284,8 +284,8 @@ set_alias() {
         fi
 
         if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf >/dev/null; then
-            sudo sed -i "/$aliasdomain/d" /var/www/$domain/nginx-conf/server-names.conf
-            sudo nginx -s reload
+            sed -i "/$aliasdomain/d" /var/www/$domain/nginx-conf/server-names.conf
+            nginx -s reload
             printf "\nAlias domain name $aliasdomain successfully deleted from site $domain.\n\n"            
         else
             printf "\nAlias domain name does not exists.\n\n"
@@ -318,7 +318,7 @@ ls() {
 }
 
 dev_upd() {
-    wget -qO- qyc.li/inst | sudo bash -s dev
+    wget -qO- qyc.li/inst | bash -s dev
 }
 
 qyc_set() {
@@ -361,15 +361,15 @@ clone_site() {
     echo "Making new site..."
     mk_site
     echo "Copying files..."
-    sudo rsync -ar --exclude 'nginx-conf' /var/www/$clonefrom/ /var/www/$cloneto/
+    rsync -ar --exclude 'nginx-conf' /var/www/$clonefrom/ /var/www/$cloneto/
 
     echo "Copying the database..."
     local dbfrom="qyc_$(echo ${clonefrom} | sed "s+[^0-9A-Za-z]+_+g")"
-    sudo mysqldump $dbfrom | sudo tee /var/www/$clonefrom/db.sql >/dev/null
-    sudo cp /var/www/$clonefrom/db.sql /var/www/$cloneto/db.sql
-    sudo sed -i "s+${clonefrom}+${cloneto}+g" /var/www/$cloneto/db.sql
+    mysqldump $dbfrom | tee /var/www/$clonefrom/db.sql >/dev/null
+    cp /var/www/$clonefrom/db.sql /var/www/$cloneto/db.sql
+    sed -i "s+${clonefrom}+${cloneto}+g" /var/www/$cloneto/db.sql
     mk_db
-    sudo mysql $dbnaming < /var/www/$cloneto/db.sql
+    mysql $dbnaming < /var/www/$cloneto/db.sql
     echo "Updating the WP config..."
     wp --path=/var/www/$cloneto/htdocs config set DB_NAME ${dbnaming}
     wp --path=/var/www/$cloneto/htdocs config set DB_USER ${dbnaming}

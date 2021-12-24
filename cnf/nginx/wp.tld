@@ -1,0 +1,39 @@
+server {
+
+    listen [::]:80;
+    listen 80;
+    include /var/www/dmn.tld/nginx-conf/server-names.conf; # server_name can be found there
+
+    return 301 https://$host$request_uri;
+
+}
+
+server {
+
+    listen [::]:443 ssl;
+    listen 443 ssl;
+
+    ssl_certificate /etc/ssl/qycli.crt;
+    ssl_certificate_key /etc/ssl/qycli.key;
+
+    include /var/www/dmn.tld/nginx-conf/*.conf; # server_name can be found there
+
+    root /var/www/dmn.tld/htdocs;
+    index index.php index.html index.htm;
+
+    access_log off;
+    #access_log /var/log/nginx/dmn.tld.access.log;
+    error_log /var/log/nginx/dmn.tld.error.log;
+
+    add_header Cache-Control "public, stale-while-revalidate=3s";
+    add_header Referrer-Policy "strict-origin-when-cross-origin";
+    add_header X-Cache-Status $upstream_cache_status;
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+
+    #include common/auth.conf;
+    include common/phpver.conf;
+    #include common/wpfcgiver.conf;
+    include common/wpcommonver.conf;
+}

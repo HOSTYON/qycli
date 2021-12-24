@@ -1,0 +1,20 @@
+[mysqld]
+skip-networking
+skip-name-resolve
+innodb_file_per_table=1
+innodb_buffer_pool_size = ${innodbbps}M
+innodb_log_file_size = ${innodblfs}M
+max_connections = ${dbmaxconn}
+tmp_table_size = ${tmpsizes}M
+max_heap_table_size = ${tmpsizes}M
+wait_timeout = 900
+max_allowed_packet = 512M
+query_cache_type = 1
+query_cache_limit = 1M
+query_cache_size = ${querycachesize}M
+read_rnd_buffer_size=192K  # from 256K to reduce handler_read_rnd_next RPS of 1,683,707
+read_buffer_size=256K  # from 128K to reduce handler_read_next RPS of 21,522
+thread_cache_size=100  # from 13 to reduce threads_created of 2,763 in 15 days
+innodb_io_capacity=1800  # from 200 to allow higher IOPS on your SSD storage devices
+key_cache_age_threshold=7200   # from 300 seconds to reduce key_reads RPS of 16+
+key_buffer_size=64M  # from 8M to reduce key_reads RPS of 16+

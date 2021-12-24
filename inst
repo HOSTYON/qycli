@@ -1,52 +1,32 @@
 #!/bin/bash
 
-## Write qycli.cnf
-cnf() {
-    if [[ -f /etc/qycli/qycli.cnf ]]; then
-        return
-    else 
-        sudo mkdir /etc/qycli
-        sudo touch /etc/qycli/qycli.cnf
-        sudo tee /etc/qycli/qycli.cnf >/dev/null <<EOF 
-# qycli configuration storage file
-qycli Version: 0.1
-PHP Version: ${phpv}
-EOF
-    fi
-}
-
-## Install qycli and stack with "wget -qO- qyc.li/inst | sudo bash"
+## Install qycli and stack with "wget -qO- qyc.li/inst | bash"
 prod() {
-    sudo wget -qO /usr/bin/qyc qyc.li/bin/qyc && sudo chmod 755 /usr/bin/qyc
-    sudo wget -qO /opt/qycli/inst qyc.li/inst
-    sudo wget -qO /opt/qycli/bin/stk qyc.li/bin/stk
-    sudo wget -qO /opt/qycli/bin/help qyc.li/bin/help
-    sudo wget -qO /opt/qycli/bin/fn qyc.li/bin/fn
+    wget -qO /usr/bin/qyc qyc.li/bin/qyc && chmod 755 /usr/bin/qyc
+    wget -qO /opt/qycli/inst qyc.li/inst
+    wget -qO /opt/qycli/bin/stk qyc.li/bin/stk
+    wget -qO /opt/qycli/bin/help qyc.li/bin/help
+    wget -qO /opt/qycli/bin/fn qyc.li/bin/fn
     source /opt/qycli/stk
     source /opt/qycli/help
     printf "\nqycli (production) was installed.\n\nInstalling the stack now.\n\n"
     stk_wp
 }
 
-## Install qycli dev version with "wget -qO- qyc.li/inst | sudo bash -s dev"
+## Install qycli dev version with "wget -qO- qyc.li/inst | bash -s dev"
 dev() {
     if ! command -v svn &> /dev/null; then
-        sudo apt update && sudo apt -y install subversion
+        apt update && apt -y install subversion
     fi
-    sudo svn export --force https://github.com/HOSTYON/qycli/trunk /opt/qycli/
-    sudo mv /opt/qycli/bin/qyc /usr/bin/qyc && sudo chmod 755 /usr/bin/qyc
+    svn export --force https://github.com/HOSTYON/qycli/trunk /opt/qycli/
+    mv /opt/qycli/bin/qyc /usr/bin/qyc && chmod 755 /usr/bin/qyc
     printf "\nqycli (dev) was installed/updated.\n\n"
 }
 
-## Have to disable Password prompts for the duration of the installation if not already so:
-# https://askubuntu.com/questions/896535/change-between-user-and-root-without-password
-
-
-
-if [[ "$1" == "wp" || "$1" == "" ]]; then
-    wget -qO- qyc.li/host | sudo bash
-    cnf && prod  
+if [[ "$1" == "prod" || "$1" == "" ]]; then
+    wget -qO- qyc.li/host | bash
+    prod  
 elif [[ "$1" == "dev" ]]; then
-    wget -qO- qyc.li/host | sudo bash
-    cnf && dev
+    wget -qO- qyc.li/host | bash
+    dev
 fi

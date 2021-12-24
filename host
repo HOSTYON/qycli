@@ -1,9 +1,9 @@
 #!/bin/bash
 
-## Kernel tweaks for qycli with "wget -qO- qyc.li/host | sudo bash"
+## Kernel tweaks for qycli with "wget -qO- qyc.li/host | bash"
 
 # Sysctl tweaks for security and performance
-sudo tee /etc/sysctl.conf >/dev/null <<'EOF'
+tee /etc/sysctl.conf >/dev/null <<'EOF'
 # Based on Michiel Klaver's https://klaver.it/linux/sysctl.conf (v1.14)
 
 
@@ -260,15 +260,15 @@ EOF
 
 # Security Limit Tweaks - ulimit -a
 if [[ ! $(grep "qycli" /etc/security/limits.conf) ]]; then
-    sudo sed -i "/End of file/i \# qycli" /etc/security/limits.conf
-    sudo sed -i "/End of file/i \root            -       nofile          9030000" /etc/security/limits.conf
-    sudo sed -i "/End of file/i \*               -       nofile          9030000" /etc/security/limits.conf
-    sudo sed -i "/End of file/i \*               -       memlock         unlimited" /etc/security/limits.conf
+    sed -i "/End of file/i \# qycli" /etc/security/limits.conf
+    sed -i "/End of file/i \root            -       nofile          9030000" /etc/security/limits.conf
+    sed -i "/End of file/i \*               -       nofile          9030000" /etc/security/limits.conf
+    sed -i "/End of file/i \*               -       memlock         unlimited" /etc/security/limits.conf
 fi    
 
 # TXQueue Length Tweaks
-sudo tee /lib/udev/rules.d/60-persistent-txqueuelen.rules >/dev/null <<'EOF'
+tee /lib/udev/rules.d/60-persistent-txqueuelen.rules >/dev/null <<'EOF'
 KERNEL=="eth[0,1]", RUN+="/sbin/ip link set %k txqueuelen 10000"
 KERNEL=="lxdbr0", RUN+="/sbin/ip link set %k txqueuelen 10000"
 EOF
-sudo udevadm trigger
+udevadm trigger

@@ -4,10 +4,11 @@
 # example: qyc mk wp domain.com
 
 qycli_version=0.1
-standard_php_version=7.4
+phpv=7.4
 
 source /opt/qycli/bin/help
 source /opt/qycli/bin/stk
+source /opt/qycli/bin/upd
 source /opt/qycli/bin/fn
 
 if [[ "$1" == "mk" || "$1" == "make" ]]; then
