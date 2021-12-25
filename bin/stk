@@ -64,7 +64,7 @@ stk_nginx_install() {
 
     chown qycli-nginx:qycli-nginx -R /var/www
 	chown root:root /var/www
-    nginx -t && systemctl restart ngin
+    nginx -t && systemctl restart nginx
 }
 
 stk_mariadb_install() {
@@ -97,7 +97,7 @@ stk_redis_conf() {
 
 stk_redis() {
     apt -y install redis
-    usermod -g www-data redis
+    usermod -g qycli-nginx redis
     stk_redis_conf
     systemctl restart redis-server
 }
@@ -106,7 +106,7 @@ stk_wpcli() {
     wget -qO /usr/local/bin/wp-cli https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
     chmod +x /usr/local/bin/wp-cli
     tee /usr/local/bin/wp >/dev/null <<'EOF'
-runuser -u www-data -- wp-cli $@
+runuser -u qycli-nginx -- wp-cli $@
 EOF
     chmod +x /usr/local/bin/wp
 }
