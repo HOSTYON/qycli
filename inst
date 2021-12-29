@@ -1,5 +1,6 @@
 #!/bin/bash
 
+[[ $(whoami) != "root" ]] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 ## Install qycli and stack with "wget -qO- qyc.li/inst | bash"
 prod() {
     wget -qO /usr/bin/qyc qyc.li/bin/qyc && chmod 755 /usr/bin/qyc

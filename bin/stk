@@ -36,31 +36,28 @@ stk_nginx_install() {
         exit
     fi
 
-    if [[ ! -d /usr/local/nginx/html ]]; then
-        mkdir -p /usr/local/nginx/html
-        cp /snap/qycli-nginx/current/usr/local/nginx/html/* /usr/local/nginx/html/
-    fi
+    mkdir -p /usr/local/nginx/html
+    cp /snap/qycli-nginx/current/usr/local/nginx/html/* /usr/local/nginx/html/
 
-    if [[ ! -d /var/log/nginx ]]; then
-        mkdir /var/log/nginx
-        touch /var/log/nginx/error.log
-    fi
+    mkdir /var/log/nginx
+    touch /var/log/nginx/error.log
 
-    if [[ ! -d /var/lib/nginx ]]; then
-        mkdir /var/lib/nginx
-    fi
+    mkdir /var/lib/nginx
 
-    [[ ! -d /etc/nginx/sites-enabled ]] && mkdir /etc/nginx/sites-enabled
-    [[ ! -d /etc/nginx/sites-available ]] && mkdir /etc/nginx/sites-available
-    [[ ! -d /etc/nginx/common ]] && mkdir /etc/nginx/common
+    mkdir /etc/nginx/sites-enabled
+    mkdir /etc/nginx/sites-available
+    mkdir /etc/nginx/common
 
     cp /snap/qycli-nginx/current/usr/local/nginx/sbin/nginx /usr/sbin/nginx
-
-    upd_nginx_conf
 
     if [[ ! -f /etc/ssl/qycli.key ]]; then
         cert
     fi
+
+    upd_nginx_conf
+
+    cp /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
+    systemctl enable nginx
 
     chown qycli-nginx:qycli-nginx -R /var/www
 	chown root:root /var/www

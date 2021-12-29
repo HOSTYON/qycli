@@ -58,6 +58,7 @@ upd_nginx_conf() {
 
     cp /opt/qycli/cnf/nginx/conf.d/fcgi.conf /etc/nginx/conf.d/fcgi.conf 
     cp /opt/qycli/cnf/nginx/conf.d/map.conf /etc/nginx/conf.d/map.conf
+    
     upd_nginx_conf_renew_cf_ips
 }
 
