@@ -12,8 +12,8 @@ upd_qycli() {
 }
 
 upd_nginx_overwrite_from_snap() {
-    cp /snap/qycli-nginx/current/etc/nginx/* /etc/nginx/
-    cp /snap/qycli-nginx/current/usr/lib/nginx/modules/* /usr/lib/nginx/modules/
+    cp /snap/qycli-nginx/current/etc/nginx/ /etc/nginx/
+    cp /snap/qycli-nginx/current/usr/lib/nginx/modules/ /usr/lib/nginx/modules/
 }
 
 upd_nginx_conf_renew_cf_ips() {

@@ -1,7 +1,6 @@
 server {
 
     listen [::]:80;
-    listen 80;
     include /var/www/dmn.tld/nginx-conf/server-names.conf; # server_name can be found there
 
     return 301 https://$host$request_uri;
@@ -11,7 +10,6 @@ server {
 server {
 
     listen [::]:443 ssl;
-    listen 443 ssl;
 
     ssl_certificate /etc/ssl/qycli.crt;
     ssl_certificate_key /etc/ssl/qycli.key;
@@ -33,7 +31,7 @@ server {
     add_header X-XSS-Protection "1; mode=block";
 
     #include common/auth.conf;
-    include common/phpver.conf;
-    #include common/wpfcgiver.conf;
-    include common/wpcommonver.conf;
+    include common/php.conf;
+    #include common/wpfcgi.conf;
+    include common/wpcommon.conf;
 }

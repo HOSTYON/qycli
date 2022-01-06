@@ -3,6 +3,8 @@
 # Reference script to run all others, placed in /usr/bin/
 # example: qyc mk wp domain.com
 
+[[ $(whoami) != "root" ]] && echo "qycli has to be run as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
+
 qycli_version=0.1
 phpv=7.4
 

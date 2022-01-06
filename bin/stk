@@ -110,10 +110,10 @@ EOF
 
 stk_www_folder() {
     mkdir -p /var/www
-    chown qycli-nginx:qycli-nginx /var/www
+    chown qycli:qycli /var/www
 }
 
-stk_wp() {
+stk_install() {
     phpv=$(grep "PHP Version:" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
     utility_and_repos; stk_nginx; stk_mariadb; stk_php; stk_redis; stk_wpcli; stk_www_folder
     printf "\nqycli stack was installed.\n\n"

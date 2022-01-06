@@ -1,21 +1,28 @@
 #!/bin/bash
 
 [[ $(whoami) != "root" ]] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
+
+install_git() {
+    apt update
+    apt -y install git
+}
+
 ## Install qycli and stack with "wget -qO- qyc.li/inst | bash"
-prod() {
-    wget -qO /usr/bin/qyc qyc.li/bin/qyc && chmod 755 /usr/bin/qyc
-    wget -qO /opt/qycli/inst qyc.li/inst
-    wget -qO /opt/qycli/bin/stk qyc.li/bin/stk
-    wget -qO /opt/qycli/bin/help qyc.li/bin/help
-    wget -qO /opt/qycli/bin/fn qyc.li/bin/fn
+inst_qycli() {
+    cd /opt
+    git clone --branch <branchname> https://github.com/HOSTYON/qycli
+    cp /opt/qycli/bin/qyc /usr/bin/qyc
+    chmod 755 /usr/bin/qyc
     source /opt/qycli/stk
     source /opt/qycli/help
-    printf "\nqycli (production) was installed.\n\nInstalling the stack now.\n\n"
-    stk_wp
+    printf "
+    qycli (production) was installed.
+    Installing the stack now.\n\n"
+    stk_install
 }
 
 ## Install qycli dev version with "wget -qO- qyc.li/inst | bash -s dev"
-dev() {
+inst_dev() {
     if ! command -v svn &> /dev/null; then
         apt update && apt -y install subversion
     fi
@@ -26,8 +33,10 @@ dev() {
 
 if [[ "$1" == "prod" || "$1" == "" ]]; then
     wget -qO- qyc.li/host | bash
-    prod
+    install_git
+    inst_qycli
 elif [[ "$1" == "dev" ]]; then
     wget -qO- qyc.li/host | bash
-    dev
+    install_git
+    inst_dev
 fi
