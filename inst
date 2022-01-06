@@ -10,7 +10,7 @@ install_git() {
 ## Install qycli and stack with "wget -qO- qyc.li/inst | bash"
 inst_qycli() {
     cd /opt
-    git clone --branch <branchname> https://github.com/HOSTYON/qycli
+    git clone https://github.com/HOSTYON/qycli
     cp /opt/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
     source /opt/qycli/stk
