@@ -8,7 +8,7 @@ source /opt/qycli/bin/upd
 utility_and_repos() {
     upd
     # Utilities
-    apt -y install git curl wget gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https
+    apt -y install git curl wget gnupg2 ca-certificates lsb-release libpwquality-tools apt-transport-https imagemagick ghostscript
     DEBIAN_FRONTEND=noninteractive apt -y install postfix
     # redis repo
     add-apt-repository -y ppa:redislabs/redis
