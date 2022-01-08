@@ -2,6 +2,10 @@
 
 # help library
 
+show_qycli_version() {
+    git -C /opt/qycli branch --show-current
+}
+
 print_help_qyc() {
     printf "\n\n"
     echo "Description:"

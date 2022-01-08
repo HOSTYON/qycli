@@ -2,43 +2,31 @@
 
 [[ $(whoami) != "root" ]] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 
-install_git() {
-    apt update
-    apt -y install git
-}
-
-## Install qycli and stack with "wget -qO- qyc.li/inst | bash"
+## Install qycli and stack with "wget -qO- qyc.li/inst | bash" and optimize the host if you are in a container with "wget -qO- qyc.li/host | bash"
 inst_qycli() {
-    cd /opt
-    git clone https://github.com/HOSTYON/qycli
+    [[ -f /usr/bin/qyc ]] && echo "qycli is already installed, stopping the process." && exit
+    apt update && apt -y install git wget curl
+    git -C /opt clone -b $branch_name https://github.com/HOSTYON/qycli
     cp /opt/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
     chmod 755 /opt/qycli/host
     source /opt/qycli/stk
     source /opt/qycli/help
-    printf "
-    qycli (production) was installed.
-    Installing the stack now.\n\n"
+    printf "\nqycli ($branch_name) was installed.
+    Installing the stack now.
+    Optimizing kernel stuff. You should restart after the installation.\n\n"
     bash /opt/qycli/host
+    echo "Installing the qycli stack."
     stk_install
 }
 
-## Install qycli dev version with "wget -qO- qyc.li/inst | bash -s dev"
-inst_dev() {
-    if ! command -v svn &> /dev/null; then
-        apt update && apt -y install subversion
-    fi
-    svn export --force https://github.com/HOSTYON/qycli/trunk /opt/qycli/
-    mv /opt/qycli/bin/qyc /usr/bin/qyc && chmod 755 /usr/bin/qyc
-    printf "\nqycli (dev) was installed/updated.\n\n"
-}
-
-if [[ "$1" == "prod" || "$1" == "" ]]; then
-    wget -qO- qyc.li/host | bash
-    install_git
+if [[ "$1" == "production" || "$1" == "prod" || "$1" == "" ]]; then
+    branch_name=production
+    inst_qycli
+elif [[ "$1" == "beta" ]]; then
+    branch_name=beta
     inst_qycli
 elif [[ "$1" == "dev" ]]; then
-    wget -qO- qyc.li/host | bash
-    install_git
-    inst_dev
+    branch_name=dev
+    inst_qycli
 fi

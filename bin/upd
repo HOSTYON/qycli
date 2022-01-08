@@ -40,15 +40,9 @@ upd_nginx_conf() {
 		chmod 600 /etc/ssl/dhparam.pem
 	fi
 
-    cp /opt/qycli/cnf/nginx/wp.tld /etc/nginx/wp.tld 
-    sed -i "s+phpver+php${phpv}+g" /etc/nginx/wp.tld
-    sed -i "s+wpfcgiver+wpfcgi${phpv}+g" /etc/nginx/wp.tld
-    sed -i "s+wpcommonver+wpcommon${phpv}+g" /etc/nginx/wp.tld
-    
-    cp /opt/qycli/cnf/nginx/common/phpver.conf /etc/nginx/common/php${phpv}.conf
-    sed -i "s+phpver+php${phpv}+g" /etc/nginx/common/php${phpv}.conf
-
-    cp /opt/qycli/cnf/nginx/conf.d/upstreamphpver.conf /etc/nginx/conf.d/upstream${phpv}.conf 
+    cp /opt/qycli/cnf/nginx/wp.tld /etc/nginx/wp.tld   
+    cp /opt/qycli/cnf/nginx/common/php.conf /etc/nginx/common/php.conf
+    cp /opt/qycli/cnf/nginx/conf.d/upstream.conf /etc/nginx/conf.d/upstream.conf 
 
     cp /opt/qycli/cnf/nginx/common/wpfcgiphpver.conf /etc/nginx/common/wpfcgi${phpv}.conf 
     sed -i "s+phpver+php${phpv}+g" /etc/nginx/common/wpfcgi${phpv}.conf
@@ -83,5 +77,10 @@ upd_php_conf() {
     sed -e "s/\${maxchil}/${maxchil}/" -e "s/\${phpv}/${phpv}/g" /etc/php/${phpv}/fpm/pool.d/www.conf
 
     chown qycli-nginx:qycli-nginx /run/php/php${phpv}-fpm.sock
+}
+
+upd_redis_conf() {
+    local redismem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*20)) # 20% of all memory in MB
+    sed -i "s+*maxmemory*+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
 }
 

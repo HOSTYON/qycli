@@ -37,7 +37,7 @@ stk_nginx_install() {
     fi
 
     mkdir -p /usr/local/nginx/html
-    cp /snap/qycli-nginx/current/usr/local/nginx/html/* /usr/local/nginx/html/
+    cp /snap/qycli-nginx/current/usr/local/nginx/html/ /usr/local/nginx/html/
 
     mkdir /var/log/nginx
     touch /var/log/nginx/error.log
@@ -59,9 +59,10 @@ stk_nginx_install() {
     cp /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
     systemctl enable nginx
 
-    chown qycli-nginx:qycli-nginx -R /var/www
+    chown qycli:qycli -R /var/www
 	chown root:root /var/www
-    nginx -t && systemctl restart nginx
+    
+    nginx -t && systemctl start nginx
 }
 
 stk_mariadb_install() {
@@ -85,11 +86,10 @@ stk_redis_conf() {
     sed -i 's+*appendfsync everysec+# appendfsync everysec+g' /etc/redis/redis.conf
     sed -i 's+# appendfsync no+appendfsync no+g' /etc/redis/redis.conf
     sed -i 's+no-appendfsync-on-rewrite no+no-appendfsync-on-rewrite yes+g' /etc/redis/redis.conf
-    local redismem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*20)) # 20% of all memory in MB
-    sed -i "s+# maxmemory <bytes>+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
     sed -i 's+# maxmemory-policy noeviction+maxmemory-policy allkeys-lfu+g' /etc/redis/redis.conf
     sed -i 's+save 900 1+save 1800 1+g' /etc/redis/redis.conf
     sed -i 's+save 300 10+save 600 10+g' /etc/redis/redis.conf
+    upd_redis_conf
 }
 
 stk_redis() {

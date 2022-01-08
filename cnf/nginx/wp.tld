@@ -4,7 +4,6 @@ server {
     include /var/www/dmn.tld/nginx-conf/server-names.conf; # server_name can be found there
 
     return 301 https://$host$request_uri;
-
 }
 
 server {

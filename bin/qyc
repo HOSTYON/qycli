@@ -5,9 +5,6 @@
 
 [[ $(whoami) != "root" ]] && echo "qycli has to be run as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 
-qycli_version=0.1
-phpv=7.4
-
 source /opt/qycli/bin/help
 source /opt/qycli/bin/stk
 source /opt/qycli/bin/upd
@@ -32,7 +29,9 @@ elif [[ "$1" == "upd" || "$1" == "update" ]]; then
 elif [[ "$1" == "stk" || "$1" == "stack" ]]; then
     stk_wp
 elif [[ "$1" == "devu" ]]; then
-    dev_upd  
+    dev_upd
+elif [[ "$1" =~ ^(v|version|ver)$ ]]; then
+    show_qycli_version
 else
     print_help_qyc
 fi
