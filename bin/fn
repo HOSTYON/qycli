@@ -26,7 +26,7 @@ www.$domain
 ;
 EOF
     ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
-    chown qycli-nginx:qycli-nginx -R /var/www/$domain/*
+    chown qycli:qycli -R /var/www/$domain/*
     nginx -s reload
 }
 
@@ -84,7 +84,7 @@ mk_wp() {
 	rm /var/www/$domain/htdocs/latest.tar.gz
 
     cp /var/www/$domain/htdocs/wp-config-sample.php /var/www/$domain/wp-config.php
-    chown qycli-nginx:qycli-nginx -R /var/www/$domain/*
+    chown qycli:qycli -R /var/www/$domain/*
     wp --path=/var/www/$domain/htdocs config set DB_NAME ${dbnaming}
     wp --path=/var/www/$domain/htdocs config set DB_USER ${dbnaming}
     wp --path=/var/www/$domain/htdocs config set DB_PASSWORD ${dbpassword}
@@ -176,7 +176,7 @@ set_cache_object() {
         if [[ -f /var/www/$domain/htdocs/wp-content/object-cache.php ]]; then
             echo "Object cache is already enabled."
         else
-            usermod -aG redis qycli-nginx
+            usermod -aG redis qycli
             wp --path=/var/www/$domain/htdocs plugin install --activate wp-redis
             wp --path=/var/www/$domain/htdocs config set WP_CACHE_KEY_SALT "qyc_$domain"
             if [[ ! $(grep "redis_server" /var/www/$domain/wp-config.php) ]]; then

@@ -14,7 +14,7 @@ inst_qycli() {
     source /opt/qycli/help
     printf "\nqycli ($branch_name) was installed.
     Installing the stack now.
-    Optimizing kernel stuff. You should restart after the installation.\n\n"
+    Optimizing kernel configurations. You should restart after the installation.\n\n"
     bash /opt/qycli/host
     echo "Installing the qycli stack."
     stk_install

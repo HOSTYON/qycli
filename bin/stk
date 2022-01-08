@@ -20,9 +20,9 @@ utility_and_repos() {
 }
 
 cert() {
-    openssl req -new -x509 -nodes -days 7300 -newkey rsa:2048 -keyout /etc/ssl/qycli.key -out /etc/ssl/qycli.crt \
+    openssl req -new -x509 -nodes -days 365000 -newkey rsa:2048 -keyout /etc/ssl/qycli.key -out /etc/ssl/qycli.crt \
     -subj "/ST=qycli/L=qycli/O=qycli/OU=qycli/CN=qycli"
-    chown qycli-nginx:qycli-nginx -R /etc/ssl/*
+    chown qycli:qycli -R /etc/ssl/*
 }
 
 stk_nginx_install() {
@@ -61,7 +61,7 @@ stk_nginx_install() {
 
     chown qycli:qycli -R /var/www
 	chown root:root /var/www
-    
+
     nginx -t && systemctl start nginx
 }
 
@@ -94,7 +94,7 @@ stk_redis_conf() {
 
 stk_redis() {
     apt -y install redis
-    usermod -g qycli-nginx redis
+    usermod -g qycli redis
     stk_redis_conf
     systemctl restart redis-server
 }
@@ -103,7 +103,7 @@ stk_wpcli() {
     wget -qO /usr/local/bin/wp-cli https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
     chmod +x /usr/local/bin/wp-cli
     tee /usr/local/bin/wp >/dev/null <<'EOF'
-runuser -u qycli-nginx -- wp-cli $@
+runuser -u qycli -- wp-cli $@
 EOF
     chmod +x /usr/local/bin/wp
 }
