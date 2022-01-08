@@ -13,11 +13,13 @@ inst_qycli() {
     git clone https://github.com/HOSTYON/qycli
     cp /opt/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
+    chmod 755 /opt/qycli/host
     source /opt/qycli/stk
     source /opt/qycli/help
     printf "
     qycli (production) was installed.
     Installing the stack now.\n\n"
+    bash /opt/qycli/host
     stk_install
 }
 
