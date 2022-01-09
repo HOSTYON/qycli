@@ -2,6 +2,8 @@
 
 ## Kernel tweaks for qycli with "wget -qO- qyc.li/host | bash"
 
+[[ $(whoami) != "root" ]] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
+
 # Sysctl tweaks for security and performance
 tee /etc/sysctl.conf >/dev/null <<'EOF'
 # Based on Michiel Klaver's https://klaver.it/linux/sysctl.conf (v1.14)

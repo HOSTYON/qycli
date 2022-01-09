@@ -2,31 +2,59 @@
 
 [[ $(whoami) != "root" ]] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 
-## Install qycli and stack with "wget -qO- qyc.li/inst | bash" and optimize the host if you are in a container with "wget -qO- qyc.li/host | bash"
+## Install qycli and stack with "wget -qO- qyc.li/inst | bash" and optimize the host if you are in a container with "wget -qO- qyc.li/kernel | bash"
 inst_qycli() {
-    [[ -f /usr/bin/qyc ]] && echo "qycli is already installed, stopping the process." && exit
+    [[ -f /usr/bin/qyc ]] && echo "qycli is already installed, stopping the process. Just type qyc to get the help message or go to qycli.org to learn." && exit
     apt update && apt -y install git wget curl
     git -C /opt clone -b $branch_name https://github.com/HOSTYON/qycli
     cp /opt/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
-    chmod 755 /opt/qycli/host
-    source /opt/qycli/stk
-    source /opt/qycli/help
-    printf "\nqycli ($branch_name) was installed.
-    Installing the stack now.
-    Optimizing kernel configurations. You should restart after the installation.\n\n"
-    bash /opt/qycli/host
+    chmod 755 /opt/qycli/kernel
+    chmod 755 /opt/qycli/sec
+    source /opt/qycli/bin/stk
+    source /opt/qycli/bin/help
+    printf "\nqycli ($branch_name) was installed.\n\n"
+    if [[ "$kernel_tweaks" == "yes" ]]; then
+        printf "Optimizing kernel configurations. You should restart after the full installation has finished.\n\n"
+        bash /opt/qycli/kernel
+    fi
+    if [[ "$sec_install" == "yes" ]]; then
+        printf "Securing the network. Only SSH and HTTPS will be allowed.\n\n"
+        bash /opt/qycli/sec
+    fi
     echo "Installing the qycli stack."
+    printf "\nInstalling the stack now.\n\n"
     stk_install
 }
 
-if [[ "$1" == "production" || "$1" == "prod" || "$1" == "" ]]; then
-    branch_name=production
-    inst_qycli
-elif [[ "$1" == "beta" ]]; then
-    branch_name=beta
-    inst_qycli
-elif [[ "$1" == "dev" ]]; then
-    branch_name=dev
-    inst_qycli
-fi
+branch_name=production
+sec_install=yes
+kernel_tweaks=yes
+
+while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+        v|version)
+            if [[ "$2" == "beta" ]]; then
+                branch_name=beta
+            elif [[ "$2" == "dev" ]]; then
+                branch_name=dev
+            fi
+            shift
+            ;;
+        s|sec|security)
+            if [[ "$2" =~ ^(n|no)$ ]]; then
+                sec_install=no
+            fi
+            shift
+            ;;
+        k|kernel|tweaks)
+            if [[ "$2" =~ ^(n|no)$ ]]; then
+                kernel_tweaks=no
+            fi
+            shift
+            ;;
+    esac
+    shift
+done
+
+inst_qycli

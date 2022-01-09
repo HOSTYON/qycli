@@ -16,11 +16,17 @@ upd_nginx_overwrite_from_snap() {
     cp /snap/qycli-nginx/current/usr/lib/nginx/modules/ /usr/lib/nginx/modules/
 }
 
+upd_cloudflare_ips_files() {
+    [[ ! -d /var/opt/qycli ]] && mkdir /var/opt/qycli
+    curl -s https://www.cloudflare.com/ips-v4 -o /var/opt/qycli/cloudflare_ipv4_ips
+    curl -s https://www.cloudflare.com/ips-v6 -o /var/opt/qycli/cloudflare_ipv6_ips
+}
+
 upd_nginx_conf_renew_cf_ips() {
     if [[ -f /etc/nginx/conf.d/cloudflare.conf ]]; then 
         rm /etc/nginx/conf.d/cloudflare.conf; 
     fi
-    for cfip in $(wget -qO- cloudflare.com/ips-v4; wget -qO- cloudflare.com/ips-v6); do
+    for cfip in $(wget -qO- cloudflare.com/ips-v6); do
         echo "set_real_ip_from $cfip;" | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
     done
     echo 'real_ip_header CF-Connecting-IP;' | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null

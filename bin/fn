@@ -76,7 +76,7 @@ mk_wp() {
     mk_site
 
     echo "Installing WordPress..."
-    systemctl reload php${phpv}-fpm
+    systemctl reload php-fpm
     wget -qrO /var/www/$domain/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
     tar -xf /var/www/$domain/htdocs/latest.tar.gz -C /var/www/$domain/
 	mv /var/www/$domain/wordpress/* /var/www/$domain/htdocs/
