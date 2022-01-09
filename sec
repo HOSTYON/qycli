@@ -10,7 +10,7 @@ apt update && apt -y install ufw
 curl -s https://www.cloudflare.com/ips-v4 -o /var/opt/qycli/cloudflare_ipv4_ips
 curl -s https://www.cloudflare.com/ips-v6 -o /var/opt/qycli/cloudflare_ipv6_ips
 
-ssh_port=$(grep -w "Port" -i /etc/ssh/sshd_config | tr -d 'Port ')
+ssh_port=$(grep -w "Port" -i /etc/ssh/sshd_config | sed s+'.*Port '++)
 
 if [[ "$(ufw status | grep "Status:" | sed s+"Status: "++)" == "active" ]]; then
     ufw --force disable
