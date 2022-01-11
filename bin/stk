@@ -20,8 +20,8 @@ utility_and_repos() {
 }
 
 cert() {
-    openssl req -new -x509 -nodes -days 365000 -newkey rsa:2048 -keyout /etc/ssl/qycli.key -out /etc/ssl/qycli.crt \
-    -subj "/ST=qycli/L=qycli/O=qycli/OU=qycli/CN=qycli"
+    openssl ecparam -name prime256v1 -genkey -out /etc/ssl/qycli.key
+    openssl req -new -x509 -key /etc/ssl/openssl.key -out /etc/ssl/qycli.crt -days 36500 -subj "/C=DE/ST=Rheinland-Pfalz/L=Pirmasens/O=HOSTYON/OU=SysOps/CN=HOSTYON"
     chown qycli:qycli -R /etc/ssl/*
 }
 
