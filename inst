@@ -5,6 +5,9 @@
 ## Install qycli and stack with "wget -qO- qyc.li/inst | bash" and optimize the host if you are in a container with "wget -qO- qyc.li/kernel | bash"
 inst_qycli() {
     [[ -f /usr/bin/qyc ]] && echo "qycli is already installed, stopping the process. Just type qyc to get the help message or go to qycli.org to learn." && exit
+    [[ ! -d /var/opt/qycli ]] && mkdir /var/opt/qycli
+    echo "branch_name=$branch_name" > /var/opt/qycli/cnf
+    echo "sec_install=$sec_install" >> /var/opt/qycli/cnf
     apt update && apt -y install git wget curl
     git -C /opt clone -b $branch_name https://github.com/HOSTYON/qycli
     cp /opt/qycli/bin/qyc /usr/bin/qyc

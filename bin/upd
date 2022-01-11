@@ -1,14 +1,36 @@
 #!/bin/bash
 
-source /opt/qycli/inst
-
 # qycli update functions
 upd_apt() {
     apt update && apt upgrade -y && apt -y dist-upgrade && apt -y autoremove
 }
 
 upd_qycli() {
-    prod
+    git -C /opt/qycli pull https://github.com/HOSTYON/qycli
+    cp /opt/qycli/bin/qyc /usr/bin/qyc
+    chmod 755 /usr/bin/qyc
+    chmod 755 /opt/qycli/kernel
+    chmod 755 /opt/qycli/sec
+}
+
+upd_firewall() {
+    sec_install=$(grep "sec_install" /var/opt/qycli/cnf | sed s+sec_install=++)
+    if [[ "$sec_install" == "yes" ]]; then
+        ssh_port=$(grep -w "Port" -i /etc/ssh/sshd_config | sed s+'.*Port '++)
+
+        ufw --force disable
+        ufw --force reset
+
+        ufw default allow outgoing
+        ufw default deny incoming
+
+        ufw allow $ssh_port/tcp
+
+        #for cfip in `cat /var/opt/qycli/cloudflare_ipv4_ips`; do ufw allow proto tcp from $cfip to any port 443 comment 'Cloudflare IP'; done
+        for cfip in `cat /var/opt/qycli/cloudflare_ipv6_ips`; do ufw allow proto tcp from $cfip to any port 443 comment 'Cloudflare IP'; done
+
+        echo "y" | ufw enable
+    fi
 }
 
 upd_nginx_overwrite_from_snap() {
@@ -16,42 +38,11 @@ upd_nginx_overwrite_from_snap() {
     cp /snap/qycli-nginx/current/usr/lib/nginx/modules/ /usr/lib/nginx/modules/
 }
 
-upd_cloudflare_ips_files() {
-    [[ ! -d /var/opt/qycli ]] && mkdir /var/opt/qycli
-    curl -s https://www.cloudflare.com/ips-v4 -o /var/opt/qycli/cloudflare_ipv4_ips
-    curl -s https://www.cloudflare.com/ips-v6 -o /var/opt/qycli/cloudflare_ipv6_ips
-}
-
-upd_check_for_new_cf_ips() {
-    curl -s https://www.cloudflare.com/ips-v4 -o /var/opt/qycli/cloudflare_ipv4_ips_new
-    curl -s https://www.cloudflare.com/ips-v6 -o /var/opt/qycli/cloudflare_ipv6_ips_new
-    if ! cmp /var/opt/qycli/cloudflare_ipv4_ips_new /var/opt/qycli/cloudflare_ipv4_ips
-}
-
-upd_firewall() {
-    ssh_port=$(grep -w "Port" -i /etc/ssh/sshd_config | sed s+'.*Port '++)
-
-    if [[ "$(ufw status | grep "Status:" | sed s+"Status: "++)" == "active" ]]; then
-        ufw --force disable
-        ufw --force reset
-    fi
-
-    ufw default allow outgoing
-    ufw default deny incoming
-
-    ufw allow $ssh_port/tcp
-
-    #for cfip in `cat /var/opt/qycli/cloudflare_ipv4_ips`; do ufw allow proto tcp from $cfip to any port 443 comment 'Cloudflare IP'; done
-    for cfip in `cat /var/opt/qycli/cloudflare_ipv6_ips`; do ufw allow proto tcp from $cfip to any port 443 comment 'Cloudflare IP'; done
-
-    echo "y" | ufw enable
-}
-
 upd_nginx_conf_renew_cf_ips() {
     if [[ -f /etc/nginx/conf.d/cloudflare.conf ]]; then 
         rm /etc/nginx/conf.d/cloudflare.conf; 
     fi
-    for cfip in $(wget -qO- cloudflare.com/ips-v6); do
+    for cfip in `cat /var/opt/qycli/cloudflare_ipv6_ips`; do
         echo "set_real_ip_from $cfip;" | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
     done
     echo 'real_ip_header CF-Connecting-IP;' | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
@@ -60,7 +51,8 @@ upd_nginx_conf_renew_cf_ips() {
 }
 
 upd_nginx_conf() {
-    cp /opt/qycli/cnf/nginx/nginx.conf /etc/nginx/nginx.conf
+    cp -rf /opt/qycli/cnf/nginx/ /etc/nginx/
+
     local workerprocs=$(grep processor /proc/cpuinfo | wc -l) # 1 worker per CPU
     local workerconn=$((($(grep processor /proc/cpuinfo | wc -l)*10240)))
     sed -i "s+workerprocs+${workerprocs}+g" /etc/nginx/nginx.conf
@@ -70,21 +62,19 @@ upd_nginx_conf() {
 		openssl dhparam -out /etc/ssl/dhparam.pem 2048
 		chmod 600 /etc/ssl/dhparam.pem
 	fi
-
-    cp /opt/qycli/cnf/nginx/wp.tld /etc/nginx/wp.tld   
-    cp /opt/qycli/cnf/nginx/common/php.conf /etc/nginx/common/php.conf
-    cp /opt/qycli/cnf/nginx/conf.d/upstream.conf /etc/nginx/conf.d/upstream.conf 
-
-    cp /opt/qycli/cnf/nginx/common/wpfcgiphpver.conf /etc/nginx/common/wpfcgi${phpv}.conf 
-    sed -i "s+phpver+php${phpv}+g" /etc/nginx/common/wpfcgi${phpv}.conf
-
-    cp /opt/qycli/cnf/nginx/common/wpcommonphpver.conf /etc/nginx/common/wpcommon${phpv}.conf 
-    sed -i "s+phpver+php${phpv}+g" /etc/nginx/common/wpcommon${phpv}.conf
-
-    cp /opt/qycli/cnf/nginx/conf.d/fcgi.conf /etc/nginx/conf.d/fcgi.conf 
-    cp /opt/qycli/cnf/nginx/conf.d/map.conf /etc/nginx/conf.d/map.conf
     
     upd_nginx_conf_renew_cf_ips
+}
+
+upd_check_for_new_cf_ips() {
+    curl -s https://www.cloudflare.com/ips-v4 -o /var/opt/qycli/cloudflare_ipv4_ips_new
+    curl -s https://www.cloudflare.com/ips-v6 -o /var/opt/qycli/cloudflare_ipv6_ips_new
+    if ! cmp -s /var/opt/qycli/cloudflare_ipv4_ips_new /var/opt/qycli/cloudflare_ipv4_ips || ! cmp -s /var/opt/qycli/cloudflare_ipv6_ips_new /var/opt/qycli/cloudflare_ipv6_ips; then
+        cp /var/opt/qycli/cloudflare_ipv4_ips_new /var/opt/qycli/cloudflare_ipv4_ips
+        cp /var/opt/qycli/cloudflare_ipv6_ips_new /var/opt/qycli/cloudflare_ipv6_ips
+        upd_firewall
+        upd_nginx_conf_renew_cf_ips
+    fi
 }
 
 upd_mariadb_conf() {
