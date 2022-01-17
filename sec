@@ -24,7 +24,10 @@ ufw allow $ssh_port/tcp
 
 # Allowing HTTPS over IPv6 only
 #for cfip in `cat /var/opt/qycli/cloudflare_ipv4_ips`; do ufw allow proto tcp from $cfip to any port 443 comment 'Cloudflare IP'; done
-for cfip in `cat /var/opt/qycli/cloudflare_ipv6_ips`; do ufw allow proto tcp from $cfip to any port 443 comment 'Cloudflare IP'; done
+for cfip in $(cat /var/opt/qycli/cloudflare_ipv6_ips)s
+do 
+    ufw allow proto tcp from $cfip to any port 443 comment 'Cloudflare IP'
+done
 
 # Using Cloudflare for DNS
 ufw allow from 2606:4700:4700::1111 to any port 53 comment 'Cloudflare DNS IP'
@@ -37,7 +40,11 @@ sed '0,/.*FallbackDNS.*/s++FallbackDNS=1.1.1.1 1.0.0.1+' -i /etc/systemd/resolve
 systemctl restart systemd-resolved
 
 # Using Cloudflare for NTP
-nslookup ...
+for timeip in $(dig AAAA time.cloudflare.com +short && dig time.cloudflare.com +short)
+do 
+    ufw allow from $timeip to any port 123 comment 'Cloudflare Time IP'
+done
+
 sed '0,/.*NTP.*/s++NTP=time.cloudflare.com+' -i /etc/systemd/timesyncd.conf
 systemctl restart systemd-timesyncd
 
