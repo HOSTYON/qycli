@@ -17,6 +17,8 @@ utility_and_repos() {
     if [[ -f /etc/apt/sources.list.d/*.old* ]]; then
         rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
     fi
+    addgroup qycli
+    adduser --disabled-password --gecos "" --no-create-home --ingroup qycli qycli
 }
 
 cert() {
@@ -72,10 +74,15 @@ stk_mariadb_install() {
 }
 
 stk_php_install() {
-    apt -y install php${phpv}-bcmath php${phpv}-common php${phpv}-curl php${phpv}-fpm php${phpv}-gd php${phpv}-imagick \
-    php${phpv}-mbstring php${phpv}-mysql php${ver}-redis php${phpv}-soap php${phpv}-xml php${phpv}-zip
-    upd_php_conf
-    systemctl restart php${phpv}-fpm
+    apt -y install libasn1-8-heimdal libbrotli1 libcurl4 libfftw3-double3 libfontconfig1 libfreetype6 libgomp1 libgssapi3-heimdal libhcrypto4-heimdal libheimbase1-heimdal libheimntlm0-heimdal libhx509-5-heimdal libicu66 libjpeg-turbo8 libkrb5-26-heimdal liblcms2-2 libldap-2.4-2 liblqr-1-0 libltdl7 libmagickcore-6.q16-6 libmagickwand-6.q16-6 libnghttp2-14 libonig5 libpng16-16 libpsl5 libroken18-heimdal librtmp1 libsasl2-2 libsodium23 libssh-4 libwebp6 libwind0-heimdal libx11-6 libxau6 libxcb1 libxdmcp6 libxext6 libxml2 libzip5
+
+    php_version_short=$(echo "$php_version" | tr -d ".")
+    cp /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm
+    cp /snap/qycli-php$php_version_short/current/php/bin/* /usr/bin/
+
+    mkdir /var/log/php/
+
+    cp /opt/qycli/cnf/php/php-fpm.service /lib/systemd/system/php-fpm.service
 }
 
 stk_redis_conf() {

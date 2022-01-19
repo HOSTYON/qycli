@@ -5,12 +5,14 @@ Wants=network-online.target
 
 [Service]
 Type=forking
-PIDFile=/run/nginx.pid
+PIDFile=/run/qycli-pid/nginx.pid
 ExecStartPre=/usr/sbin/nginx -t
 ExecStart=/usr/sbin/nginx
 ExecReload=/usr/sbin/nginx -s reload
 ExecStop=/bin/kill -s QUIT $MAINPID
 PrivateTmp=true
+User=qycli
+Group=qycli
 
 [Install]
 WantedBy=multi-user.target

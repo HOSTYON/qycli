@@ -89,15 +89,15 @@ upd_mariadb_conf() {
 }
 
 upd_php_conf() {
+    mkdir -p /etc/php/fpm/pool.d
+
     local opmem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*15)) # 15% of all memory in MB
-    cp /opt/qycli/cnf/php/phpver/fpm/php.ini /etc/php/${phpv}/fpm/php.ini
-    sed -e "s/\${opmem}/${opmem}/" /etc/php/${phpv}/fpm/php.ini
+    cp /opt/qycli/cnf/php/fpm/php.ini /etc/php/fpm/php.ini
+    sed -e "s/\${opmem}/${opmem}/" /etc/php/fpm/php.ini
 
     local maxchil=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*70/80)) # pm.max_children = 70% Total Memory / 80MB
-    cp /opt/qycli/cnf/php/phpver/fpm/pool.d/www.conf /etc/php/${phpv}/fpm/pool.d/www.conf
-    sed -e "s/\${maxchil}/${maxchil}/" -e "s/\${phpv}/${phpv}/g" /etc/php/${phpv}/fpm/pool.d/www.conf
-
-    chown qycli-nginx:qycli-nginx /run/php/php${phpv}-fpm.sock
+    cp /opt/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/php/fpm/pool.d/qycli.conf
+    sed -e "s/\${maxchil}/${maxchil}/" /etc/php/fpm/pool.d/qycli.conf
 }
 
 upd_redis_conf() {

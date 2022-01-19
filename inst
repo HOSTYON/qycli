@@ -8,6 +8,7 @@ inst_qycli() {
     [[ ! -d /var/opt/qycli ]] && mkdir /var/opt/qycli
     echo "branch_name=$branch_name" > /var/opt/qycli/cnf
     echo "sec_install=$sec_install" >> /var/opt/qycli/cnf
+    echo "php_version=$php_version" >> /var/opt/qycli/cnf
     apt update && apt -y install git wget curl
     git -C /opt clone -b $branch_name https://github.com/HOSTYON/qycli
     cp /opt/qycli/bin/qyc /usr/bin/qyc
@@ -22,7 +23,7 @@ inst_qycli() {
         bash /opt/qycli/kernel
     fi
     if [[ "$sec_install" == "yes" ]]; then
-        printf "Securing the network. Only SSH and HTTPS will be allowed.\n\n"
+        printf "Securing the network. Only SSH and Cloudflare connections will be allowed.\n\n"
         bash /opt/qycli/sec
     fi
     echo "Installing the qycli stack."
@@ -33,6 +34,7 @@ inst_qycli() {
 branch_name=production
 sec_install=yes
 kernel_tweaks=yes
+php_version=7.4
 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -56,6 +58,15 @@ while [[ "$#" -gt 0 ]]; do
             fi
             shift
             ;;
+        phpv|php-version)
+            if [[ "$2" =~ ^(7.4|8.0|8.1)$ ]]; then
+                php_version=$2
+            else
+                echo 'Not supported PHP version, try again with "7.4", "8.0" or "8.1". Exiting.'
+                exit
+            fi
+            shift
+            ;;            
     esac
     shift
 done
