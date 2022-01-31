@@ -9,7 +9,7 @@ inst_qycli() {
     echo "branch_name=$branch_name" > /var/opt/qycli/cnf
     echo "sec_install=$sec_install" >> /var/opt/qycli/cnf
     echo "php_version=$php_version" >> /var/opt/qycli/cnf
-    apt update && apt -y install git wget curl
+    apt update && apt -y install git
     git -C /opt clone -b $branch_name https://github.com/HOSTYON/qycli
     cp /opt/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
@@ -20,14 +20,13 @@ inst_qycli() {
     printf "\nqycli ($branch_name) was installed.\n\n"
     if [[ "$kernel_tweaks" == "yes" ]]; then
         printf "Optimizing kernel configurations. You should restart after the full installation has finished.\n\n"
-        bash /opt/qycli/kernel
+        source /opt/qycli/kernel
     fi
     if [[ "$sec_install" == "yes" ]]; then
         printf "Securing the network. Only SSH and Cloudflare connections will be allowed.\n\n"
-        bash /opt/qycli/sec
+        source /opt/qycli/sec_firewall
     fi
-    echo "Installing the qycli stack."
-    printf "\nInstalling the stack now.\n\n"
+    printf "\nInstalling the qycli stack now.\n\n"
     stk_install
 }
 

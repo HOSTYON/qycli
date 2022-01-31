@@ -1,20 +1,17 @@
 #!/bin/bash
 
-# Security for qycli
+# Firewall for qycli
 
 [[ $(whoami) != "root" ]] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 
-apt update && apt -y install ufw
+[[ ! $(command -v ufw) ]] && apt update && apt -y install ufw
 
 [[ ! -d /var/opt/qycli ]] && mkdir /var/opt/qycli
 curl -s https://www.cloudflare.com/ips-v4 -o /var/opt/qycli/cloudflare_ipv4_ips
 curl -s https://www.cloudflare.com/ips-v6 -o /var/opt/qycli/cloudflare_ipv6_ips
 
-if [[ "$(ufw status | grep "Status:" | sed s+"Status: "++)" == "active" ]]; then
-    ufw --force disable
-    ufw --force reset
-fi
-
+ufw --force disable
+ufw --force reset
 ufw default allow outgoing
 ufw default deny incoming
 
@@ -24,8 +21,8 @@ ufw allow $ssh_port/tcp
 
 # Allowing HTTPS over IPv6 only
 #for cfip in `cat /var/opt/qycli/cloudflare_ipv4_ips`; do ufw allow proto tcp from $cfip to any port 443 comment 'Cloudflare IP'; done
-for cfip in $(cat /var/opt/qycli/cloudflare_ipv6_ips)s
-do 
+for cfip in $(cat /var/opt/qycli/cloudflare_ipv6_ips)
+do
     ufw allow proto tcp from $cfip to any port 443 comment 'Cloudflare IP'
 done
 
@@ -41,7 +38,7 @@ systemctl restart systemd-resolved
 
 # Using Cloudflare for NTP
 for timeip in $(dig AAAA time.cloudflare.com +short && dig time.cloudflare.com +short)
-do 
+do
     ufw allow from $timeip to any port 123 comment 'Cloudflare Time IP'
 done
 

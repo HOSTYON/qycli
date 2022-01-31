@@ -25,11 +25,9 @@ elif [[ "$1" == "del" || "$1" == "delete" ]]; then
     shift
     del "$@"  
 elif [[ "$1" == "upd" || "$1" == "update" ]]; then
-    upd ; upd_qycli
+    upd_fn
 elif [[ "$1" == "stk" || "$1" == "stack" ]]; then
     stk_wp
-elif [[ "$1" == "devu" ]]; then
-    dev_upd
 elif [[ "$1" =~ ^(v|version|ver)$ ]]; then
     show_qycli_version
 else

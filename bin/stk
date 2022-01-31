@@ -5,10 +5,10 @@
 source /opt/qycli/bin/upd
 
 
-utility_and_repos() {
-    upd
+stk_utility_and_repos() {
+    upd_apt
     # Utilities
-    apt -y install ubuntu-standard ubuntu-server gnupg2 ca-certificates libpwquality-tools apt-transport-https imagemagick ghostscript #lsb-release
+    apt -y install ubuntu-standard ubuntu-server snap gnupg2 ca-certificates libpwquality-tools apt-transport-https #lsb-release
     DEBIAN_FRONTEND=noninteractive apt -y install postfix
     # redis repo
     add-apt-repository -y ppa:redislabs/redis
@@ -21,8 +21,8 @@ utility_and_repos() {
     adduser --disabled-password --gecos "" --no-create-home --ingroup qycli qycli
 }
 
-cert() {
-    openssl ecparam -name prime256v1 -genkey -out /etc/ssl/qycli.key
+stk_cert() {
+    openssl genpkey -algorithm Ed25519 -out /etc/ssl/qycli.key
     openssl req -new -x509 -key /etc/ssl/qycli.key -out /etc/ssl/qycli.crt -days 36500 -subj "/C=AQ/ST=qycli/L=qycli/O=HOSTYON/OU=DevOps/CN=HOSTYON"
     chown qycli:qycli -R /etc/ssl/*
 }
@@ -50,16 +50,14 @@ stk_nginx_install() {
     mkdir /etc/nginx/sites-available
     mkdir /etc/nginx/common
 
+    upd_get_snap_channel
+    snap install qycli-nginx --$snap_channel
     cp /snap/qycli-nginx/current/usr/local/nginx/sbin/nginx /usr/sbin/nginx
 
-    if [[ ! -f /etc/ssl/qycli.key ]]; then
-        cert
-    fi
+    stk_cert
 
     upd_nginx_conf
-
-    cp /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
-    systemctl enable nginx
+    upd_get_new_cf_ips
 
     chown qycli:qycli -R /var/www
 	chown root:root /var/www
@@ -74,9 +72,13 @@ stk_mariadb_install() {
 }
 
 stk_php_install() {
-    apt -y install libasn1-8-heimdal libbrotli1 libcurl4 libfftw3-double3 libfontconfig1 libfreetype6 libgomp1 libgssapi3-heimdal libhcrypto4-heimdal libheimbase1-heimdal libheimntlm0-heimdal libhx509-5-heimdal libicu66 libjpeg-turbo8 libkrb5-26-heimdal liblcms2-2 libldap-2.4-2 liblqr-1-0 libltdl7 libmagickcore-6.q16-6 libmagickwand-6.q16-6 libnghttp2-14 libonig5 libpng16-16 libpsl5 libroken18-heimdal librtmp1 libsasl2-2 libsodium23 libssh-4 libwebp6 libwind0-heimdal libx11-6 libxau6 libxcb1 libxdmcp6 libxext6 libxml2 libzip5
+    apt -y install imagemagick ghostscript libasn1-8-heimdal libbrotli1 libcurl4 libfftw3-double3 libfontconfig1 libfreetype6 libgomp1 libgssapi3-heimdal libhcrypto4-heimdal libheimbase1-heimdal libheimntlm0-heimdal libhx509-5-heimdal libicu66 libjpeg-turbo8 libkrb5-26-heimdal liblcms2-2 libldap-2.4-2 liblqr-1-0 libltdl7 libmagickcore-6.q16-6 libmagickwand-6.q16-6 libnghttp2-14 libonig5 libpng16-16 libpsl5 libroken18-heimdal librtmp1 libsasl2-2 libsodium23 libssh-4 libwebp6 libwind0-heimdal libx11-6 libxau6 libxcb1 libxdmcp6 libxext6 libxml2 libzip5
 
+    php_version=$(grep "php_version" /var/opt/qycli/cnf | sed 's/php_version=//') # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
+
+    snap install
+
     cp /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm
     cp /snap/qycli-php$php_version_short/current/php/bin/* /usr/bin/
 
@@ -121,7 +123,6 @@ stk_www_folder() {
 }
 
 stk_install() {
-    phpv=$(grep "PHP Version:" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
-    utility_and_repos; stk_nginx; stk_mariadb; stk_php; stk_redis; stk_wpcli; stk_www_folder
+    stk_utility_and_repos; stk_nginx; stk_mariadb; stk_php_install; stk_redis; stk_wpcli; stk_www_folder
     printf "\nqycli stack was installed.\n\n"
 }

@@ -10,32 +10,25 @@ upd_qycli() {
     cp /opt/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
     chmod 755 /opt/qycli/kernel
-    chmod 755 /opt/qycli/sec
+    chmod 755 /opt/qycli/sec_firewall
+}
+
+upd_get_snap_channel() {
+    branch_name=$(grep "branch_name" /var/opt/qycli/cnf | sed s+branch_name=++)
+    if [[ "$branch_name" == "dev" ]]; then
+        snap_channel=edge
+    elif [[ "$branch_name" == "beta" ]]; then
+        snap_channel=beta
+    else
+        snap_channel=stable
+    fi
 }
 
 upd_firewall() {
     sec_install=$(grep "sec_install" /var/opt/qycli/cnf | sed s+sec_install=++)
     if [[ "$sec_install" == "yes" ]]; then
-        ssh_port=$(grep -w "Port" -i /etc/ssh/sshd_config | sed s+'.*Port '++)
-
-        ufw --force disable
-        ufw --force reset
-
-        ufw default allow outgoing
-        ufw default deny incoming
-
-        ufw allow $ssh_port/tcp
-
-        #for cfip in `cat /var/opt/qycli/cloudflare_ipv4_ips`; do ufw allow proto tcp from $cfip to any port 443 comment 'Cloudflare IP'; done
-        for cfip in `cat /var/opt/qycli/cloudflare_ipv6_ips`; do ufw allow proto tcp from $cfip to any port 443 comment 'Cloudflare IP'; done
-
-        echo "y" | ufw enable
+        source /opt/qycli/sec_firewall
     fi
-}
-
-upd_nginx_overwrite_from_snap() {
-    cp /snap/qycli-nginx/current/etc/nginx/ /etc/nginx/
-    cp /snap/qycli-nginx/current/usr/lib/nginx/modules/ /usr/lib/nginx/modules/
 }
 
 upd_nginx_conf_renew_cf_ips() {
@@ -47,10 +40,14 @@ upd_nginx_conf_renew_cf_ips() {
     done
     echo 'real_ip_header CF-Connecting-IP;' | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
     echo 'real_ip_recursive on;' | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
+
     nginx -s reload
 }
 
 upd_nginx_conf() {
+    cp /snap/qycli-nginx/current/etc/nginx/ /etc/nginx/
+    cp /snap/qycli-nginx/current/usr/lib/nginx/modules/ /usr/lib/nginx/modules/
+    cp /snap/qycli-nginx/current/usr/local/nginx/sbin/nginx /usr/sbin/nginx
     cp -rf /opt/qycli/cnf/nginx/ /etc/nginx/
 
     local workerprocs=$(grep processor /proc/cpuinfo | wc -l) # 1 worker per CPU
@@ -58,15 +55,68 @@ upd_nginx_conf() {
     sed -i "s+workerprocs+${workerprocs}+g" /etc/nginx/nginx.conf
     sed -i "s+workerconn+${workerconn}+g" /etc/nginx/nginx.conf
 
-    if [[ ! -f /etc/ssl/dhparam.pem ]]; then
-		openssl dhparam -out /etc/ssl/dhparam.pem 2048
-		chmod 600 /etc/ssl/dhparam.pem
-	fi
-    
-    upd_nginx_conf_renew_cf_ips
+    if ! cmp -s /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service; then
+        cp /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
+        systemctl daemon-reload
+        systemctl reload nginx
+    fi
+
+    systemctl enable nginx
+    systemctl restart nginx
 }
 
-upd_check_for_new_cf_ips() {
+upd_mariadb_conf() {
+    local innodbbps=$(($(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++)*0.80))  # 80% of all memory in MB
+    local innodblfs=$(((${innodbbps}/100*25)))
+    local dbmaxconn=$(($(grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++)*512)) # 512 times CPU cores
+    local tmpsizes=$(($(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++)/1000*64)) # Per GB RAM 64MB
+    local querycachesize=$(($(grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++)*64)) # 64 times CPU cores
+    cp /opt/qycli/cnf/mysql/mariadb.conf.d/99-qyc.cnf /etc/mysql/mariadb.conf.d/99-qyc.cnf
+    sed -e "s/\${innodbbps}/${innodbbps}/" -e "s/\${innodblfs}/${innodblfs}/" -e "s/\${dbmaxconn}/${dbmaxconn}/" /etc/mysql/mariadb.conf.d/99-qyc.cnf
+    sed -e "s/\${tmpsizes}/${tmpsizes}/" -e "s/\${querycachesize}/${querycachesize}/" /etc/mysql/mariadb.conf.d/99-qyc.cnf
+}
+
+upd_php_conf() {
+    [[ ! -d /etc/php/fpm/pool.d ]] && mkdir -p /etc/php/fpm/pool.d
+
+    local opmem=$(($(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++)*0.15)) # 15% of all memory in MB
+    cp /opt/qycli/cnf/php/fpm/php.ini /etc/php/fpm/php.ini
+    sed -e "s/opmem/${opmem}/" /etc/php/fpm/php.ini
+
+    local maxchil=$(($(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++)*0.7/80)) # pm.max_children = 70% Total Memory / 80MB
+    cp /opt/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/php/fpm/pool.d/qycli.conf
+    sed -e "s/\${maxchil}/${maxchil}/" /etc/php/fpm/pool.d/qycli.conf
+}
+
+upd_redis_conf() {
+    local redismem=$(($(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++)*0.2)) # 20% of all memory in MB
+    sed -i "s+.*maxmemory.*+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
+}
+
+upd_system_resources_cnfs() {
+    cpus=$(grep processor /proc/cpuinfo | wc -l)
+    ram_in_mb=$(($(grep MemTotal /proc/meminfo | tr -d 'MemTotal: kB')/1000))
+
+    if ! grep -q "cpus" /var/opt/qycli/cnf; then
+        echo "cpus=$cpus" >> /var/opt/qycli/cnf
+    else
+        if [[ $cpus != $(grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++) ]]; then
+            sed -i "s+.*cpus.*+cpus=$cpus+" /var/opt/qycli/cnf
+        fi
+    fi
+
+    if ! grep -q "ram_in_mb" /var/opt/qycli/cnf; then
+        echo "ram_in_mb=$ram_in_mb" >> /var/opt/qycli/cnf
+    else
+        if [[ $ram_in_mb != $(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++) ]]; then
+            sed -i "s+.*ram_in_mb.*+ram_in_mb=$ram_in_mb+" /var/opt/qycli/cnf
+            upd_redis_conf
+            upd_php_conf
+        fi
+    fi
+}
+
+upd_get_new_cf_ips() {
     curl -s https://www.cloudflare.com/ips-v4 -o /var/opt/qycli/cloudflare_ipv4_ips_new
     curl -s https://www.cloudflare.com/ips-v6 -o /var/opt/qycli/cloudflare_ipv6_ips_new
     if ! cmp -s /var/opt/qycli/cloudflare_ipv4_ips_new /var/opt/qycli/cloudflare_ipv4_ips || ! cmp -s /var/opt/qycli/cloudflare_ipv6_ips_new /var/opt/qycli/cloudflare_ipv6_ips; then
@@ -77,31 +127,7 @@ upd_check_for_new_cf_ips() {
     fi
 }
 
-upd_mariadb_conf() {
-    local innodbbps=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*80)) # 80% of all memory in MB
-    local innodblfs=$(((${innodbbps}/100*25)))
-    local dbmaxconn=$((($(grep processor /proc/cpuinfo | wc -l)*512))) # 512 times CPU cores
-    local tmpsizes=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/1000000)*64)) # Per GB RAM 64MB
-    local querycachesize=$((($(grep processor /proc/cpuinfo | wc -l)*64))) # 64 times CPU cores
-    cp /opt/qycli/cnf/mysql/mariadb.conf.d/99-qyc.cnf /etc/mysql/mariadb.conf.d/99-qyc.cnf
-    sed -e "s/\${innodbbps}/${innodbbps}/" -e "s/\${innodblfs}/${innodblfs}/" -e "s/\${dbmaxconn}/${dbmaxconn}/" /etc/mysql/mariadb.conf.d/99-qyc.cnf
-    sed -e "s/\${tmpsizes}/${tmpsizes}/" -e "s/\${querycachesize}/${querycachesize}/" /etc/mysql/mariadb.conf.d/99-qyc.cnf
-}
-
-upd_php_conf() {
-    mkdir -p /etc/php/fpm/pool.d
-
-    local opmem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*15)) # 15% of all memory in MB
-    cp /opt/qycli/cnf/php/fpm/php.ini /etc/php/fpm/php.ini
-    sed -e "s/\${opmem}/${opmem}/" /etc/php/fpm/php.ini
-
-    local maxchil=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*70/80)) # pm.max_children = 70% Total Memory / 80MB
-    cp /opt/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/php/fpm/pool.d/qycli.conf
-    sed -e "s/\${maxchil}/${maxchil}/" /etc/php/fpm/pool.d/qycli.conf
-}
-
-upd_redis_conf() {
-    local redismem=$((($(grep MemTotal /proc/meminfo | cut -f 2 -d ':' | tr -d ' ' | cut -f 1 -d 'k')/100000)*20)) # 20% of all memory in MB
-    sed -i "s+*maxmemory*+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
+upd_fn() {
+    upd_apt; upd_qycli; upd_firewall; 
 }
 
