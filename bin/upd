@@ -6,7 +6,7 @@ upd_apt() {
 }
 
 upd_qycli() {
-    git -C /opt/qycli pull https://github.com/HOSTYON/qycli
+    git -C /opt/qycli pull
     cp /opt/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
     chmod 755 /opt/qycli/kernel
@@ -22,6 +22,14 @@ upd_get_snap_channel() {
     else
         snap_channel=stable
     fi
+}
+
+upd_get_cpus() {
+    grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++
+}
+
+upd_get_ram_mb() {
+    grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++
 }
 
 upd_firewall() {
@@ -45,74 +53,93 @@ upd_nginx_conf_renew_cf_ips() {
 }
 
 upd_nginx_conf() {
-    cp /snap/qycli-nginx/current/etc/nginx/ /etc/nginx/
-    cp /snap/qycli-nginx/current/usr/lib/nginx/modules/ /usr/lib/nginx/modules/
-    cp /snap/qycli-nginx/current/usr/local/nginx/sbin/nginx /usr/sbin/nginx
-    cp -rf /opt/qycli/cnf/nginx/ /etc/nginx/
+    cp -rf /snap/qycli-nginx/current/etc/nginx/* /etc/nginx/
+    cp -rf /opt/qycli/cnf/nginx/* /etc/nginx/
 
-    local workerprocs=$(grep processor /proc/cpuinfo | wc -l) # 1 worker per CPU
-    local workerconn=$((($(grep processor /proc/cpuinfo | wc -l)*10240)))
+    local workerprocs=$(grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++) # 1 worker per CPU
+    local workerconn=$(($(grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++)*10000)) # 10000 per CPU
     sed -i "s+workerprocs+${workerprocs}+g" /etc/nginx/nginx.conf
     sed -i "s+workerconn+${workerconn}+g" /etc/nginx/nginx.conf
 
+    nginx -s reload
+}
+
+upd_nginx() {
+    if ! cmp -s /snap/qycli-nginx/current/usr/local/nginx/sbin/nginx /usr/sbin/nginx; then
+        cp /snap/qycli-nginx/current/usr/local/nginx/sbin/nginx /usr/sbin/nginx
+        cp -rf /snap/qycli-nginx/current/usr/lib/nginx/modules/* /usr/lib/nginx/modules/
+        systemctl enable nginx
+        systemctl restart nginx
+    fi
+    
     if ! cmp -s /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service; then
         cp /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
         systemctl daemon-reload
         systemctl reload nginx
     fi
+}
 
-    systemctl enable nginx
-    systemctl restart nginx
+upd_mariadb_conf_ram_based() {
+    local innodb_buffer_pool_size=$(($(upd_get_ram_mb)*0.8))  # 80% of all memory in MB
+    local innodb_log_file_size=$(($(upd_get_ram_mb)*0.2))) # 20% of all memory in MB
+    local tmp_table_size=$(($(upd_get_ram_mb)/1000*64)) # Per GB RAM 64MB
+    sed -e "s/.*innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${innodb_buffer_pool_size}M/" \
+        -e "s/.*innodb_log_file_size.*/innodb_log_file_size = ${innodblfs}M/" \
+        -e "s/.*tmp_table_size.*/tmp_table_size = ${tmp_table_size}M/" \
+        -e "s/.*max_heap_table_size.*/max_heap_table_size = ${tmp_table_size}M/" /etc/mysql/mariadb.conf.d/99-qyc.cnf
+
+}
+
+upd_mariadb_conf_cpu_based() {
+    local max_connections=$(($(upd_get_cpus)*512)) # 512 times CPU cores
+    local query_cache_size=$(($(upd_get_cpus)*64)) # 64 times CPU cores
+    sed -e "s/.*max_connections.*/max_connections = ${max_connections}/" \
+        -e "s/.*query_cache_size.*/query_cache_size = ${query_cache_size}M/" /etc/mysql/mariadb.conf.d/99-qyc.cnf
+}
 }
 
 upd_mariadb_conf() {
-    local innodbbps=$(($(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++)*0.80))  # 80% of all memory in MB
-    local innodblfs=$(((${innodbbps}/100*25)))
-    local dbmaxconn=$(($(grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++)*512)) # 512 times CPU cores
-    local tmpsizes=$(($(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++)/1000*64)) # Per GB RAM 64MB
-    local querycachesize=$(($(grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++)*64)) # 64 times CPU cores
     cp /opt/qycli/cnf/mysql/mariadb.conf.d/99-qyc.cnf /etc/mysql/mariadb.conf.d/99-qyc.cnf
-    sed -e "s/\${innodbbps}/${innodbbps}/" -e "s/\${innodblfs}/${innodblfs}/" -e "s/\${dbmaxconn}/${dbmaxconn}/" /etc/mysql/mariadb.conf.d/99-qyc.cnf
-    sed -e "s/\${tmpsizes}/${tmpsizes}/" -e "s/\${querycachesize}/${querycachesize}/" /etc/mysql/mariadb.conf.d/99-qyc.cnf
-}
+    upd_mariadb_conf_ram_based
+    upd_mariadb_conf_cpu_based
+    systemctl restart mysql
+}    
 
 upd_php_conf() {
     [[ ! -d /etc/php/fpm/pool.d ]] && mkdir -p /etc/php/fpm/pool.d
 
-    local opmem=$(($(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++)*0.15)) # 15% of all memory in MB
+    local opmem=$(($(upd_get_ram_mb)*0.15)) # 15% of all memory in MB
     cp /opt/qycli/cnf/php/fpm/php.ini /etc/php/fpm/php.ini
-    sed -e "s/opmem/${opmem}/" /etc/php/fpm/php.ini
+    sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" /etc/php/fpm/php.ini
 
-    local maxchil=$(($(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++)*0.7/80)) # pm.max_children = 70% Total Memory / 80MB
+    local maxchil=$(($(upd_get_ram_mb)*0.7/80)) # pm.max_children = 70% Total Memory / 80MB
     cp /opt/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/php/fpm/pool.d/qycli.conf
-    sed -e "s/\${maxchil}/${maxchil}/" /etc/php/fpm/pool.d/qycli.conf
+    sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" /etc/php/fpm/pool.d/qycli.conf
+
+    systemctl reload php-fpm
 }
 
 upd_redis_conf() {
-    local redismem=$(($(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++)*0.2)) # 20% of all memory in MB
+    local redismem=$(($(upd_get_ram_mb)*0.2)) # 20% of all memory in MB
     sed -i "s+.*maxmemory.*+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
 }
 
-upd_system_resources_cnfs() {
+upd_system_resources_qycli_cnf() {
     cpus=$(grep processor /proc/cpuinfo | wc -l)
     ram_in_mb=$(($(grep MemTotal /proc/meminfo | tr -d 'MemTotal: kB')/1000))
 
     if ! grep -q "cpus" /var/opt/qycli/cnf; then
         echo "cpus=$cpus" >> /var/opt/qycli/cnf
-    else
-        if [[ $cpus != $(grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++) ]]; then
-            sed -i "s+.*cpus.*+cpus=$cpus+" /var/opt/qycli/cnf
-        fi
+    fi
+    if [[ $cpus != $(grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++) ]]; then
+        sed -i "s+.*cpus.*+cpus=$cpus+" /var/opt/qycli/cnf
     fi
 
     if ! grep -q "ram_in_mb" /var/opt/qycli/cnf; then
         echo "ram_in_mb=$ram_in_mb" >> /var/opt/qycli/cnf
-    else
-        if [[ $ram_in_mb != $(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++) ]]; then
-            sed -i "s+.*ram_in_mb.*+ram_in_mb=$ram_in_mb+" /var/opt/qycli/cnf
-            upd_redis_conf
-            upd_php_conf
-        fi
+    fi
+    if [[ $ram_in_mb != $(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++) ]]; then
+        sed -i "s+.*ram_in_mb.*+ram_in_mb=$ram_in_mb+" /var/opt/qycli/cnf
     fi
 }
 
@@ -128,6 +155,6 @@ upd_get_new_cf_ips() {
 }
 
 upd_fn() {
-    upd_apt; upd_qycli; upd_firewall; 
+    upd_qycli; upd_apt; upd_system_resources_qycli_cnf; upd_mariadb_conf; upd_get_new_cf_ips;
 }
 

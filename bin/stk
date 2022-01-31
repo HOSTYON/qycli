@@ -21,7 +21,7 @@ stk_utility_and_repos() {
     adduser --disabled-password --gecos "" --no-create-home --ingroup qycli qycli
 }
 
-stk_cert() {
+stk_nginx_cert() {
     openssl genpkey -algorithm Ed25519 -out /etc/ssl/qycli.key
     openssl req -new -x509 -key /etc/ssl/qycli.key -out /etc/ssl/qycli.crt -days 36500 -subj "/C=AQ/ST=qycli/L=qycli/O=HOSTYON/OU=DevOps/CN=HOSTYON"
     chown qycli:qycli -R /etc/ssl/*
@@ -32,7 +32,6 @@ stk_nginx_install() {
     if [[ ! -d /etc/nginx ]] && [[ ! -d /usr/lib/nginx/modules ]]; then
         mkdir /etc/nginx
         mkdir -p /usr/lib/nginx/modules
-        upd_nginx_overwrite_from_snap
     else
         printf "\nNGINX is already installed, start on a fresh system please.\n"
         exit
@@ -52,12 +51,11 @@ stk_nginx_install() {
 
     upd_get_snap_channel
     snap install qycli-nginx --$snap_channel
-    cp /snap/qycli-nginx/current/usr/local/nginx/sbin/nginx /usr/sbin/nginx
 
-    stk_cert
+    stk_nginx_cert
 
     upd_nginx_conf
-    upd_get_new_cf_ips
+    upd_nginx_conf_renew_cf_ips
 
     chown qycli:qycli -R /var/www
 	chown root:root /var/www
@@ -68,7 +66,6 @@ stk_nginx_install() {
 stk_mariadb_install() {
     apt -y install mariadb-server
     upd_mariadb_conf
-    systemctl restart mysql
 }
 
 stk_php_install() {
@@ -76,8 +73,9 @@ stk_php_install() {
 
     php_version=$(grep "php_version" /var/opt/qycli/cnf | sed 's/php_version=//') # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
-
-    snap install
+    
+    upd_get_snap_channel
+    snap install qycli-php${php_version_short} --$snap_channel
 
     cp /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm
     cp /snap/qycli-php$php_version_short/current/php/bin/* /usr/bin/
@@ -123,6 +121,6 @@ stk_www_folder() {
 }
 
 stk_install() {
-    stk_utility_and_repos; stk_nginx; stk_mariadb; stk_php_install; stk_redis; stk_wpcli; stk_www_folder
+    stk_utility_and_repos; stk_nginx_install; stk_mariadb; stk_php_install; stk_redis; stk_wpcli; stk_www_folder
     printf "\nqycli stack was installed.\n\n"
 }

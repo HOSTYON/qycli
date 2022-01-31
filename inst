@@ -14,9 +14,11 @@ inst_qycli() {
     cp /opt/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
     chmod 755 /opt/qycli/kernel
-    chmod 755 /opt/qycli/sec
+    chmod 755 /opt/qycli/sec_firewall
     source /opt/qycli/bin/stk
     source /opt/qycli/bin/help
+    source /opt/qycli/bin/upd
+    upd_system_resources_qycli_cnf
     printf "\nqycli ($branch_name) was installed.\n\n"
     if [[ "$kernel_tweaks" == "yes" ]]; then
         printf "Optimizing kernel configurations. You should restart after the full installation has finished.\n\n"
