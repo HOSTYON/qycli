@@ -2,7 +2,7 @@
 
 [[ $(whoami) != "root" ]] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 
-## Install qycli and stack with "wget -qO- qyc.li/inst | bash" or the dev version with "wget -qO- qyc.li/inst | bash -s v dev"
+## Install qycli and stack with "wget -qO- qyc.li/inst | sudo bash" or the dev version with "wget -qO- qyc.li/inst | sudo bash -s v dev"
 ## Optimize the host if you are in a container with "wget -qO- qyc.li/kernel | bash"
 
 inst_qycli() {
@@ -15,12 +15,11 @@ inst_qycli() {
     git -C /opt clone -b $branch_name https://github.com/HOSTYON/qycli
     cp /opt/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
-    chmod 755 /opt/qycli/kernel
-    chmod 755 /opt/qycli/sec_firewall
+    #chmod 755 /opt/qycli/kernel
+    #chmod 755 /opt/qycli/sec_firewall
     source /opt/qycli/bin/stk
     source /opt/qycli/bin/help
     source /opt/qycli/bin/upd
-    upd_system_resources_qycli_cnf
     printf "\nqycli ($branch_name) was installed.\n\n"
     if [[ "$kernel_tweaks" == "yes" ]]; then
         printf "Optimizing kernel configurations. You should restart after the full installation has finished.\n\n"
@@ -31,6 +30,7 @@ inst_qycli() {
         source /opt/qycli/sec_firewall
     fi
     printf "\nInstalling the qycli stack now.\n\n"
+    upd_system_resources_qycli_cnf
     stk_install
 }
 
