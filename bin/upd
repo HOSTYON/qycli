@@ -82,8 +82,8 @@ upd_nginx() {
 }
 
 upd_mariadb_conf_ram_based() {
-    local innodb_buffer_pool_size=$(($(upd_get_ram_mb)*0.8)) # 80% of all memory in MB
-    local innodb_log_file_size=$(($(upd_get_ram_mb)*0.2)) # 20% of all memory in MB
+    local innodb_buffer_pool_size=$(($(upd_get_ram_mb)/100*80)) # 80% of all memory in MB
+    local innodb_log_file_size=$(($(upd_get_ram_mb)/100*20)) # 20% of all memory in MB
     local tmp_table_size=$(($(upd_get_ram_mb)/1000*64)) # Per GB RAM 64MB
     sed -e "s/.*innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${innodb_buffer_pool_size}M/" \
         -e "s/.*innodb_log_file_size.*/innodb_log_file_size = ${innodblfs}M/" \
@@ -109,11 +109,11 @@ upd_mariadb_conf() {
 upd_php_conf() {
     [[ ! -d /etc/php/fpm/pool.d ]] && mkdir -p /etc/php/fpm/pool.d
 
-    local opmem=$(($(upd_get_ram_mb)*0.15)) # 15% of all memory in MB
+    local opmem=$(($(upd_get_ram_mb)/100*15)) # 15% of all memory in MB
     cp /opt/qycli/cnf/php/fpm/php.ini /etc/php/fpm/php.ini
     sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" /etc/php/fpm/php.ini
 
-    local maxchil=$(($(upd_get_ram_mb)*0.7/80)) # pm.max_children = 70% Total Memory / 80MB
+    local maxchil=$(($(upd_get_ram_mb)/100*70/80)) # pm.max_children = 70% Total Memory / 80MB
     cp /opt/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/php/fpm/pool.d/qycli.conf
     sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" /etc/php/fpm/pool.d/qycli.conf
 
@@ -122,7 +122,7 @@ upd_php_conf() {
 
 upd_redis_conf() {
     cp /opt/qycli/cnf/redis/redis.conf /etc/redis/redis.conf
-    local redismem=$(($(upd_get_ram_mb)*0.2)) # 20% of all memory in MB
+    local redismem=$(($(upd_get_ram_mb)/100*20)) # 20% of all memory in MB
     sed -i "s+.*maxmemory.*+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
     systemctl restart redis-server
 }
