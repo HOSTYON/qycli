@@ -27,7 +27,7 @@ elif [[ "$1" == "del" || "$1" == "delete" ]]; then
 elif [[ "$1" == "upd" || "$1" == "update" ]]; then
     upd_fn
 elif [[ "$1" == "stk" || "$1" == "stack" ]]; then
-    stk_wp
+    stk_install
 elif [[ "$1" =~ ^(v|version|ver)$ ]]; then
     show_qycli_version
 else

@@ -103,6 +103,6 @@ EOF
 }
 
 stk_install() {
-    stk_utility_and_repos; stk_nginx_install; stk_mariadb_install; stk_php_install; stk_redis_install; stk_wpcli_install;
+    stk_utility_and_repos; stk_nginx_install; stk_php_install; stk_mariadb_install; stk_redis_install; stk_wpcli_install;
     printf "\nqycli stack was installed.\n\n"
 }

@@ -11,6 +11,7 @@ upd_qycli() {
     chmod 755 /usr/bin/qyc
     chmod 755 /opt/qycli/kernel
     chmod 755 /opt/qycli/sec_firewall
+    snap refresh
 }
 
 upd_get_snap_channel() {
@@ -157,6 +158,6 @@ upd_get_new_cf_ips() {
 }
 
 upd_fn() {
-    upd_qycli; upd_apt; upd_system_resources_qycli_cnf; upd_mariadb_conf; upd_get_new_cf_ips;
+    upd_qycli; upd_apt; upd_system_resources_qycli_cnf; upd_get_new_cf_ips; upd_nginx_conf; upd_mariadb_conf; upd_nginx; upd_php_conf; upd_redis_conf;
 }
 
