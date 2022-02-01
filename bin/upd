@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # qycli update functions
+
 upd_apt() {
     apt update && apt upgrade -y && apt -y dist-upgrade && apt -y autoremove
 }
@@ -81,7 +82,7 @@ upd_nginx() {
 }
 
 upd_mariadb_conf_ram_based() {
-    local innodb_buffer_pool_size=$(($(upd_get_ram_mb)*0.8))  # 80% of all memory in MB
+    local innodb_buffer_pool_size=$(($(upd_get_ram_mb)*0.8)) # 80% of all memory in MB
     local innodb_log_file_size=$(($(upd_get_ram_mb)*0.2))) # 20% of all memory in MB
     local tmp_table_size=$(($(upd_get_ram_mb)/1000*64)) # Per GB RAM 64MB
     sed -e "s/.*innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${innodb_buffer_pool_size}M/" \
@@ -96,7 +97,6 @@ upd_mariadb_conf_cpu_based() {
     local query_cache_size=$(($(upd_get_cpus)*64)) # 64 times CPU cores
     sed -e "s/.*max_connections.*/max_connections = ${max_connections}/" \
         -e "s/.*query_cache_size.*/query_cache_size = ${query_cache_size}M/" /etc/mysql/mariadb.conf.d/99-qyc.cnf
-}
 }
 
 upd_mariadb_conf() {
