@@ -120,8 +120,10 @@ upd_php_conf() {
 }
 
 upd_redis_conf() {
+    cp /opt/qycli/cnf/redis/redis.conf /etc/redis/redis.conf
     local redismem=$(($(upd_get_ram_mb)*0.2)) # 20% of all memory in MB
     sed -i "s+.*maxmemory.*+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
+    systemctl restart redis-server
 }
 
 upd_system_resources_qycli_cnf() {
