@@ -57,10 +57,10 @@ upd_nginx_conf() {
     cp -rf /snap/qycli-nginx/current/etc/nginx/* /etc/nginx/
     cp -rf /opt/qycli/cnf/nginx/* /etc/nginx/
 
-    local workerprocs=$(grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++) # 1 worker per CPU
-    local workerconn=$(($(grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++)*10000)) # 10000 per CPU
-    sed -i "s+workerprocs+${workerprocs}+g" /etc/nginx/nginx.conf
-    sed -i "s+workerconn+${workerconn}+g" /etc/nginx/nginx.conf
+    local worker_processes=$(upd_get_cpus) # 1 worker per CPU
+    local worker_connections=$(($(upd_get_cpus)*10000)) # 10000 per CPU
+    sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/nginx/nginx.conf
+    sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/nginx/nginx.conf
 
     nginx -s reload
 }

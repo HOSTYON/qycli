@@ -36,6 +36,9 @@ stk_nginx_install() {
         exit
     fi
 
+    upd_get_snap_channel
+    snap install qycli-nginx --$snap_channel
+
     mkdir -p /usr/local/nginx/html
     cp /snap/qycli-nginx/current/usr/local/nginx/html/ /usr/local/nginx/html/
 
@@ -48,8 +51,6 @@ stk_nginx_install() {
     mkdir /etc/nginx/sites-available
     mkdir /etc/nginx/common
 
-    upd_get_snap_channel
-    snap install qycli-nginx --$snap_channel
     upd_nginx
 
     stk_nginx_cert
