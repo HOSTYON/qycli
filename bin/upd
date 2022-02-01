@@ -144,6 +144,7 @@ upd_system_resources_qycli_cnf() {
     if [[ $ram_in_mb != $(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++) ]]; then
         sed -i "s+.*ram_in_mb.*+ram_in_mb=$ram_in_mb+" /var/opt/qycli/cnf
     fi
+    echo "resource infos written to file"
 }
 
 upd_get_new_cf_ips() {
