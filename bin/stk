@@ -44,6 +44,7 @@ stk_nginx_install() {
 
     mkdir /var/log/nginx
     touch /var/log/nginx/error.log
+    chown -R qycli:qycli /var/log/nginx/
 
     mkdir /var/lib/nginx
 
