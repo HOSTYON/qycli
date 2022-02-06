@@ -88,7 +88,7 @@ upd_mariadb_conf_ram_based() {
     sed -e "s/.*innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${innodb_buffer_pool_size}M/" \
         -e "s/.*innodb_log_file_size.*/innodb_log_file_size = ${innodblfs}M/" \
         -e "s/.*tmp_table_size.*/tmp_table_size = ${tmp_table_size}M/" \
-        -e "s/.*max_heap_table_size.*/max_heap_table_size = ${tmp_table_size}M/" /etc/mysql/mariadb.conf.d/99-qyc.cnf
+        -e "s/.*max_heap_table_size.*/max_heap_table_size = ${tmp_table_size}M/" -i /etc/mysql/mariadb.conf.d/99-qyc.cnf
 
 }
 
@@ -96,7 +96,7 @@ upd_mariadb_conf_cpu_based() {
     local max_connections=$(($(upd_get_cpus)*512)) # 512 times CPU cores
     local query_cache_size=$(($(upd_get_cpus)*64)) # 64 times CPU cores
     sed -e "s/.*max_connections.*/max_connections = ${max_connections}/" \
-        -e "s/.*query_cache_size.*/query_cache_size = ${query_cache_size}M/" /etc/mysql/mariadb.conf.d/99-qyc.cnf
+        -e "s/.*query_cache_size.*/query_cache_size = ${query_cache_size}M/" -i /etc/mysql/mariadb.conf.d/99-qyc.cnf
 }
 
 upd_mariadb_conf() {
