@@ -6,8 +6,6 @@ After=network.target
 Type=simple
 ExecStart=/usr/sbin/php-fpm --nodaemonize --php-ini /etc/php/fpm/php.ini --fpm-config /etc/php/fpm/php-fpm.conf
 ExecReload=/bin/kill -USR2 $MAINPID
-User=qycli
-Group=qycli
 
 [Install]
 WantedBy=multi-user.target

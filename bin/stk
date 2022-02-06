@@ -81,12 +81,12 @@ stk_php_install() {
     upd_get_snap_channel
     snap install qycli-php${php_version_short} --$snap_channel
 
-    cp /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm
-    cp /snap/qycli-php$php_version_short/current/php/bin/* /usr/bin/
-
     mkdir /var/log/php/
+    touch /var/log/php/php-fpm-error.log
+    chown -R qycli:qycli /var/log/php/
 
-    cp /opt/qycli/cnf/php/php-fpm.service /lib/systemd/system/php-fpm.service
+    upd_php
+    upd_php_conf
 }
 
 stk_redis_install() {

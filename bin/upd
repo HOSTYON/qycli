@@ -107,7 +107,8 @@ upd_mariadb_conf() {
 }    
 
 upd_php_conf() {
-    [[ ! -d /etc/php/fpm/pool.d ]] && mkdir -p /etc/php/fpm/pool.d
+    [[ ! -d /etc/php/fpm ]] && mkdir -p /etc/php/fpm
+    cp -rf /opt/qycli/cnf/php/fpm/* /etc/php/fpm/
 
     local opmem=$(($(upd_get_ram_mb)/100*15)) # 15% of all memory in MB
     cp /opt/qycli/cnf/php/fpm/php.ini /etc/php/fpm/php.ini
@@ -118,6 +119,24 @@ upd_php_conf() {
     sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" -i /etc/php/fpm/pool.d/qycli.conf
 
     systemctl reload php-fpm
+}
+
+upd_php() {
+    php_version=$(grep "php_version" /var/opt/qycli/cnf | sed 's/php_version=//') # Reading the qycli.cnf file
+    php_version_short=$(echo "$php_version" | tr -d ".")
+    
+    if ! cmp -s /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm; then
+        cp /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm
+        cp /snap/qycli-php$php_version_short/current/php/bin/* /usr/bin/
+        systemctl restart php-fpm
+    fi
+
+    if ! cmp -s /opt/qycli/cnf/php/php-fpm.service /lib/systemd/system/php-fpm.service; then
+        cp /opt/qycli/cnf/php/php-fpm.service /lib/systemd/system/php-fpm.service
+        systemctl daemon-reload
+        systemctl restart php-fpm
+        systemctl enable php-fpm
+    fi
 }
 
 upd_redis_conf() {
