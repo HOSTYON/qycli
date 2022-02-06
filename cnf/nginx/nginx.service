@@ -4,8 +4,7 @@ After=syslog.target network-online.target remote-fs.target nss-lookup.target
 Wants=network-online.target
 
 [Service]
-Type=forking
-PIDFile=/run/qycli-pid/nginx.pid
+Type=simple
 ExecStartPre=/usr/sbin/nginx -t
 ExecStart=/usr/sbin/nginx
 ExecReload=/usr/sbin/nginx -s reload
@@ -13,6 +12,7 @@ ExecStop=/bin/kill -s QUIT $MAINPID
 PrivateTmp=true
 User=qycli
 Group=qycli
+Restart=always
 
 [Install]
 WantedBy=multi-user.target

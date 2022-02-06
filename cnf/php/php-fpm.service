@@ -4,7 +4,6 @@ After=network.target
 
 [Service]
 Type=simple
-PIDFile=/run/php-fpm.pid
 ExecStart=/usr/sbin/php-fpm --nodaemonize --php-ini /etc/php/fpm/php.ini --fpm-config /etc/php/fpm/php-fpm.conf
 ExecReload=/bin/kill -USR2 $MAINPID
 User=qycli
