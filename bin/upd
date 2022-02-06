@@ -76,7 +76,7 @@ upd_nginx() {
     if ! cmp -s /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service; then
         cp /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
         systemctl daemon-reload
-        systemctl reload nginx
+        systemctl restart nginx
         systemctl enable nginx
     fi
 }
