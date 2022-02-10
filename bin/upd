@@ -134,16 +134,25 @@ upd_php() {
     if ! cmp -s /opt/qycli/cnf/php/php-fpm.service /lib/systemd/system/php-fpm.service; then
         cp /opt/qycli/cnf/php/php-fpm.service /lib/systemd/system/php-fpm.service
         systemctl daemon-reload
-        systemctl restart php-fpm
         systemctl enable php-fpm
+        systemctl restart php-fpm
     fi
 }
 
 upd_redis_conf() {
     cp /opt/qycli/cnf/redis/redis.conf /etc/redis/redis.conf
     local redismem=$(($(upd_get_ram_mb)/100*20)) # 20% of all memory in MB
-    sed -i "s+maxmemory .*+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
+    sed -i "s+maxmemory[[:space:]].*+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
     systemctl restart redis-server
+}
+
+upd_redis_service() {
+    if ! cmp -s /opt/qycli/cnf/redis/redis-server.service /lib/systemd/system/redis-server.service; then
+        cp /opt/qycli/cnf/redis/redis-server.service /lib/systemd/system/redis-server.service
+        systemctl daemon-reload
+        systemctl enable redis-server
+        systemctl restart redis-server
+    fi
 }
 
 upd_system_resources_qycli_cnf() {
@@ -178,6 +187,6 @@ upd_get_new_cf_ips() {
 }
 
 upd_fn() {
-    upd_qycli; upd_apt; upd_system_resources_qycli_cnf; upd_get_new_cf_ips; upd_mariadb_conf; upd_nginx_conf; upd_nginx; upd_php_conf; upd_php; upd_redis_conf;
+    upd_qycli; upd_apt; upd_system_resources_qycli_cnf; upd_get_new_cf_ips; upd_mariadb_conf; upd_nginx_conf; upd_nginx; upd_php_conf; upd_php; upd_redis_conf; upd_redis_service;
 }
 

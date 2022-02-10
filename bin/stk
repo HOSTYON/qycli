@@ -92,7 +92,9 @@ stk_php_install() {
 stk_redis_install() {
     apt -y install redis
     usermod -g qycli redis
+    
     upd_redis_conf
+    upd_redis_service
 }
 
 stk_wpcli_install() {
