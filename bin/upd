@@ -103,7 +103,7 @@ upd_mariadb_conf() {
     cp /opt/qycli/cnf/mysql/mariadb.conf.d/99-qyc.cnf /etc/mysql/mariadb.conf.d/99-qyc.cnf
     upd_mariadb_conf_ram_based
     upd_mariadb_conf_cpu_based
-    systemctl restart mysql
+    systemctl restart mariadb
 }    
 
 upd_php_conf() {
