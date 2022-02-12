@@ -110,7 +110,8 @@ upd_mariadb_conf() {
 
 upd_php_conf() {
     [[ ! -d /etc/php/fpm ]] && mkdir -p /etc/php/fpm
-    cp -rf /opt/qycli/cnf/php/fpm/* /etc/php/fpm/
+    cp -rf /opt/qycli/cnf/php/* /etc/php/
+    chown -R qycli:qycli /etc/php
 
     local opmem=$(($(upd_get_ram_mb)/100*15)) # 15% of all memory in MB
     cp /opt/qycli/cnf/php/fpm/php.ini /etc/php/fpm/php.ini
