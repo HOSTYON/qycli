@@ -12,6 +12,9 @@ upd_qycli() {
 
 upd_apt() {
     if [[ -f /etc/apt/sources.list.d/*.old* ]]; then
+        echo "bla"
+    fi
+    if [[ -f /etc/apt/sources.list.d/*.old* ]]; then
         rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
     fi
     apt update && apt upgrade -y && apt -y dist-upgrade && apt -y autoremove
