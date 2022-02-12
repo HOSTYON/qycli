@@ -36,6 +36,8 @@ stk_nginx_install() {
         exit
     fi
 
+    apt -y install libfontconfig1 libfreetype6 libgd3 libgeoip1 libicu66 libjbig0 libjpeg-turbo8 libmaxminddb0 libperl5.30 libpng16-16 libtiff5 libwebp6 libx11-6 libxau6 libxcb1 libxdmcp6 libxml2 libxpm4 libxslt1.1
+
     upd_get_snap_channel
     snap install qycli-nginx --$snap_channel
 
