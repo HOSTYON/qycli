@@ -50,7 +50,6 @@ stk_nginx_install() {
 
     mkdir /etc/nginx/sites-enabled
     mkdir /etc/nginx/sites-available
-    mkdir /etc/nginx/common
 
     upd_nginx
 
