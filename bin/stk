@@ -13,10 +13,9 @@ stk_utility_and_repos() {
     add-apt-repository -y ppa:redislabs/redis
     # MariaDB repo
     curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | bash -s -- --skip-maxscale
-    if [[ -f /etc/apt/sources.list.d/*.old* ]]; then
-        rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
-    fi
+
     add-apt-repository -y ppa:maxmind/ppa
+    
     addgroup qycli
     adduser --disabled-password --gecos "" --no-create-home --ingroup qycli qycli
 }
