@@ -1,5 +1,5 @@
 [Unit]
-Description=The PHP FastCGI Process Manager
+Description=The PHP FastCGI Process Manager for qycli
 After=network.target
 
 [Service]
