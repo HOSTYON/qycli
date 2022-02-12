@@ -86,7 +86,7 @@ upd_mariadb_conf_ram_based() {
     local innodb_log_file_size=$(($(upd_get_ram_mb)/100*20)) # 20% of all memory in MB
     local tmp_table_size=$(($(upd_get_ram_mb)/1000*64)) # Per GB RAM 64MB
     sed -e "s/.*innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${innodb_buffer_pool_size}M/" \
-        -e "s/.*innodb_log_file_size.*/innodb_log_file_size = ${innodblfs}M/" \
+        -e "s/.*innodb_log_file_size.*/innodb_log_file_size = ${innodb_log_file_size}M/" \
         -e "s/.*tmp_table_size.*/tmp_table_size = ${tmp_table_size}M/" \
         -e "s/.*max_heap_table_size.*/max_heap_table_size = ${tmp_table_size}M/" -i /etc/mysql/mariadb.conf.d/99-qyc.cnf
 
