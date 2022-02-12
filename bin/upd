@@ -1,14 +1,6 @@
 #!/bin/bash
 
 # qycli update functions
-
-upd_apt() {
-    if [[ -f /etc/apt/sources.list.d/*.old* ]]; then
-        rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
-    fi
-    apt update && apt upgrade -y && apt -y dist-upgrade && apt -y autoremove
-}
-
 upd_qycli() {
     git -C /opt/qycli pull
     cp /opt/qycli/bin/qyc /usr/bin/qyc
@@ -16,6 +8,13 @@ upd_qycli() {
     chmod 755 /opt/qycli/kernel
     chmod 755 /opt/qycli/sec_firewall
     snap refresh
+}
+
+upd_apt() {
+    if [[ -f /etc/apt/sources.list.d/*.old* ]]; then
+        rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
+    fi
+    apt update && apt upgrade -y && apt -y dist-upgrade && apt -y autoremove
 }
 
 upd_get_snap_channel() {
