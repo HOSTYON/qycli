@@ -16,6 +16,7 @@ stk_utility_and_repos() {
     if [[ -f /etc/apt/sources.list.d/*.old* ]]; then
         rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
     fi
+    add-apt-repository -y ppa:maxmind/ppa
     addgroup qycli
     adduser --disabled-password --gecos "" --no-create-home --ingroup qycli qycli
 }
