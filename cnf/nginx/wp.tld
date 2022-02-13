@@ -1,6 +1,6 @@
 server {
 
-    listen [::]:443 ssl reuseport;
+    listen [::]:443 ssl reuseport ipv6only=on;
 
     ssl_certificate /etc/ssl/qycli.crt;
     ssl_certificate_key /etc/ssl/qycli.key;
