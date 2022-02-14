@@ -110,6 +110,8 @@ mk_wp() {
     wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
     wp --path=/var/www/$domain/htdocs config set WP_MEMORY_LIMIT 128M
 
+    wp --path=/var/www/$domain/htdocs login install --activate
+
     qyc set $domain cache o on
 
     printf "\n$domain is ready.\n\n"
@@ -118,7 +120,9 @@ mk_wp() {
     printf "    Password: $wppw\n\n"
     printf "Add this IPv6 address as an AAAA record in Cloudflare with proxy enabled (orange cloud):\n"
     printf "    $(ip -6 a | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80)\n\n"
-    printf "Then login here: https://$domain/wp-login.php\n\n"
+    printf "Then login manually here: https://$domain/wp-login.php\n\n"
+    printf "\nOr login clicking or pasting the following link\n"
+    wp --path=/var/www/$domain/htdocs login create $wpadmin
 }
 
 del_site() {

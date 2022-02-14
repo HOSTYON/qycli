@@ -106,6 +106,7 @@ stk_wpcli_install() {
 runuser -u qycli -- wp-cli $@
 EOF
     chmod +x /usr/local/bin/wp
+    wp package install aaemnnosttv/wp-cli-login-command
 }
 
 stk_install() {
