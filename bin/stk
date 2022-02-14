@@ -42,7 +42,8 @@ stk_nginx_install() {
     snap install qycli-nginx --$snap_channel
 
     mkdir -p /usr/local/nginx/html
-    cp -r /snap/qycli-nginx/current/usr/local/nginx/html/ /usr/local/nginx/html/
+    mkdir /usr/local/nginx/modules
+    cp -r /snap/qycli-nginx/current/usr/local/nginx/html/ /usr/local/nginx/
 
     mkdir /var/log/nginx
     touch /var/log/nginx/error.log
