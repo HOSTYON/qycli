@@ -108,6 +108,7 @@ mk_wp() {
     wp --path=/var/www/$domain/htdocs theme update --all
     wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
     wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
+    wp --path=/var/www/$domain/htdocs config set WP_MEMORY_LIMIT 128M
 
     qyc set $domain cache o on
 
@@ -180,7 +181,7 @@ set_cache_object() {
             wp --path=/var/www/$domain/htdocs plugin install --activate wp-redis
             wp --path=/var/www/$domain/htdocs config set WP_CACHE_KEY_SALT "qyc_$domain"
             if [[ ! $(grep "redis_server" /var/www/$domain/wp-config.php) ]]; then
-                sed -i "/That's all, stop editing/i\$redis_server = array( 'host' => '/run/redis.sock','port' => null,'database' => 0, );" /var/www/$domain/wp-config.php
+                sed -i "/That's all, stop editing/i\$redis_server = array( 'host' => '/run/redis/redis.sock','port' => null,'database' => 0, );" /var/www/$domain/wp-config.php
             fi
             ln -s plugins/wp-redis/object-cache.php /var/www/$domain/htdocs/wp-content/object-cache.php
             wp --path=/var/www/$domain/htdocs transient delete-all
