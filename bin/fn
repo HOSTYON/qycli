@@ -423,6 +423,45 @@ qyc_clone() {
     fi
 }
 
+stack_php_version() {
+    if [[ "$1" =~ (8.[0-1]|7.4) ]]; then
+        new_ver=$1
+    else
+        echo "No correct version number for PHP, should be 7.4, 8.0 or 8.1"
+        exit
+    fi
+    sed "s/^php_version=.*/php_version=$1/" -i /var/opt/qycli/cnf
+    upd_php
+}
+
+stack_php_parser() {
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            v|ver|version)
+                shift
+                stack_php_version "$@"
+                ;;
+        esac
+        shift
+    done
+}
+
+qyc_stack() {
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            php)
+                shift
+                stack_php_parser "$@"
+                ;;
+            install|reinstall|inst)
+                shift
+                stk_install
+                ;;
+        esac
+        shift
+    done
+}
+
 del() {
     if [[ "$1" == "" ]]; then
         print_help_del
