@@ -128,6 +128,9 @@ upd_php() {
     php_version=$(grep "php_version" /var/opt/qycli/cnf | sed 's/php_version=//') # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
 
+    upd_get_snap_channel
+    snap install qycli-php${php_version_short} --$snap_channel
+
     if ! cmp -s /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm; then
         cp /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm
         cp /snap/qycli-php$php_version_short/current/php/bin/* /usr/bin/

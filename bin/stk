@@ -79,9 +79,6 @@ stk_php_install() {
 
     php_version=$(grep "php_version" /var/opt/qycli/cnf | sed 's/php_version=//') # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
-    
-    upd_get_snap_channel
-    snap install qycli-php${php_version_short} --$snap_channel
 
     mkdir /var/log/php/
     touch /var/log/php/php-fpm-error.log
