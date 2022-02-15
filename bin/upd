@@ -121,7 +121,7 @@ upd_php_conf() {
     cp /opt/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/php/fpm/pool.d/qycli.conf
     sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" -i /etc/php/fpm/pool.d/qycli.conf
 
-    systemctl reload php-fpm
+    systemctl restart php-fpm
 }
 
 upd_php() {
@@ -132,7 +132,7 @@ upd_php() {
         cp /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm
         cp /snap/qycli-php$php_version_short/current/php/bin/* /usr/bin/
         mkdir -p /php/lib/php/extensions/no-debug-non-zts-20200930
-        cp /snap/qycli-php$php_version_short/current/php/lib/php/extensions/no-debug-non-zts-20200930/* /php/lib/php/extensions/no-debug-non-zts-20200930/
+        cp -r /snap/qycli-php$php_version_short/current/php/lib/php/extensions/* /php/lib/php/extensions/
         systemctl restart php-fpm
     fi
 
