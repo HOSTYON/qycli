@@ -131,7 +131,7 @@ upd_php() {
     if ! cmp -s /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm; then
         cp /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm
         cp /snap/qycli-php$php_version_short/current/php/bin/* /usr/bin/
-        mkdir -p /php/lib/php/extensions/no-debug-non-zts-20200930
+        mkdir -p /php/lib/php/extensions
         cp -r /snap/qycli-php$php_version_short/current/php/lib/php/extensions/* /php/lib/php/extensions/
         systemctl restart php-fpm
     fi
