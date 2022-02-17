@@ -106,7 +106,48 @@ EOF
     wp package install aaemnnosttv/wp-cli-login-command
 }
 
+stk_composer_install() {
+    EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
+    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+    ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
+
+    if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]
+    then
+        >&2 echo 'ERROR: Invalid installer checksum'
+        rm composer-setup.php
+        exit 1
+    fi
+
+    php composer-setup.php --quiet --filename=composer-binary --install-dir=/usr/local/bin/
+    RESULT=$?
+    rm composer-setup.php
+    exit $RESULT
+
+    tee /usr/local/bin/composer >/dev/null <<'EOF'
+runuser -u qycli -- composer-binary --working-dir=/var/www/ $@
+EOF
+    chmod +x /usr/local/bin/composer
+}
+
+stk_pma_install() {
+    composer create-project phpmyadmin/phpmyadmin /var/www/pma/htdocs
+    cp /var/www/pma/htdocs/config.sample.inc.php /var/www/pma/htdocs/config.inc.php
+    sed "s+\['host'\] = 'localhost'+\['socket'\] = '/run/mysqld/mysqld.sock'+" -i /var/www/pma/htdocs/config.inc.php
+    
+    cp /etc/nginx/ /etc/nginx/sites-available/pma
+    sed -i "s/dmn.tld/pma/g" /etc/nginx/sites-available/pma
+    mkdir /var/www/pma/nginx-conf
+    tee /var/www/pma/nginx-conf/server-names.conf >/dev/null <<EOF
+server_name
+_
+;
+EOF
+    ln -s /etc/nginx/sites-available/pma /etc/nginx/sites-enabled/
+    chown qycli:qycli -R /var/www/pma/*
+    nginx -s reload
+}
+
 stk_install() {
-    stk_utility_and_repos; stk_nginx_install; stk_php_install; stk_mariadb_install; stk_redis_install; stk_wpcli_install;
+    stk_utility_and_repos; stk_nginx_install; stk_php_install; stk_mariadb_install; stk_redis_install; stk_wpcli_install; stk_composer_install;
     printf "\nqycli stack was installed.\n\n"
 }

@@ -1,0 +1,3 @@
+location /qycli/pma {
+       alias /var/www/pma/htdocs;
+}
