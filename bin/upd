@@ -116,6 +116,7 @@ upd_php_conf() {
     local opmem=$(($(upd_get_ram_mb)/100*15)) # 15% of all memory in MB
     cp /opt/qycli/cnf/php/fpm/php.ini /etc/php/fpm/php.ini
     sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" -i /etc/php/fpm/php.ini
+    sed -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/php/fpm/php.ini
 
     local maxchil=$(($(upd_get_ram_mb)/100*70/80)) # pm.max_children = 70% Total Memory / 80MB
     cp /opt/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/php/fpm/pool.d/qycli.conf
