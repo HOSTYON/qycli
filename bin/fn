@@ -126,7 +126,7 @@ mk_wp() {
     printf "Add this IPv6 address as an AAAA record in Cloudflare with proxy enabled (orange cloud):\n"
     printf "    $(ip -6 a | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80)\n\n"
     printf "Then login manually here: https://$domain/wp-login.php\n\n"
-    printf "\nOr login clicking or pasting the following link\n"
+    printf "\n\nOr login clicking or pasting the following link\n\n"
     wp --path=/var/www/$domain/htdocs login create $wpadmin
 }
 
