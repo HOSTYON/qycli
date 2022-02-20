@@ -141,11 +141,10 @@ stk_pma_install() {
     composer create-project phpmyadmin/phpmyadmin /var/www/pma
     chown qycli:qycli -R /var/www/pma/*
 
+    blowfish_secret=$(tr -dc 'A-Za-z0-9!$%&()*+,-.:;<=>?@^_"|~' </dev/urandom | head -c 32)
     cp /var/www/pma/config.sample.inc.php /var/www/pma/config.inc.php
     sed "s+\['host'\] = 'localhost'+\['socket'\] = '/run/mysqld/mysqld.sock'+" -i /var/www/pma/config.inc.php
-    sed "s+\['blowfish_secret'\] = ''+s+\['blowfish_secret'\] = ''+" -i /var/www/pma/config.inc.php
-  
-    ln -s /var/www/pma/htdocs /var/www/test5.foundyn.com/htdocs/qyc-pma
+    sed "s+\['blowfish_secret'\] = ''+\['blowfish_secret'\] = '${blowfish_secret}'+" -i /var/www/pma/config.inc.php
 }
 
 stk_install() {
