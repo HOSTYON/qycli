@@ -8,7 +8,6 @@ server {
     include /var/www/dmn.tld/nginx-conf/*.conf; # server_name can be found there
 
     root /var/www/dmn.tld/htdocs;
-    index index.php index.html index.htm;
 
     access_log off;
     #access_log /var/log/nginx/dmn.tld.access.log;
