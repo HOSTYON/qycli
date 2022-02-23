@@ -132,7 +132,7 @@ stk_composer_install() {
     exit $RESULT
 
     tee /usr/local/bin/composer >/dev/null <<'EOF'
-runuser -u qycli -- composer-binary --working-dir=/var/www/ $@
+runuser -u qycli -- composer-binary $@
 EOF
     chmod +x /usr/local/bin/composer
 }
@@ -141,10 +141,19 @@ stk_pma_install() {
     composer create-project phpmyadmin/phpmyadmin /var/www/pma
     chown qycli:qycli -R /var/www/pma/*
 
+    mkdir /etc/pma
+    cp /opt/qycli/cnf/pma/config.inc.php /etc/pma/config.inc.php
+
+    pmapassword=$(openssl rand -base64 12)
+    runuser -u mysql -- mysql --user=mysql <<EOF
+CREATE USER 'pma'@'localhost' IDENTIFIED VIA mysql_native_password USING '${pmapassword}';
+GRANT SELECT, INSERT, UPDATE, DELETE ON `<pma_db>`.* TO 'pma'@'localhost';
+EOF
+    sed "s+\['controlpass'\] = 'pmapass'+\['controlpass'\] = '${pmapassword}'+" -i /var/www/pma/config.inc.php
+
     blowfish_secret=$(tr -dc 'A-Za-z0-9!$%&()*+,-.:;<=>?@^_"|~' </dev/urandom | head -c 32)
-    cp /var/www/pma/config.sample.inc.php /var/www/pma/config.inc.php
-    sed "s+\['host'\] = 'localhost'+\['socket'\] = '/run/mysqld/mysqld.sock'+" -i /var/www/pma/config.inc.php
     sed "s+\['blowfish_secret'\] = ''+\['blowfish_secret'\] = '${blowfish_secret}'+" -i /var/www/pma/config.inc.php
+    
 }
 
 stk_install() {
