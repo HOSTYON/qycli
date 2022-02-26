@@ -31,7 +31,7 @@ elif [[ "$1" == "stk" || "$1" == "stack" ]]; then
 elif [[ "$1" =~ ^(v|version|ver)$ ]]; then
     show_qycli_version
 elif [[ "$1" == "info" ]]; then
-    cat /var/opt/qycli/cnf
+    fn_info_parser "$@"
 else
     print_help_qyc
 fi

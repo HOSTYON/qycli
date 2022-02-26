@@ -77,9 +77,20 @@ stk_nginx_install() {
     nginx -t && systemctl start nginx
 }
 
+stk_mariadb_admin_user() {
+    admin_password=$(tr -dc 'A-Za-z0-9!$%&()*+,-.:;<=>?@^_"|~' </dev/urandom | head -c 32)
+    runuser -u mysql -- mysql --user=mysql <<EOF
+CREATE USER 'admin'@'localhost' IDENTIFIED BY '${admin_password}';
+GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost';
+FLUSH PRIVILEGES;
+EOF
+     echo "db_admin_password=$admin_password" >> /var/opt/qycli/cnf
+}
+
 stk_mariadb_install() {
     apt -y install mariadb-server
     upd_mariadb_conf
+    stk_mariadb_admin_user
 }
 
 stk_php_install() {
@@ -138,25 +149,29 @@ EOF
 }
 
 stk_pma_install() {
-    composer create-project phpmyadmin/phpmyadmin /var/www/pma
-    chown qycli:qycli -R /var/www/pma/*
+    composer -d/var/www create-project phpmyadmin/phpmyadmin /var/www/pma
 
     mkdir /etc/pma
     cp /opt/qycli/cnf/pma/config.inc.php /etc/pma/config.inc.php
 
+    blowfish_secret=$(tr -dc 'A-Za-z0-9!$%&()*+,-.:;<=>?@^_"|~' </dev/urandom | head -c 32)
+    sed "s+\['blowfish_secret'\] = ''+\['blowfish_secret'\] = '${blowfish_secret}'+" -i /etc/pma/config.inc.php
+
     pmapassword=$(openssl rand -base64 12)
     runuser -u mysql -- mysql --user=mysql <<EOF
-CREATE USER 'pma'@'localhost' IDENTIFIED VIA mysql_native_password USING '${pmapassword}';
-GRANT SELECT, INSERT, UPDATE, DELETE ON `<pma_db>`.* TO 'pma'@'localhost';
+CREATE USER 'pma'@'localhost' IDENTIFIED BY '${pmapassword}';
+GRANT SELECT, INSERT, UPDATE, DELETE ON phpmyadmin.* TO 'pma'@'localhost';
+FLUSH PRIVILEGES;
 EOF
-    sed "s+\['controlpass'\] = 'pmapass'+\['controlpass'\] = '${pmapassword}'+" -i /var/www/pma/config.inc.php
-
-    blowfish_secret=$(tr -dc 'A-Za-z0-9!$%&()*+,-.:;<=>?@^_"|~' </dev/urandom | head -c 32)
-    sed "s+\['blowfish_secret'\] = ''+\['blowfish_secret'\] = '${blowfish_secret}'+" -i /var/www/pma/config.inc.php
+    sed "s+\['controlpass'\] = 'pmapass'+\['controlpass'\] = '${pmapassword}'+" -i /etc/pma/config.inc.php
+    mysql < /var/www/pma/sql/create_tables.sql
     
+    ln -s /etc/pma/config.inc.php /var/www/pma/config.inc.php
+    systemctl restart php-fpm
 }
 
 stk_install() {
     stk_utility_and_repos; stk_postfix_install; stk_nginx_install; stk_php_install; stk_mariadb_install; stk_redis_install; stk_wpcli_install; stk_composer_install;
+    stk_pma_install;
     printf "\nqycli stack was installed.\n\n"
 }

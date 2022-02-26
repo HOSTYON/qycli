@@ -12,6 +12,7 @@ CREATE DATABASE ${dbnaming};
 GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
 FLUSH PRIVILEGES;
 EOF
+    ln -s /var/www/pma /var/www/$domain/htdocs/qyc-pma
 }
 
 mk_site() {
@@ -83,6 +84,9 @@ mk_wp() {
 	rm -rf /var/www/$domain/wordpress
 	rm /var/www/$domain/htdocs/latest.tar.gz
 
+    mkdir /var/www/$domain/htdocs/wp-content/mu-plugins
+    ln -s /opt/qycli-plugin/qycli.php /var/www/$domain/htdocs/wp-content/mu-plugins/qycli.php
+
     cp /var/www/$domain/htdocs/wp-config-sample.php /var/www/$domain/wp-config.php
     chown qycli:qycli -R /var/www/$domain/*
     wp --path=/var/www/$domain/htdocs config set DB_NAME ${dbnaming}
@@ -111,8 +115,13 @@ mk_wp() {
         wp --path=/var/www/$domain/htdocs theme delete $theme
     done
     
-    wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
-    wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
+    #wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
+    #wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
+
+    wp --path=/var/www/$domain/htdocs config set WP_AUTO_UPDATE_CORE true
+    wp --path=/var/www/$domain/htdocs plugin auto-updates enable --all
+    wp --path=/var/www/$domain/htdocs theme auto-updates enable --all
+
     wp --path=/var/www/$domain/htdocs config set WP_MEMORY_LIMIT 128M
 
     wp --path=/var/www/$domain/htdocs login install --activate
@@ -475,3 +484,17 @@ del() {
     fi
 }
 
+fn_info_parser() {
+    if [[ "$1" == "" ]]; then
+        cat /var/opt/qycli/cnf
+    elif [[ "$1" =~ (db|database|dbadmin) ]]; then
+        if 
+    else
+        print_help_info
+    fi
+    
+}
+
+if dir bla; then
+    echo yes
+fi

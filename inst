@@ -13,6 +13,7 @@ inst_qycli() {
     echo "php_version=$php_version" >> /var/opt/qycli/cnf
     apt update && apt -y install git
     git -C /opt clone -b $branch_name https://github.com/HOSTYON/qycli
+    git -C /opt clone https://github.com/HOSTYON/qycli-plugin
     cp /opt/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
     #chmod 755 /opt/qycli/kernel

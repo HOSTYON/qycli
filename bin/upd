@@ -3,6 +3,7 @@
 # qycli update functions
 upd_qycli() {
     git -C /opt/qycli pull
+    git -C /opt/qycli-plugin pull
     cp /opt/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
     chmod 755 /opt/qycli/kernel
