@@ -488,13 +488,9 @@ fn_info_parser() {
     if [[ "$1" == "" ]]; then
         cat /var/opt/qycli/cnf
     elif [[ "$1" =~ (db|database|dbadmin) ]]; then
-        if 
+        
     else
         print_help_info
     fi
     
 }
-
-if dir bla; then
-    echo yes
-fi
