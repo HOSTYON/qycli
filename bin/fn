@@ -221,6 +221,16 @@ set_cache_object() {
     fi
 }
 
+set_cache_fcgi_nginx_helper_activate() {
+    wp --path=/var/www/$domain/htdocs plugin install --activate nginx-helper
+    wp --path=/var/www/$domain/htdocs option add rt_wp_nginx_helper_options --format=json '{"enable_purge":"1","cache_method":"enable_fastcgi","purge_method":"get_request","enable_map":null,"enable_log":null,"log_level":"INFO","log_filesize":"5","enable_stamp":null,"purge_homepage_on_edit":"1","purge_homepage_on_del":"1","purge_archive_on_edit":"1","purge_archive_on_del":"1","purge_archive_on_new_comment":null,"purge_archive_on_deleted_comment":null,"purge_page_on_mod":"1","purge_page_on_new_comment":"1","purge_page_on_deleted_comment":"1","redis_hostname":"127.0.0.1","redis_port":"6379","redis_prefix":"nginx-cache:","purge_url":"","redis_enabled_by_constant":0,"smart_http_expire_form_nonce":"19aab78f2b"}'
+}
+
+set_cache_fcgi_nginx_helper_deactivate() {
+    wp --path=/var/www/$domain/htdocs plugin deactivate nginx-helper
+    wp --path=/var/www/$domain/htdocs option delete rt_wp_nginx_helper_options
+}
+
 set_cache_fcgi() {
     if [[ "$1" == "on" ]]; then
         if grep "#include common/php.conf" /etc/nginx/sites-available/$domain >/dev/null; then
@@ -228,10 +238,9 @@ set_cache_fcgi() {
         else
             sed -i "s+    include common/php.conf;+    #include common/php.conf;+" /etc/nginx/sites-available/$domain
             sed -i "s+#include common/wpfcgi.conf;+include common/wpfcgi.conf;+" /etc/nginx/sites-available/$domain
-            wp --path=/var/www/$domain/htdocs plugin install --activate nginx-helper
-            wp --path=/var/www/$domain/htdocs option add rt_wp_nginx_helper_options --format=json '{"enable_purge":"1","cache_method":"enable_fastcgi","purge_method":"get_request","enable_map":null,"enable_log":null,"log_level":"INFO","log_filesize":"5","enable_stamp":null,"purge_homepage_on_edit":"1","purge_homepage_on_del":"1","purge_archive_on_edit":"1","purge_archive_on_del":"1","purge_archive_on_new_comment":null,"purge_archive_on_deleted_comment":null,"purge_page_on_mod":"1","purge_page_on_new_comment":"1","purge_page_on_deleted_comment":"1","redis_hostname":"127.0.0.1","redis_port":"6379","redis_prefix":"nginx-cache:","purge_url":"","redis_enabled_by_constant":0,"smart_http_expire_form_nonce":"19aab78f2b"}'
+            
             nginx -s reload
-            printf "\nFastCGI cache enabled.\n\n"
+            printf "\nFastCGI microcache enabled.\n\n"
         fi
     elif [[ "$1" == "off" ]]; then
         if grep "#include common/wpfcgi.conf" /etc/nginx/sites-available/$domain >/dev/null; then
@@ -239,10 +248,9 @@ set_cache_fcgi() {
         else
             sed -i "s+#include common/php.conf;+include common/php.conf;+" /etc/nginx/sites-available/$domain
             sed -i "s+    include common/wpfcgi.conf;+    #include common/wpfcgi.conf;+" /etc/nginx/sites-available/$domain
-            wp --path=/var/www/$domain/htdocs plugin deactivate nginx-helper
-            wp --path=/var/www/$domain/htdocs option delete rt_wp_nginx_helper_options
+            
             nginx -s reload
-            printf "\nFastCGI cache disabled.\n\n"
+            printf "\nFastCGI microcache disabled.\n\n"
         fi
     else
         print_help_set
@@ -335,8 +343,8 @@ fn_ls() {
     printf "\n"
 }
 
-dev_upd() {
-    wget -qO- qyc.li/inst | bash -s dev
+set_firewall() {
+    if [[ "$1" =~ (8.[0-1]|7.4) ]]; then
 }
 
 fn_set() {
@@ -361,6 +369,11 @@ fn_set() {
             alias|name|domain)
                 shift
                 set_alias "$@"
+                set_success=1
+                ;;
+            firewall|waf)
+                shift
+                set_firewall "$@"
                 set_success=1
                 ;;
         esac

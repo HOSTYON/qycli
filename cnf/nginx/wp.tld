@@ -13,15 +13,14 @@ server {
     #access_log /var/log/nginx/dmn.tld.access.log;
     error_log /var/log/nginx/dmn.tld.error.log;
 
-    add_header Cache-Control "public, stale-while-revalidate=3s";
+    add_header Cache-Control "public, stale-while-revalidate=10s";
     add_header Referrer-Policy "strict-origin-when-cross-origin";
-    add_header X-Cache-Status $upstream_cache_status;
     add_header X-Frame-Options SAMEORIGIN;
     add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
 
     #include common/auth.conf;
-    include common/php.conf;
-    #include common/wpfcgi.conf;
+    #include common/php.conf;
+    include common/wpfcgi.conf;
     include common/wpcommon.conf;
 }
