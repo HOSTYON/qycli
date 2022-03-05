@@ -327,11 +327,10 @@ mk() {
 }
 
 ls() {
-    printf "\n"
-    printf "All sites available:\n"
+    printf "\nAll sites available:\n"
     for name in /etc/nginx/sites-available/*
     do
-        printf "    $(echo ${name} | sed "s+/etc/nginx/sites-available/++" | sed "s+default++" )\n"
+        printf "    $(echo ${name} | sed "s+/etc/nginx/sites-available/++" )\n"
     done
     printf "\n"
 }
