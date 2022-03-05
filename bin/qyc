@@ -12,24 +12,22 @@ source /opt/qycli/bin/fn
 
 if [[ "$1" == "mk" || "$1" == "make" ]]; then
     shift
-    mk "$@"
+    fn_mk "$@"
 elif [[ "$1" == "ls" || "$1" == "list" ]]; then
-    ls
+    fn_ls
 elif [[ "$1" == "set" ]]; then
     shift
-    qyc_set "$@"
+    fn_set "$@"
 elif [[ "$1" == "clone" ]]; then
     shift
-    qyc_clone "$@" 
+    fn_clone "$@" 
 elif [[ "$1" == "del" || "$1" == "delete" ]]; then
     shift
-    del "$@"  
+    fn_del "$@"  
 elif [[ "$1" == "upd" || "$1" == "update" ]]; then
     upd_fn
 elif [[ "$1" == "stk" || "$1" == "stack" ]]; then
-    qyc_stack "$@" 
-elif [[ "$1" =~ ^(v|version|ver)$ ]]; then
-    show_qycli_version
+    fn_stack "$@" 
 elif [[ "$1" == "info" ]]; then
     fn_info_parser "$@"
 else

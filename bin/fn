@@ -317,7 +317,7 @@ set_alias() {
     fi
 }
 
-mk() {
+fn_mk() {
     if [[ "$1" == "wp" ]]; then
         shift
         mk_wp "$@"
@@ -326,7 +326,7 @@ mk() {
     fi
 }
 
-ls() {
+fn_ls() {
     printf "\nAll sites available:\n"
     for name in /etc/nginx/sites-available/*
     do
@@ -339,7 +339,7 @@ dev_upd() {
     wget -qO- qyc.li/inst | bash -s dev
 }
 
-qyc_set() {
+fn_set() {
     if [[ "$1" == *"."* ]]; then
         domain="$1"
         [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
@@ -400,7 +400,7 @@ clone_site() {
     printf "Then login here with the same login details as the original site: https://$cloneto/wp-login.php\n\n"
 }
 
-qyc_clone() {
+fn_clone() {
    if [[ "$1" == *"."* ]]; then
         clonefrom="$1"
         [[ "$1" == www.* ]] && clonefrom=$(echo "$1" | cut -c 5-)
@@ -459,7 +459,7 @@ stack_php_parser() {
     done
 }
 
-qyc_stack() {
+fn_stack() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
             php)
@@ -475,7 +475,7 @@ qyc_stack() {
     done
 }
 
-del() {
+fn_del() {
     if [[ "$1" == "" ]]; then
         print_help_del
     else
