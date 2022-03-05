@@ -483,13 +483,38 @@ fn_del() {
     fi
 }
 
-fn_info_parser() {
+fn_info_db() {
+    admindbpass=$(grep "db_admin_password" /var/opt/qycli/cnf | sed 's/db_admin_password=//')
+    if [[ -z "$(ls -A /etc/nginx/sites-available)" ]]; then
+        cat << EOF
+
+There are no sites available on your server. Make a site and run this command again.
+You will then get a link that logs you in immediately to phpMyAdmin once opened in a browser.
+Here the admin DB user info just in case you need it for something else.
+
+user: admin
+password: $admindbpass
+
+EOF
+    else
+        firstdomain=$(ls -A /etc/nginx/sites-available | head -n 1)
+        cat << EOF
+   
+Use this link to log in as the priviledged admin user. 
+You will be able to access the complete database not just the site's.
+
+http://admin:$admindbpass@$firstdomain/qyc-pma/
+
+EOF
+    fi
+}
+
+fn_info() {
     if [[ "$1" == "" ]]; then
         cat /var/opt/qycli/cnf
     elif [[ "$1" =~ (db|database|dbadmin) ]]; then
-        
+        fn_info_db
     else
         print_help_info
     fi
-    
 }
