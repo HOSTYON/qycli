@@ -5,29 +5,29 @@
 mk_db() {
     dbpassword=$(openssl rand -base64 12)
     #local qycpw=$(grep "MariaDB qyc" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
-    dbnaming="qyc_$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")"
-	runuser -u mysql -- mysql --user=mysql <<EOF
+    dbnaming="qyc_$(echo "$domain" | sed "s+[^0-9A-Za-z]+_+g")"
+    runuser -u mysql -- mysql --user=mysql <<EOF
 CREATE USER ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
 CREATE DATABASE ${dbnaming};
 GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
 FLUSH PRIVILEGES;
 EOF
-    ln -s /var/www/pma /var/www/$domain/htdocs/qyc-pma
+    ln -s /var/www/pma /var/www/"$domain"/htdocs/qyc-pma
 }
 
 mk_site() {
-    mkdir -p /var/www/$domain/htdocs
-    mkdir -p /var/www/$domain/nginx-conf
-    cp /etc/nginx/$template /etc/nginx/sites-available/$domain
-    sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/$domain
-    tee /var/www/$domain/nginx-conf/server-names.conf >/dev/null <<EOF
+    mkdir -p /var/www/"$domain"/htdocs
+    mkdir -p /var/www/"$domain"/nginx-conf
+    cp /etc/nginx/"$template" /etc/nginx/sites-available/"$domain"
+    sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/"$domain"
+    tee /var/www/"$domain"/nginx-conf/server-names.conf >/dev/null <<EOF
 server_name
 $domain
 www.$domain
 ;
 EOF
-    ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
-    chown qycli:qycli -R /var/www/$domain/*
+    ln -s /etc/nginx/sites-available/"$domain" /etc/nginx/sites-enabled/
+    chown qycli:qycli -R /var/www/"$domain"/*
     nginx -s reload
 }
 
@@ -45,26 +45,26 @@ mk_wp() {
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-            u|user|admin)
-                wpadmin="$2"
-                shift
-                ;;
-            t|title)
-                wptitle="$2"
-                shift
-                ;;
-            p|password)
-                wppw="$2" # Passwords with # have to be in quotes
-                shift
-                ;;
-            e|email)
-                wpemail="$2"
-                shift
-                ;;
-            *)
-                printf "\nInvalid option: $1"
-                print_help_wp
-                ;;
+        u | user | admin)
+            wpadmin="$2"
+            shift
+            ;;
+        t | title)
+            wptitle="$2"
+            shift
+            ;;
+        p | password)
+            wppw="$2" # Passwords with # have to be in quotes
+            shift
+            ;;
+        e | email)
+            wpemail="$2"
+            shift
+            ;;
+        *)
+            printf "\nInvalid option: $1"
+            print_help_wp
+            ;;
         esac
         shift
     done
@@ -80,9 +80,9 @@ mk_wp() {
     systemctl reload php-fpm
     wget -qrO /var/www/$domain/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
     tar -xf /var/www/$domain/htdocs/latest.tar.gz -C /var/www/$domain/
-	mv /var/www/$domain/wordpress/* /var/www/$domain/htdocs/
-	rm -rf /var/www/$domain/wordpress
-	rm /var/www/$domain/htdocs/latest.tar.gz
+    mv /var/www/$domain/wordpress/* /var/www/$domain/htdocs/
+    rm -rf /var/www/$domain/wordpress
+    rm /var/www/$domain/htdocs/latest.tar.gz
 
     mkdir /var/www/$domain/htdocs/wp-content/mu-plugins
     ln -s /opt/qycli-plugin/qycli.php /var/www/$domain/htdocs/wp-content/mu-plugins/qycli.php
@@ -94,7 +94,7 @@ mk_wp() {
     wp --path=/var/www/$domain/htdocs config set DB_PASSWORD ${dbpassword}
     wp --path=/var/www/$domain/htdocs config set DB_HOST :/run/mysqld/mysqld.sock
     wp --path=/var/www/$domain/htdocs config shuffle-salts
-    sed -i "s+$table_prefix = 'wp_';+$table_prefix = 'qyc_';+" /var/www/$domain/wp-config.php
+    sed -i 's+$table_prefix = 'wp_';+$table_prefix = 'qyc_';+' /var/www/$domain/wp-config.php
 
     [[ "$wptitle" == "" ]] && wptitle=$domain
     [[ "$wpadmin" == "" ]] && wpadmin=qycli
@@ -114,7 +114,7 @@ mk_wp() {
     for theme in $(wp --path=/var/www/$domain/htdocs theme list --status=inactive --format=csv | grep inactive | sed s/,.*//); do
         wp --path=/var/www/$domain/htdocs theme delete $theme
     done
-    
+
     #wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
     #wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
 
@@ -128,14 +128,22 @@ mk_wp() {
 
     qyc set $domain cache o on
 
-    printf "\n$domain is ready.\n\n"
-    printf "    User:     $wpadmin\n"
-    printf "    Email:    $wpemail\n"
-    printf "    Password: $wppw\n\n"
-    printf "Add this IPv6 address as an AAAA record in Cloudflare with proxy enabled (orange cloud):\n"
-    printf "    $(ip -6 a | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80)\n\n"
-    printf "Then login manually here: https://$domain/wp-login.php\n\n"
-    printf "\n\nOr login clicking or pasting the following link\n\n"
+    ipv6=$(ip -6 a | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80)
+    cat <<EOF
+$domain is ready.
+
+    User:     $wpadmin
+    Email:    $wpemail
+    Password: $wppw
+
+Add this IPv6 address as an AAAA record in Cloudflare with proxy enabled (orange cloud):
+$ipv6
+
+Then login manually here: https://$domain/wp-login.php
+
+Or login clicking or pasting the following link (Does'nt work yet)
+
+EOF
     wp --path=/var/www/$domain/htdocs login create $wpadmin
 }
 
@@ -145,7 +153,9 @@ del_site() {
     rm -r /var/www/$domain/*
     rmdir /var/www/$domain
     printf "Files deleted.\n"
-    local dbnaming="qyc_$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")"
+
+    local snakedomain=$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")
+    local dbnaming="qyc_$snakedomain"
     mysql <<EOF
 DROP USER ${dbnaming}@localhost;    
 DROP DATABASE ${dbnaming};
@@ -169,10 +179,10 @@ del_parser() {
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-            -y|yes) 
-                proceed=yes 
-                shift
-                ;;
+        -y | yes)
+            proceed=yes
+            shift
+            ;;
         esac
     done
 
@@ -238,7 +248,7 @@ set_cache_fcgi() {
         else
             sed -i "s+    include common/php.conf;+    #include common/php.conf;+" /etc/nginx/sites-available/$domain
             sed -i "s+#include common/wpfcgi.conf;+include common/wpfcgi.conf;+" /etc/nginx/sites-available/$domain
-            
+
             nginx -s reload
             printf "\nFastCGI microcache enabled.\n\n"
         fi
@@ -248,7 +258,7 @@ set_cache_fcgi() {
         else
             sed -i "s+#include common/php.conf;+include common/php.conf;+" /etc/nginx/sites-available/$domain
             sed -i "s+    include common/wpfcgi.conf;+    #include common/wpfcgi.conf;+" /etc/nginx/sites-available/$domain
-            
+
             nginx -s reload
             printf "\nFastCGI microcache disabled.\n\n"
         fi
@@ -275,7 +285,7 @@ set_cache_parser() {
         printf "\nInvalid option: $1\n"
         print_help_set
         exit
-    fi 
+    fi
 }
 
 set_alias() {
@@ -296,7 +306,7 @@ set_alias() {
         else
             sed -i "/;/i$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf
             nginx -s reload
-            printf "\nAlias domain name $aliasdomain successfully added to site $domain.\n\n"            
+            printf "\nAlias domain name $aliasdomain successfully added to site $domain.\n\n"
         fi
     elif [[ "$1" == "del" || "$1" == "delete" ]]; then
         shift
@@ -313,7 +323,7 @@ set_alias() {
         if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf >/dev/null; then
             sed -i "/$aliasdomain/d" /var/www/$domain/nginx-conf/server-names.conf
             nginx -s reload
-            printf "\nAlias domain name $aliasdomain successfully deleted from site $domain.\n\n"            
+            printf "\nAlias domain name $aliasdomain successfully deleted from site $domain.\n\n"
         else
             printf "\nAlias domain name does not exists.\n\n"
         fi
@@ -321,7 +331,7 @@ set_alias() {
         printf "\nAll domain names of site $domain:\n"
         cat /var/www/$domain/nginx-conf/server-names.conf | sed "s/server_name//" | sed "s/;//"
     else
-        print_help_set 
+        print_help_set
     fi
 }
 
@@ -336,15 +346,16 @@ fn_mk() {
 
 fn_ls() {
     printf "\nAll sites available:\n"
-    for name in /etc/nginx/sites-available/*
-    do
-        printf "    $(echo ${name} | sed "s+/etc/nginx/sites-available/++" )\n"
+    for name in /etc/nginx/sites-available/*; do
+        printf "    $(echo ${name} | sed "s+/etc/nginx/sites-available/++")\n"
     done
     printf "\n"
 }
 
 set_firewall() {
     if [[ "$1" =~ (8.[0-1]|7.4) ]]; then
+        echo bla
+    fi
 }
 
 fn_set() {
@@ -361,26 +372,26 @@ fn_set() {
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-            cache)
-                shift
-                set_cache_parser "$@"
-                set_success=1
-                ;;
-            alias|name|domain)
-                shift
-                set_alias "$@"
-                set_success=1
-                ;;
-            firewall|waf)
-                shift
-                set_firewall "$@"
-                set_success=1
-                ;;
+        cache)
+            shift
+            set_cache_parser "$@"
+            set_success=1
+            ;;
+        alias | name | domain)
+            shift
+            set_alias "$@"
+            set_success=1
+            ;;
+        firewall | waf)
+            shift
+            set_firewall "$@"
+            set_success=1
+            ;;
         esac
         shift
     done
     if [[ "$set_success" != "1" ]]; then
-        printf "\nNo valid option found for "qyc set".\n"
+        printf "\nNo valid option found for 'qyc set'.\n"
         print_help_set
     fi
 }
@@ -395,12 +406,13 @@ clone_site() {
     rsync -ar --exclude 'nginx-conf' /var/www/$clonefrom/ /var/www/$cloneto/
 
     echo "Copying the database..."
-    local dbfrom="qyc_$(echo ${clonefrom} | sed "s+[^0-9A-Za-z]+_+g")"
+    local snakedomain=$(echo ${clonefrom} | sed "s+[^0-9A-Za-z]+_+g")
+    local dbfrom="qyc_$snakedomain"
     mysqldump $dbfrom | tee /var/www/$clonefrom/db.sql >/dev/null
     cp /var/www/$clonefrom/db.sql /var/www/$cloneto/db.sql
     sed -i "s+${clonefrom}+${cloneto}+g" /var/www/$cloneto/db.sql
     mk_db
-    mysql $dbnaming < /var/www/$cloneto/db.sql
+    mysql $dbnaming </var/www/$cloneto/db.sql
     echo "Updating the WP config..."
     wp --path=/var/www/$cloneto/htdocs config set DB_NAME ${dbnaming}
     wp --path=/var/www/$cloneto/htdocs config set DB_USER ${dbnaming}
@@ -414,7 +426,7 @@ clone_site() {
 }
 
 fn_clone() {
-   if [[ "$1" == *"."* ]]; then
+    if [[ "$1" == *"."* ]]; then
         clonefrom="$1"
         [[ "$1" == www.* ]] && clonefrom=$(echo "$1" | cut -c 5-)
         [[ ! -d /var/www/$clonefrom ]] && printf "\nSite does not exist." && print_help_clone && exit
@@ -428,7 +440,7 @@ fn_clone() {
     if [[ "$1" == "to" ]]; then
         shift
     fi
-    
+
     if [[ "$1" == *"."* ]]; then
         cloneto="$1"
         [[ "$1" == www.* ]] && cloneto=$(echo "$1" | cut -c 5-)
@@ -452,6 +464,7 @@ fn_clone() {
 stack_php_version() {
     if [[ "$1" =~ (8.[0-1]|7.4) ]]; then
         new_ver=$1
+        export new_ver
     else
         echo "No correct version number for PHP, should be 7.4, 8.0 or 8.1"
         exit
@@ -463,10 +476,10 @@ stack_php_version() {
 stack_php_parser() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-            v|ver|version)
-                shift
-                stack_php_version "$@"
-                ;;
+        v | ver | version)
+            shift
+            stack_php_version "$@"
+            ;;
         esac
         shift
     done
@@ -475,14 +488,14 @@ stack_php_parser() {
 fn_stack() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-            php)
-                shift
-                stack_php_parser "$@"
-                ;;
-            install|reinstall|inst)
-                shift
-                stk_install
-                ;;
+        php)
+            shift
+            stack_php_parser "$@"
+            ;;
+        install | reinstall | inst)
+            shift
+            stk_install
+            ;;
         esac
         shift
     done
@@ -499,7 +512,7 @@ fn_del() {
 fn_info_db() {
     admindbpass=$(grep "db_admin_password" /var/opt/qycli/cnf | sed 's/db_admin_password=//')
     if [[ -z "$(ls -A /etc/nginx/sites-available)" ]]; then
-        cat << EOF
+        cat <<EOF
 
 There are no sites available on your server. Make a site and run this command again.
 You will then get a link that logs you in immediately to phpMyAdmin once opened in a browser.
@@ -511,7 +524,7 @@ password: $admindbpass
 EOF
     else
         firstdomain=$(ls -A /etc/nginx/sites-available | head -n 1)
-        cat << EOF
+        cat <<EOF
    
 Use this link to log in as the priviledged admin user. 
 You will be able to access the complete database not just the site's.

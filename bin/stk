@@ -23,8 +23,8 @@ stk_utility_and_repos() {
 stk_postfix_install() {
     DEBIAN_FRONTEND=noninteractive apt -y install postfix
     ## Following will store all outgoing mail in /home/qycli/mail/new
-    echo "home_mailbox = mail/" >> /etc/postfix/main.cf
-    echo "virtual_alias_maps = static:qycli" >> /etc/postfix/main.cf
+    echo "home_mailbox = mail/" >>/etc/postfix/main.cf
+    echo "virtual_alias_maps = static:qycli" >>/etc/postfix/main.cf
     systemctl restart postfix
 }
 
@@ -72,7 +72,7 @@ stk_nginx_install() {
     mkdir -p /var/www
     chown qycli:qycli /var/www
     #chown qycli:qycli -R /var/www
-	#chown root:root /var/www
+    #chown root:root /var/www
 
     nginx -t && systemctl start nginx
 }
@@ -84,7 +84,7 @@ CREATE USER 'admin'@'localhost' IDENTIFIED BY '${admin_password}';
 GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost';
 FLUSH PRIVILEGES;
 EOF
-     echo "db_admin_password=$admin_password" >> /var/opt/qycli/cnf
+    echo "db_admin_password=$admin_password" >>/var/opt/qycli/cnf
 }
 
 stk_mariadb_install() {
@@ -110,7 +110,7 @@ stk_php_install() {
 stk_redis_install() {
     apt -y install redis
     usermod -g qycli redis
-    
+
     upd_redis_conf
     upd_redis_service
 }
@@ -130,9 +130,8 @@ stk_composer_install() {
     php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
     ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
 
-    if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]
-    then
-        >&2 echo 'ERROR: Invalid installer checksum'
+    if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+        echo >&2 'ERROR: Invalid installer checksum'
         rm composer-setup.php
         exit 1
     fi
@@ -164,14 +163,21 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON phpmyadmin.* TO 'pma'@'localhost';
 FLUSH PRIVILEGES;
 EOF
     sed "s+\['controlpass'\] = 'pmapass'+\['controlpass'\] = '${pmapassword}'+" -i /etc/pma/config.inc.php
-    mysql < /var/www/pma/sql/create_tables.sql
-    
+    mysql </var/www/pma/sql/create_tables.sql
+
     ln -s /etc/pma/config.inc.php /var/www/pma/config.inc.php
     systemctl restart php-fpm
 }
 
 stk_install() {
-    stk_utility_and_repos; stk_postfix_install; stk_nginx_install; stk_php_install; stk_mariadb_install; stk_redis_install; stk_wpcli_install; stk_composer_install;
-    stk_pma_install;
+    stk_utility_and_repos
+    stk_postfix_install
+    stk_nginx_install
+    stk_php_install
+    stk_mariadb_install
+    stk_redis_install
+    stk_wpcli_install
+    stk_composer_install
+    stk_pma_install
     printf "\nqycli stack was installed.\n\n"
 }

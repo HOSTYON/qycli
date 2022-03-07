@@ -8,9 +8,9 @@
 inst_qycli() {
     [[ -f /usr/bin/qyc ]] && echo "qycli is already installed, stopping the process. Just type qyc to get the help message or go to qycli.org to learn." && exit
     [[ ! -d /var/opt/qycli ]] && mkdir /var/opt/qycli
-    echo "branch_name=$branch_name" > /var/opt/qycli/cnf
-    echo "sec_install=$sec_install" >> /var/opt/qycli/cnf
-    echo "php_version=$php_version" >> /var/opt/qycli/cnf
+    echo "branch_name=$branch_name" >/var/opt/qycli/cnf
+    echo "sec_install=$sec_install" >>/var/opt/qycli/cnf
+    echo "php_version=$php_version" >>/var/opt/qycli/cnf
     apt update && apt -y install git
     git -C /opt clone -b $branch_name https://github.com/HOSTYON/qycli
     git -C /opt clone https://github.com/HOSTYON/qycli-plugin
@@ -42,35 +42,35 @@ php_version=7.4
 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        v|version)
-            if [[ "$2" == "beta" ]]; then
-                branch_name=beta
-            elif [[ "$2" == "dev" ]]; then
-                branch_name=dev
-            fi
-            shift
-            ;;
-        s|sec|security)
-            if [[ "$2" =~ ^(n|no)$ ]]; then
-                sec_install=no
-            fi
-            shift
-            ;;
-        k|kernel|tweaks)
-            if [[ "$2" =~ ^(n|no)$ ]]; then
-                kernel_tweaks=no
-            fi
-            shift
-            ;;
-        phpv|php-version)
-            if [[ "$2" =~ ^(7.4|8.0|8.1)$ ]]; then
-                php_version=$2
-            else
-                echo 'Not supported PHP version, try again with "7.4", "8.0" or "8.1". Exiting.'
-                exit
-            fi
-            shift
-            ;;            
+    v | version)
+        if [[ "$2" == "beta" ]]; then
+            branch_name=beta
+        elif [[ "$2" == "dev" ]]; then
+            branch_name=dev
+        fi
+        shift
+        ;;
+    s | sec | security)
+        if [[ "$2" =~ ^(n|no)$ ]]; then
+            sec_install=no
+        fi
+        shift
+        ;;
+    k | kernel | tweaks)
+        if [[ "$2" =~ ^(n|no)$ ]]; then
+            kernel_tweaks=no
+        fi
+        shift
+        ;;
+    phpv | php-version)
+        if [[ "$2" =~ ^(7.4|8.0|8.1)$ ]]; then
+            php_version=$2
+        else
+            echo 'Not supported PHP version, try again with "7.4", "8.0" or "8.1". Exiting.'
+            exit
+        fi
+        shift
+        ;;
     esac
     shift
 done

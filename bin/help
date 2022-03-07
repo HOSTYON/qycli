@@ -48,7 +48,7 @@ print_help_wp() {
     echo "Available options:"
     echo "  u|user|admin    Set the user name for the WordPress admin account."
     echo "  p|password      Set the password for the WordPress admin account."
-    echo "  e|email         Set the email address for the WordPress admin account."    
+    echo "  e|email         Set the email address for the WordPress admin account."
     echo "  t|title         Set the title for the WordPress site."
     printf "\n\n"
 }
