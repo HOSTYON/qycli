@@ -5,7 +5,9 @@
 mk_db() {
     dbpassword=$(openssl rand -base64 12)
     #local qycpw=$(grep "MariaDB qyc" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
-    dbnaming="qyc_$(echo "$domain" | sed "s+[^0-9A-Za-z]+_+g")"
+    snakedomain=${domain//[^0-9A-Za-z]/_}
+    dbnaming="qyc_$snakedomain"
+
     runuser -u mysql -- mysql --user=mysql <<EOF
 CREATE USER ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
 CREATE DATABASE ${dbnaming};
@@ -38,7 +40,7 @@ mk_wp() {
         [[ -d /var/www/$domain ]] && printf "\nWP site already exists.\n" && exit
         shift
     else
-        printf "\nInvalid domain: $1"
+        echo "Invalid domain: $1"
         print_help_wp
         exit
     fi
@@ -62,7 +64,7 @@ mk_wp() {
             shift
             ;;
         *)
-            printf "\nInvalid option: $1"
+            echo "Invalid option: $1"
             print_help_wp
             ;;
         esac
@@ -78,23 +80,23 @@ mk_wp() {
 
     echo "Installing WordPress..."
     systemctl reload php-fpm
-    wget -qrO /var/www/$domain/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
-    tar -xf /var/www/$domain/htdocs/latest.tar.gz -C /var/www/$domain/
-    mv /var/www/$domain/wordpress/* /var/www/$domain/htdocs/
-    rm -rf /var/www/$domain/wordpress
-    rm /var/www/$domain/htdocs/latest.tar.gz
+    wget -qrO /var/www/"$domain"/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
+    tar -xf /var/www/"$domain"/htdocs/latest.tar.gz -C /var/www/"$domain"/
+    mv /var/www/"$domain"/wordpress/* /var/www/"$domain"/htdocs/
+    rm -rf /var/www/"$domain"/wordpress
+    rm /var/www/"$domain"/htdocs/latest.tar.gz
 
-    mkdir /var/www/$domain/htdocs/wp-content/mu-plugins
-    ln -s /opt/qycli-plugin/qycli.php /var/www/$domain/htdocs/wp-content/mu-plugins/qycli.php
+    mkdir /var/www/"$domain"/htdocs/wp-content/mu-plugins
+    ln -s /opt/qycli-plugin/qycli.php /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli.php
 
-    cp /var/www/$domain/htdocs/wp-config-sample.php /var/www/$domain/wp-config.php
-    chown qycli:qycli -R /var/www/$domain/*
-    wp --path=/var/www/$domain/htdocs config set DB_NAME ${dbnaming}
-    wp --path=/var/www/$domain/htdocs config set DB_USER ${dbnaming}
-    wp --path=/var/www/$domain/htdocs config set DB_PASSWORD ${dbpassword}
-    wp --path=/var/www/$domain/htdocs config set DB_HOST :/run/mysqld/mysqld.sock
-    wp --path=/var/www/$domain/htdocs config shuffle-salts
-    sed -i 's+$table_prefix = 'wp_';+$table_prefix = 'qyc_';+' /var/www/$domain/wp-config.php
+    cp /var/www/"$domain"/htdocs/wp-config-sample.php /var/www/"$domain"/wp-config.php
+    chown qycli:qycli -R /var/www/"$domain"/*
+    wp --path=/var/www/"$domain"/htdocs config set DB_NAME "${dbnaming}"
+    wp --path=/var/www/"$domain"/htdocs config set DB_USER "${dbnaming}"
+    wp --path=/var/www/"$domain"/htdocs config set DB_PASSWORD "${dbpassword}"
+    wp --path=/var/www/"$domain"/htdocs config set DB_HOST :/run/mysqld/mysqld.sock
+    wp --path=/var/www/"$domain"/htdocs config shuffle-salts
+    sed -i 's+$table_prefix = 'wp_';+$table_prefix = 'qyc_';+' /var/www/"$domain"/wp-config.php
 
     [[ "$wptitle" == "" ]] && wptitle=$domain
     [[ "$wpadmin" == "" ]] && wpadmin=qycli
@@ -105,28 +107,28 @@ mk_wp() {
         wppw=$(openssl rand -base64 18)
     fi
     [[ "$wpemail" == "" ]] && wpemail=info@$domain
-    wp --path=/var/www/$domain/htdocs core install --url=https://$domain --title=$wptitle --admin_user=$wpadmin --admin_password=$wppw --admin_email=$wpemail
+    wp --path=/var/www/"$domain"/htdocs core install --url=https://"$domain" --title="$wptitle" --admin_user=$wpadmin --admin_password="$wppw" --admin_email="$wpemail"
 
-    wp --path=/var/www/$domain/htdocs rewrite structure /%postname%/
-    wp --path=/var/www/$domain/htdocs plugin uninstall hello akismet
-    wp --path=/var/www/$domain/htdocs theme update --all
+    wp --path=/var/www/"$domain"/htdocs rewrite structure /%postname%/
+    wp --path=/var/www/"$domain"/htdocs plugin uninstall hello akismet
+    wp --path=/var/www/"$domain"/htdocs theme update --all
 
-    for theme in $(wp --path=/var/www/$domain/htdocs theme list --status=inactive --format=csv | grep inactive | sed s/,.*//); do
-        wp --path=/var/www/$domain/htdocs theme delete $theme
+    for theme in $(wp --path=/var/www/"$domain"/htdocs theme list --status=inactive --format=csv | grep inactive | sed s/,.*//); do
+        wp --path=/var/www/"$domain"/htdocs theme delete "$theme"
     done
 
     #wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
     #wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
 
-    wp --path=/var/www/$domain/htdocs config set WP_AUTO_UPDATE_CORE true
-    wp --path=/var/www/$domain/htdocs plugin auto-updates enable --all
-    wp --path=/var/www/$domain/htdocs theme auto-updates enable --all
+    wp --path=/var/www/"$domain"/htdocs config set WP_AUTO_UPDATE_CORE true
+    wp --path=/var/www/"$domain"/htdocs plugin auto-updates enable --all
+    wp --path=/var/www/"$domain"/htdocs theme auto-updates enable --all
 
-    wp --path=/var/www/$domain/htdocs config set WP_MEMORY_LIMIT 128M
+    wp --path=/var/www/"$domain"/htdocs config set WP_MEMORY_LIMIT 128M
 
-    wp --path=/var/www/$domain/htdocs login install --activate
+    wp --path=/var/www/"$domain"/htdocs login install --activate
 
-    qyc set $domain cache o on
+    qyc set "$domain" cache o on
 
     ipv6=$(ip -6 a | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80)
     cat <<EOF
@@ -144,25 +146,25 @@ Then login manually here: https://$domain/wp-login.php
 Or login clicking or pasting the following link (Does'nt work yet)
 
 EOF
-    wp --path=/var/www/$domain/htdocs login create $wpadmin
+    wp --path=/var/www/"$domain"/htdocs login create $wpadmin
 }
 
 del_site() {
-    rm /etc/nginx/sites-enabled/$domain
-    rm /etc/nginx/sites-available/$domain
-    rm -r /var/www/$domain/*
-    rmdir /var/www/$domain
+    rm /etc/nginx/sites-enabled/"$domain"
+    rm /etc/nginx/sites-available/"$domain"
+    rm -r /var/www/"$domain"/*
+    rmdir /var/www/"$domain"
     printf "Files deleted.\n"
 
-    local snakedomain=$(echo ${domain} | sed "s+[^0-9A-Za-z]+_+g")
+    local snakedomain=${domain//[^0-9A-Za-z]/_}
     local dbnaming="qyc_$snakedomain"
     mysql <<EOF
 DROP USER ${dbnaming}@localhost;    
 DROP DATABASE ${dbnaming};
 EOF
     systemctl reload php-fpm
-    printf "Database deleted.\n"
-    printf "$domain deleted.\n"
+    echo "Database deleted."
+    echo "$domain deleted."
 }
 
 del_parser() {
@@ -172,7 +174,7 @@ del_parser() {
         [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_del && exit
         shift
     else
-        printf "\nInvalid domain: $1"
+        echo "Invalid domain: $1"
         print_help_del
         exit
     fi
@@ -190,7 +192,7 @@ del_parser() {
         del_site
     else
         echo -n "Do you want to delete the site $domain? [y/Y/yes]: "
-        read consent
+        read -r consent
         if [[ "$consent" == "yes" || "$consent" == "y" || "$consent" == "Y" ]]; then
             del_site
         else
@@ -206,13 +208,13 @@ set_cache_object() {
             echo "Object cache is already enabled."
         else
             usermod -aG redis qycli
-            wp --path=/var/www/$domain/htdocs plugin install --activate wp-redis
-            wp --path=/var/www/$domain/htdocs config set WP_CACHE_KEY_SALT "qyc_$domain"
-            if [[ ! $(grep "redis_server" /var/www/$domain/wp-config.php) ]]; then
-                sed -i "/That's all, stop editing/i\$redis_server = array( 'host' => '/run/redis/redis.sock','port' => null,'database' => 1, );" /var/www/$domain/wp-config.php
+            wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-redis
+            wp --path=/var/www/"$domain"/htdocs config set WP_CACHE_KEY_SALT "qyc_$domain"
+            if ! grep -q "redis_server" /var/www/"$domain"/wp-config.php; then
+                sed -i "/That's all, stop editing/i\$redis_server = array( 'host' => '/run/redis/redis.sock','port' => null,'database' => 1, );" /var/www/"$domain"/wp-config.php
             fi
-            ln -s plugins/wp-redis/object-cache.php /var/www/$domain/htdocs/wp-content/object-cache.php
-            wp --path=/var/www/$domain/htdocs transient delete-all
+            ln -s plugins/wp-redis/object-cache.php /var/www/"$domain"/htdocs/wp-content/object-cache.php
+            wp --path=/var/www/"$domain"/htdocs transient delete-all
             systemctl reload php-fpm
             printf "\nObject cache enabled.\n\n"
         fi
@@ -220,9 +222,9 @@ set_cache_object() {
         if [[ ! -f /var/www/$domain/htdocs/wp-content/object-cache.php ]]; then
             echo "Object cache is already disabled."
         else
-            wp --path=/var/www/$domain/htdocs plugin deactivate wp-redis
-            rm /var/www/$domain/htdocs/wp-content/object-cache.php
-            wp --path=/var/www/$domain/htdocs transient delete-all
+            wp --path=/var/www/"$domain"/htdocs plugin deactivate wp-redis
+            rm /var/www/"$domain"/htdocs/wp-content/object-cache.php
+            wp --path=/var/www/"$domain"/htdocs transient delete-all
             systemctl reload php-fpm
             printf "\nObject cache disabled.\n\n"
         fi
@@ -232,32 +234,32 @@ set_cache_object() {
 }
 
 set_cache_fcgi_nginx_helper_activate() {
-    wp --path=/var/www/$domain/htdocs plugin install --activate nginx-helper
-    wp --path=/var/www/$domain/htdocs option add rt_wp_nginx_helper_options --format=json '{"enable_purge":"1","cache_method":"enable_fastcgi","purge_method":"get_request","enable_map":null,"enable_log":null,"log_level":"INFO","log_filesize":"5","enable_stamp":null,"purge_homepage_on_edit":"1","purge_homepage_on_del":"1","purge_archive_on_edit":"1","purge_archive_on_del":"1","purge_archive_on_new_comment":null,"purge_archive_on_deleted_comment":null,"purge_page_on_mod":"1","purge_page_on_new_comment":"1","purge_page_on_deleted_comment":"1","redis_hostname":"127.0.0.1","redis_port":"6379","redis_prefix":"nginx-cache:","purge_url":"","redis_enabled_by_constant":0,"smart_http_expire_form_nonce":"19aab78f2b"}'
+    wp --path=/var/www/"$domain"/htdocs plugin install --activate nginx-helper
+    wp --path=/var/www/"$domain"/htdocs option add rt_wp_nginx_helper_options --format=json '{"enable_purge":"1","cache_method":"enable_fastcgi","purge_method":"get_request","enable_map":null,"enable_log":null,"log_level":"INFO","log_filesize":"5","enable_stamp":null,"purge_homepage_on_edit":"1","purge_homepage_on_del":"1","purge_archive_on_edit":"1","purge_archive_on_del":"1","purge_archive_on_new_comment":null,"purge_archive_on_deleted_comment":null,"purge_page_on_mod":"1","purge_page_on_new_comment":"1","purge_page_on_deleted_comment":"1","redis_hostname":"127.0.0.1","redis_port":"6379","redis_prefix":"nginx-cache:","purge_url":"","redis_enabled_by_constant":0,"smart_http_expire_form_nonce":"19aab78f2b"}'
 }
 
 set_cache_fcgi_nginx_helper_deactivate() {
-    wp --path=/var/www/$domain/htdocs plugin deactivate nginx-helper
-    wp --path=/var/www/$domain/htdocs option delete rt_wp_nginx_helper_options
+    wp --path=/var/www/"$domain"/htdocs plugin deactivate nginx-helper
+    wp --path=/var/www/"$domain"/htdocs option delete rt_wp_nginx_helper_options
 }
 
 set_cache_fcgi() {
     if [[ "$1" == "on" ]]; then
-        if grep "#include common/php.conf" /etc/nginx/sites-available/$domain >/dev/null; then
+        if grep "#include common/php.conf" /etc/nginx/sites-available/"$domain" >/dev/null; then
             printf "\nFastCGI cache is already enabled.\n"
         else
-            sed -i "s+    include common/php.conf;+    #include common/php.conf;+" /etc/nginx/sites-available/$domain
-            sed -i "s+#include common/wpfcgi.conf;+include common/wpfcgi.conf;+" /etc/nginx/sites-available/$domain
+            sed -i "s+    include common/php.conf;+    #include common/php.conf;+" /etc/nginx/sites-available/"$domain"
+            sed -i "s+#include common/wpfcgi.conf;+include common/wpfcgi.conf;+" /etc/nginx/sites-available/"$domain"
 
             nginx -s reload
             printf "\nFastCGI microcache enabled.\n\n"
         fi
     elif [[ "$1" == "off" ]]; then
-        if grep "#include common/wpfcgi.conf" /etc/nginx/sites-available/$domain >/dev/null; then
+        if grep "#include common/wpfcgi.conf" /etc/nginx/sites-available/"$domain" >/dev/null; then
             printf "\nFastCGI cache is already disabled.\n"
         else
-            sed -i "s+#include common/php.conf;+include common/php.conf;+" /etc/nginx/sites-available/$domain
-            sed -i "s+    include common/wpfcgi.conf;+    #include common/wpfcgi.conf;+" /etc/nginx/sites-available/$domain
+            sed -i "s+#include common/php.conf;+include common/php.conf;+" /etc/nginx/sites-available/"$domain"
+            sed -i "s+    include common/wpfcgi.conf;+    #include common/wpfcgi.conf;+" /etc/nginx/sites-available/"$domain"
 
             nginx -s reload
             printf "\nFastCGI microcache disabled.\n\n"
@@ -282,7 +284,7 @@ set_cache_parser() {
         set_cache_object "$@"
         set_cache_fcgi "$@"
     else
-        printf "\nInvalid option: $1\n"
+        echo "Invalid option: $1"
         print_help_set
         exit
     fi
@@ -296,17 +298,17 @@ set_alias() {
             [[ ! -d /var/www/$domain ]] && printf "\nSite to add an alias domain name to does not exist.\n" && print_help_set && exit
             shift
         else
-            printf "\nInvalid domain: $1\n"
+            echo "Invalid domain: $1"
             print_help_set
             exit
         fi
 
-        if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf >/dev/null; then
+        if grep "$aliasdomain" /var/www/"$domain"/nginx-conf/server-names.conf >/dev/null; then
             printf "\nAlias domain name already exists.\n\n"
         else
-            sed -i "/;/i$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf
+            sed -i "/;/i$aliasdomain" /var/www/"$domain"/nginx-conf/server-names.conf
             nginx -s reload
-            printf "\nAlias domain name $aliasdomain successfully added to site $domain.\n\n"
+            echo "Alias domain name $aliasdomain successfully added to site $domain." && printf "\n"
         fi
     elif [[ "$1" == "del" || "$1" == "delete" ]]; then
         shift
@@ -315,21 +317,21 @@ set_alias() {
             [[ ! -d /var/www/$domain ]] && printf "\nSite to remove an alias domain name from does not exist.\n" && print_help_set && exit
             shift
         else
-            printf "\nInvalid domain: $1\n"
+            echo "Invalid domain: $1"
             print_help_set
             exit
         fi
 
-        if grep "$aliasdomain" /var/www/$domain/nginx-conf/server-names.conf >/dev/null; then
-            sed -i "/$aliasdomain/d" /var/www/$domain/nginx-conf/server-names.conf
+        if grep "$aliasdomain" /var/www/"$domain"/nginx-conf/server-names.conf >/dev/null; then
+            sed -i "/$aliasdomain/d" /var/www/"$domain"/nginx-conf/server-names.conf
             nginx -s reload
-            printf "\nAlias domain name $aliasdomain successfully deleted from site $domain.\n\n"
+            echo "Alias domain name $aliasdomain successfully deleted from site $domain." && printf "\n"
         else
             printf "\nAlias domain name does not exists.\n\n"
         fi
     elif [[ "$1" == "ls" || "$1" == "list" ]]; then
-        printf "\nAll domain names of site $domain:\n"
-        cat /var/www/$domain/nginx-conf/server-names.conf | sed "s/server_name//" | sed "s/;//"
+        echo "All domain names of site $domain:"
+        sed "s/server_name//" -i /var/www/"$domain"/nginx-conf/server-names.conf | sed "s/;//"
     else
         print_help_set
     fi
@@ -346,9 +348,9 @@ fn_mk() {
 
 fn_ls() {
     printf "\nAll sites available:\n"
-    for name in /etc/nginx/sites-available/*; do
-        printf "    $(echo ${name} | sed "s+/etc/nginx/sites-available/++")\n"
-    done
+    dir -1 /etc/nginx/sites-available/
+    printf "\nAll sites enabled:\n"
+    dir -1 /etc/nginx/sites-enabled/
     printf "\n"
 }
 
@@ -365,7 +367,7 @@ fn_set() {
         [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_set && exit
         shift
     else
-        printf "\nInvalid domain: $1\n"
+        echo "Invalid domain: $1"
         print_help_set
         exit
     fi
@@ -403,26 +405,32 @@ clone_site() {
     echo "Making new site..."
     mk_site
     echo "Copying files..."
-    rsync -ar --exclude 'nginx-conf' /var/www/$clonefrom/ /var/www/$cloneto/
+    rsync -ar --exclude 'nginx-conf' /var/www/"$clonefrom"/ /var/www/"$cloneto"/
 
     echo "Copying the database..."
-    local snakedomain=$(echo ${clonefrom} | sed "s+[^0-9A-Za-z]+_+g")
-    local dbfrom="qyc_$snakedomain"
-    mysqldump $dbfrom | tee /var/www/$clonefrom/db.sql >/dev/null
-    cp /var/www/$clonefrom/db.sql /var/www/$cloneto/db.sql
-    sed -i "s+${clonefrom}+${cloneto}+g" /var/www/$cloneto/db.sql
-    mk_db
-    mysql $dbnaming </var/www/$cloneto/db.sql
-    echo "Updating the WP config..."
-    wp --path=/var/www/$cloneto/htdocs config set DB_NAME ${dbnaming}
-    wp --path=/var/www/$cloneto/htdocs config set DB_USER ${dbnaming}
-    wp --path=/var/www/$cloneto/htdocs config set DB_PASSWORD ${dbpassword}
-    wp --path=/var/www/$cloneto/htdocs config set WP_CACHE_KEY_SALT "qyc_$cloneto"
 
-    printf "\nCloning of $clonefrom to $cloneto is done.\n\n"
-    printf "Add this IPv6 address as an AAAA record for $cloneto in Cloudflare with proxy enabled (orange cloud):\n"
-    printf "    $(ip -6 a | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80)\n\n"
-    printf "Then login here with the same login details as the original site: https://$cloneto/wp-login.php\n\n"
+    local snakedomain=${clonefrom//[^0-9A-Za-z]/_}
+    local dbfrom="qyc_$snakedomain"
+    mysqldump "$dbfrom" | tee /var/www/"$clonefrom"/db.sql >/dev/null
+    cp /var/www/"$clonefrom"/db.sql /var/www/"$cloneto"/db.sql
+    sed -i "s+${clonefrom}+${cloneto}+g" /var/www/"$cloneto"/db.sql
+    mk_db
+    mysql "$dbnaming" </var/www/"$cloneto"/db.sql
+    echo "Updating the WP config..."
+    wp --path=/var/www/"$cloneto"/htdocs config set DB_NAME "${dbnaming}"
+    wp --path=/var/www/"$cloneto"/htdocs config set DB_USER "${dbnaming}"
+    wp --path=/var/www/"$cloneto"/htdocs config set DB_PASSWORD "${dbpassword}"
+    wp --path=/var/www/"$cloneto"/htdocs config set WP_CACHE_KEY_SALT "qyc_$cloneto"
+
+    ipv6=$(ip -6 a | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80)
+    cat <<EOF
+Cloning of $clonefrom to $cloneto is done.
+
+Add this IPv6 address as an AAAA record for $cloneto in Cloudflare with proxy enabled (orange cloud):
+$ipv6
+
+Then login here with the same login details as the original site: https://$cloneto/wp-login.php
+EOF
 }
 
 fn_clone() {
@@ -432,7 +440,7 @@ fn_clone() {
         [[ ! -d /var/www/$clonefrom ]] && printf "\nSite does not exist." && print_help_clone && exit
         shift
     else
-        printf "\nInvalid domain: $1\n"
+        echo "Invalid domain: $1"
         print_help_clone
         exit
     fi
@@ -448,9 +456,9 @@ fn_clone() {
 
     if [[ -d /var/www/$cloneto ]]; then
         echo -n "Do you want to overwrite $cloneto from $clonefrom? [y/Y/yes]: "
-        read consent
+        read -r consent
         if [[ "$consent" == "yes" || "$consent" == "y" || "$consent" == "Y" ]]; then
-            qyc del $cloneto -y
+            qyc del "$cloneto" -y
             clone_site
         else
             printf "Not cloning site.\n"
@@ -523,7 +531,7 @@ password: $admindbpass
 
 EOF
     else
-        firstdomain=$(ls -A /etc/nginx/sites-available | head -n 1)
+        firstdomain=$(find /etc/nginx/sites-available -maxdepth 1 -name "*.*" -type f -printf '%P\n')
         cat <<EOF
    
 Use this link to log in as the priviledged admin user. 
