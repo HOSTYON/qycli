@@ -2,7 +2,7 @@
 
 [[ $(whoami) != "root" ]] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 
-## Install qycli and stack with "wget -qO- qyc.li/inst | sudo bash" or the dev version with "wget -qO- qyc.li/inst | sudo bash -s v dev"
+## Install qycli and stack with "wget -qO- qyc.li/inst | bash" or the dev version with "wget -qO- qyc.li/inst | bash -s v dev"
 ## Optimize the host if you are in a container with "wget -qO- qyc.li/kernel | bash"
 
 inst_qycli() {

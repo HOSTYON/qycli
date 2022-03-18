@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## Kernel tweaks for qycli with "wget -qO- qyc.li/host | bash"
+## Kernel tweaks for qycli with "wget -qO- qyc.li/kernel | bash"
 
 [[ $(whoami) != "root" ]] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 
@@ -234,13 +234,7 @@ net.ipv6.route.flush = 1
 
 ### ADDITIONS
 
-# Allow ipv6 forwarding for Linux Container Networking
-net.ipv6.conf.all.forwarding=1
-net.ipv6.conf.eth0.forwarding=1
-net.ipv6.conf.all.proxy_ndp=1
-net.ipv6.conf.eth0.proxy_ndp=1
-
-# Further TCP enhancments
+# Further TCP enhancements
 net.ipv4.tcp_sack = 1
 net.ipv4.tcp_dsack = 1
 net.ipv4.tcp_mtu_probing = 1
@@ -258,15 +252,17 @@ fs.nr_open=12000000
 kernel.dmesg_restrict = 1
 kernel.keys.maxkeys = 2000
 kernel.keys.maxbytes = 2000000
+
+### ADDITIONS END
 EOF
 
 # Security Limit Tweaks - ulimit -a
-if [[ ! $(grep "qycli" /etc/security/limits.conf) ]]; then
+if ! grep "qycli" /etc/security/limits.conf; then
     sed -i "/End of file/i \# qycli" /etc/security/limits.conf
     sed -i "/End of file/i \root            -       nofile          9030000" /etc/security/limits.conf
     sed -i "/End of file/i \*               -       nofile          9030000" /etc/security/limits.conf
     sed -i "/End of file/i \*               -       memlock         unlimited" /etc/security/limits.conf
-fi    
+fi
 
 # TXQueue Length Tweaks
 tee /lib/udev/rules.d/60-persistent-txqueuelen.rules >/dev/null <<'EOF'
