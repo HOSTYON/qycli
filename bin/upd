@@ -131,13 +131,13 @@ upd_php() {
     php_version_short=$(echo "$php_version" | tr -d ".")
 
     upd_get_snap_channel
-    snap install qycli-php${php_version_short} --$snap_channel
+    snap install qycli-php"$php_version_short" --$snap_channel
 
-    if ! cmp -s /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm; then
-        cp -f /snap/qycli-php$php_version_short/current/php/sbin/php-fpm /usr/sbin/php-fpm
-        cp -rf /snap/qycli-php$php_version_short/current/php/bin/* /usr/bin/
+    if ! cmp -s /snap/qycli-php"$php_version_short"/current/php/sbin/php-fpm /usr/sbin/php-fpm; then
+        cp -f /snap/qycli-php"$php_version_short"/current/php/sbin/php-fpm /usr/sbin/php-fpm
+        cp -rf /snap/qycli-php"$php_version_short"/current/php/bin/* /usr/bin/
         mkdir -p /php/lib/php/extensions
-        cp -r /snap/qycli-php$php_version_short/current/php/lib/php/extensions/* /php/lib/php/extensions/
+        cp -r /snap/qycli-php"$php_version_short"/current/php/lib/php/extensions/* /php/lib/php/extensions/
         systemctl restart php-fpm
     fi
 

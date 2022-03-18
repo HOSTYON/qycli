@@ -33,7 +33,3 @@ elif [[ "$1" == "info" ]]; then
 else
     print_help_qyc
 fi
-
-test() {
-    testing autoformatting
-}

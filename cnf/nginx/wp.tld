@@ -19,8 +19,9 @@ server {
     add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
 
-    #include common/auth.conf;
+    include common/7g.conf;
     #include common/php.conf;
     include common/wpfcgi.conf;
     include common/wpcommon.conf;
+
 }

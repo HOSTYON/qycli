@@ -355,8 +355,24 @@ fn_ls() {
 }
 
 set_firewall() {
-    if [[ "$1" =~ (8.[0-1]|7.4) ]]; then
-        echo bla
+    if [[ "$1" =~ (on|enabled) ]]; then
+        if ! grep "#include common/7g.conf;" /etc/nginx/sites-available/"$domain" >/dev/null; then
+            printf "\n7g Firewall is already enabled.\n"
+        else
+            sed -i "s+#include common/7g.conf;+include common/7g.conf;+" /etc/nginx/sites-available/"$domain"
+            nginx -s reload
+            printf "\n7g Firewall enabled.\n\n"
+        fi
+    elif [[ "$1" =~ (off|disabled) ]]; then
+        if grep "#include common/7g.conf;" /etc/nginx/sites-available/"$domain" >/dev/null; then
+            printf "\n7g Firewall is already disabled.\n"
+        else
+            sed -i "s+include common/7g.conf;+#include common/7g.conf;+" /etc/nginx/sites-available/"$domain"
+            nginx -s reload
+            printf "\n7g Firewall disabled.\n\n"
+        fi
+    else
+        print_help_set
     fi
 }
 
