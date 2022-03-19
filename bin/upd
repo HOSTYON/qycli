@@ -40,6 +40,7 @@ upd_get_ram_mb() {
 upd_firewall() {
     sec_install=$(grep "sec_install" /var/opt/qycli/cnf | sed s+sec_install=++)
     if [[ "$sec_install" == "yes" ]]; then
+        # shellcheck disable=SC1091
         source /opt/qycli/sec_firewall
     fi
 }
@@ -48,6 +49,7 @@ upd_nginx_conf_renew_cf_ips() {
     if [[ -f /etc/nginx/conf.d/cloudflare.conf ]]; then
         rm /etc/nginx/conf.d/cloudflare.conf
     fi
+    # shellcheck disable=SC2013
     for cfip in $(cat /var/opt/qycli/cloudflare_ipv6_ips); do
         echo "set_real_ip_from $cfip;" | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
     done
@@ -61,8 +63,8 @@ upd_nginx_conf() {
     cp -rf /snap/qycli-nginx/current/etc/nginx/* /etc/nginx/
     cp -rf /opt/qycli/cnf/nginx/* /etc/nginx/
 
-    local worker_processes=$(upd_get_cpus)                # 1 worker per CPU
-    local worker_connections=$(($(upd_get_cpus) * 10000)) # 10000 per CPU
+    worker_processes=$(upd_get_cpus)                # 1 worker per CPU
+    worker_connections=$(($(upd_get_cpus) * 10000)) # 10000 per CPU
     sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/nginx/nginx.conf
     sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/nginx/nginx.conf
 
@@ -85,9 +87,9 @@ upd_nginx() {
 }
 
 upd_mariadb_conf_ram_based() {
-    local innodb_buffer_pool_size=$(($(upd_get_ram_mb) / 100 * 80)) # 80% of all memory in MB
-    local innodb_log_file_size=$(($(upd_get_ram_mb) / 100 * 20))    # 20% of all memory in MB
-    local tmp_table_size=$(($(upd_get_ram_mb) / 1000 * 64))         # Per GB RAM 64MB
+    local innodb_buffer_pool_size=$(($(upd_get_ram_mb) * 80 / 100)) # 80% of all memory in MB
+    local innodb_log_file_size=$(($(upd_get_ram_mb) * 20 / 100))    # 20% of all memory in MB
+    local tmp_table_size=$(($(upd_get_ram_mb) * 64 / 1000))         # Per GB RAM 64MB
     sed -e "s/.*innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${innodb_buffer_pool_size}M/" \
         -e "s/.*innodb_log_file_size.*/innodb_log_file_size = ${innodb_log_file_size}M/" \
         -e "s/.*tmp_table_size.*/tmp_table_size = ${tmp_table_size}M/" \
@@ -114,12 +116,12 @@ upd_php_conf() {
     cp -rf /opt/qycli/cnf/php/* /etc/php/
     chown -R qycli:qycli /etc/php
 
-    local opmem=$(($(upd_get_ram_mb) / 100 * 15)) # 15% of all memory in MB
+    local opmem=$(($(upd_get_ram_mb) * 15 / 100)) # 15% of all memory in MB
     cp /opt/qycli/cnf/php/fpm/php.ini /etc/php/fpm/php.ini
     sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" -i /etc/php/fpm/php.ini
     sed -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/php/fpm/php.ini
 
-    local maxchil=$(($(upd_get_ram_mb) / 100 * 70 / 80)) # pm.max_children = 70% Total Memory / 80MB
+    local maxchil=$(($(upd_get_ram_mb) * 70 / 80 / 100)) # pm.max_children = 70% Total Memory / 80MB
     cp /opt/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/php/fpm/pool.d/qycli.conf
     sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" -i /etc/php/fpm/pool.d/qycli.conf
 
@@ -151,7 +153,7 @@ upd_php() {
 
 upd_redis_conf() {
     cp /opt/qycli/cnf/redis/redis.conf /etc/redis/redis.conf
-    local redismem=$(($(upd_get_ram_mb) / 100 * 20)) # 20% of all memory in MB
+    local redismem=$(($(upd_get_ram_mb) * 20 / 100)) # 20% of all memory in MB
     sed -i "s+maxmemory[[:space:]].*+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
     systemctl restart redis-server
 }
@@ -171,7 +173,7 @@ upd_pma_conf() {
 }
 
 upd_system_resources_qycli_cnf() {
-    cpus=$(grep processor /proc/cpuinfo | wc -l)
+    cpus=$(grep -c processor /proc/cpuinfo)
     ram_in_mb=$(($(grep MemTotal /proc/meminfo | tr -d 'MemTotal: kB') / 1000))
 
     if ! grep -q "cpus" /var/opt/qycli/cnf; then

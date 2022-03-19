@@ -2,6 +2,7 @@
 
 # qycli stack install functions
 
+# shellcheck disable=SC1091
 source /opt/qycli/bin/upd
 
 stk_utility_and_repos() {
@@ -47,7 +48,8 @@ stk_nginx_install() {
     apt -y install libfontconfig1 libfreetype6 libgd3 libgeoip1 libicu66 libjbig0 libjpeg-turbo8 libmaxminddb0 libperl5.30 libpng16-16 libtiff5 libwebp6 libx11-6 libxau6 libxcb1 libxdmcp6 libxml2 libxpm4 libxslt1.1
 
     upd_get_snap_channel
-    snap install qycli-nginx --$snap_channel
+    # shellcheck disable=SC2154
+    snap install qycli-nginx --"$snap_channel"
 
     mkdir -p /usr/local/nginx/html
     mkdir /usr/local/nginx/modules
@@ -95,9 +97,6 @@ stk_mariadb_install() {
 
 stk_php_install() {
     apt -y install imagemagick ghostscript libasn1-8-heimdal libbrotli1 libcurl4 libfftw3-double3 libfontconfig1 libfreetype6 libgomp1 libgssapi3-heimdal libhcrypto4-heimdal libheimbase1-heimdal libheimntlm0-heimdal libhx509-5-heimdal libicu66 libjpeg-turbo8 libkrb5-26-heimdal liblcms2-2 libldap-2.4-2 liblqr-1-0 libltdl7 libmagickcore-6.q16-6 libmagickwand-6.q16-6 libnghttp2-14 libonig5 libpng16-16 libpsl5 libroken18-heimdal librtmp1 libsasl2-2 libsodium23 libssh-4 libwebp6 libwind0-heimdal libx11-6 libxau6 libxcb1 libxdmcp6 libxext6 libxml2 libzip5
-
-    php_version=$(grep "php_version" /var/opt/qycli/cnf | sed 's/php_version=//') # Reading the qycli.cnf file
-    php_version_short=$(echo "$php_version" | tr -d ".")
 
     mkdir /var/log/php/
     touch /var/log/php/php-fpm-error.log
