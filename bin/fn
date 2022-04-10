@@ -14,7 +14,6 @@ CREATE DATABASE ${dbnaming};
 GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
 FLUSH PRIVILEGES;
 EOF
-    ln -s /var/www/pma /var/www/"$domain"/htdocs/qyc-pma
 }
 
 mk_site() {
@@ -77,6 +76,9 @@ mk_wp() {
     echo "Creating folders..."
     template=wp.tld
     mk_site
+
+    echo "Linking PMA..."
+    ln -s /var/www/pma /var/www/"$domain"/htdocs/qyc-pma
 
     echo "Installing WordPress..."
     systemctl reload php-fpm
