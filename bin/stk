@@ -138,7 +138,7 @@ stk_composer_install() {
     php composer-setup.php --quiet --filename=composer-binary --install-dir=/usr/local/bin/
     RESULT=$?
     rm composer-setup.php
-    exit $RESULT
+    echo $RESULT
 
     tee /usr/local/bin/composer >/dev/null <<'EOF'
 runuser -u qycli -- composer-binary $@
