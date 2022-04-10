@@ -121,7 +121,7 @@ stk_wpcli_install() {
 runuser -u qycli -- wp-cli $@
 EOF
     chmod +x /usr/local/bin/wp
-    wp package install aaemnnosttv/wp-cli-login-command
+    #wp package install aaemnnosttv/wp-cli-login-command
 }
 
 stk_composer_install() {
@@ -152,16 +152,16 @@ stk_pma_install() {
     mkdir /etc/pma
     cp /opt/qycli/cnf/pma/config.inc.php /etc/pma/config.inc.php
 
-    blowfish_secret=$(tr -dc 'A-Za-z0-9!$%&()*+,-.:;<=>?@^_"|~' </dev/urandom | head -c 32)
-    sed "s+\['blowfish_secret'\] = ''+\['blowfish_secret'\] = '${blowfish_secret}'+" -i /etc/pma/config.inc.php
+    blowfish_secret=$(tr -dc 'A-Za-z0-9!$%()*,-.:;<=>?@^_|~' </dev/urandom | head -c 32)
+    sed "s+\['blowfish_secret'\] = ''+\['blowfish_secret'\] = '$blowfish_secret'+" -i /etc/pma/config.inc.php
 
-    pmapassword=$(openssl rand -base64 12)
+    pmapassword=$(tr -dc 'A-Za-z0-9!$%()*,-.:;<=>?@^_|~' </dev/urandom | head -c 32)
     runuser -u mysql -- mysql --user=mysql <<EOF
-CREATE USER 'pma'@'localhost' IDENTIFIED BY '${pmapassword}';
+CREATE USER 'pma'@'localhost' IDENTIFIED BY '$pmapassword';
 GRANT SELECT, INSERT, UPDATE, DELETE ON phpmyadmin.* TO 'pma'@'localhost';
 FLUSH PRIVILEGES;
 EOF
-    sed "s+\['controlpass'\] = 'pmapass'+\['controlpass'\] = '${pmapassword}'+" -i /etc/pma/config.inc.php
+    sed "s+\['controlpass'\] = 'pmapass'+\['controlpass'\] = '$pmapassword'+" -i /etc/pma/config.inc.php
     mysql </var/www/pma/sql/create_tables.sql
 
     ln -s /etc/pma/config.inc.php /var/www/pma/config.inc.php

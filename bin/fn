@@ -114,11 +114,11 @@ mk_wp() {
 
     wp --path=/var/www/"$domain"/htdocs rewrite structure /%postname%/
     wp --path=/var/www/"$domain"/htdocs plugin uninstall hello akismet
-    wp --path=/var/www/"$domain"/htdocs theme update --all
 
     for theme in $(wp --path=/var/www/"$domain"/htdocs theme list --status=inactive --format=csv | grep inactive | sed s/,.*//); do
         wp --path=/var/www/"$domain"/htdocs theme delete "$theme"
     done
+    wp --path=/var/www/"$domain"/htdocs theme update --all
 
     #wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
     #wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
@@ -129,7 +129,7 @@ mk_wp() {
 
     wp --path=/var/www/"$domain"/htdocs config set WP_MEMORY_LIMIT 128M
 
-    wp --path=/var/www/"$domain"/htdocs login install --activate
+    #wp --path=/var/www/"$domain"/htdocs login install --activate
 
     qyc set "$domain" cache o on
 
@@ -146,10 +146,9 @@ $ipv6
 
 Then login manually here: https://$domain/wp-login.php
 
-Or login clicking or pasting the following link (Does'nt work yet)
-
 EOF
-    wp --path=/var/www/"$domain"/htdocs login create $wpadmin
+    #Or login clicking or pasting the following link (Does'nt work yet)
+    #wp --path=/var/www/"$domain"/htdocs login create $wpadmin
 }
 
 del_site() {
