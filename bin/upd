@@ -9,6 +9,10 @@ upd_qycli() {
     chmod 755 /opt/qycli/kernel
     chmod 755 /opt/qycli/sec_firewall
     snap refresh
+    tee /etc/cron.d/qycli-upd <<EOF
+SHELL=/bin/bash
+5 9 * * * root /usr/bin/qyc upd
+EOF
 }
 
 upd_apt() {
