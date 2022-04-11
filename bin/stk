@@ -155,7 +155,7 @@ stk_pma_install() {
     blowfish_secret=$(tr -dc 'A-Za-z0-9!$%()*,-.:;<=>?@^_|~' </dev/urandom | head -c 32)
     sed "s+\['blowfish_secret'\] = ''+\['blowfish_secret'\] = '$blowfish_secret'+" -i /etc/pma/config.inc.php
 
-    pmapassword=$(tr -dc 'A-Za-z0-9!$%()*,-.:;<=>?@^_|~' </dev/urandom | head -c 32)
+    pmapassword=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24)
     runuser -u mysql -- mysql --user=mysql <<EOF
 CREATE USER 'pma'@'localhost' IDENTIFIED BY '$pmapassword';
 GRANT SELECT, INSERT, UPDATE, DELETE ON phpmyadmin.* TO 'pma'@'localhost';

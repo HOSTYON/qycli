@@ -3,7 +3,7 @@
 # function library for qyc
 
 mk_db() {
-    dbpassword=$(openssl rand -base64 12)
+    dbpassword=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24)
     #local qycpw=$(grep "MariaDB qyc" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
     snakedomain=${domain//[^0-9A-Za-z]/_}
     dbnaming="qyc_$snakedomain"
