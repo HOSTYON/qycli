@@ -25,7 +25,7 @@ $i = 0;
  */
 $i++;
 /* Authentication type */
-$cfg['Servers'][$i]['auth_type'] = 'http';
+$cfg['Servers'][$i]['auth_type'] = 'cookie';
 /* Server parameters */
 $cfg['Servers'][$i]['socket'] = '/run/mysqld/mysqld.sock';
 $cfg['Servers'][$i]['compress'] = false;
