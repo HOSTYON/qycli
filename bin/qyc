@@ -33,6 +33,7 @@ elif [[ "$1" == "upd" || "$1" == "update" ]]; then
 elif [[ "$1" == "stk" || "$1" == "stack" ]]; then
     fn_stack "$@"
 elif [[ "$1" == "info" ]]; then
+    shift
     fn_info "$@"
 else
     print_help_qyc
