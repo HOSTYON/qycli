@@ -552,17 +552,20 @@ EOF
         firstdomain=$(find /etc/nginx/sites-available -maxdepth 1 -name "*.*" -type f -printf '%P\n')
         cat <<EOF
    
-Use this link to log in as the priviledged admin user. 
+Log in as the priviledged admin user. 
 You will be able to access the complete database not just the site's.
 
-http://admin:$admindbpass@$firstdomain/qyc-pma/
+user: admin
+password: $admindbpass
+
+https://$firstdomain/qyc-pma/
 
 EOF
     fi
 }
 
 fn_info() {
-    if [[ "$1" == "" ]]; then
+    if [[ -z "$1" ]]; then
         cat /var/opt/qycli/cnf
     elif [[ "$1" =~ (db|database|dbadmin) ]]; then
         fn_info_db
