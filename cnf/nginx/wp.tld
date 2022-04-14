@@ -9,7 +9,6 @@ server {
 
     root /var/www/dmn.tld/htdocs;
 
-    access_log off;
     #access_log /var/log/nginx/dmn.tld.access.log;
     error_log /var/log/nginx/dmn.tld.error.log;
 
@@ -19,7 +18,12 @@ server {
     add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
 
+    if ($request ~ ".*/qyc-pma/index.php.*") {
+        set $bad_querystring_7g 0;
+        set $bad_request_7g 0;
+    }
     include common/7g.conf;
+
     #include common/php.conf;
     include common/wpfcgi.conf;
     include common/wpcommon.conf;
