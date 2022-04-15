@@ -99,7 +99,7 @@ mk_wp() {
     wp --path=/var/www/"$domain"/htdocs config set DB_HOST :/run/mysqld/mysqld.sock
     wp --path=/var/www/"$domain"/htdocs config shuffle-salts
     # shellcheck disable=2016
-    sed -i 's+$table_prefix = 'wp_';+$table_prefix = 'qyc_';+' /var/www/"$domain"/wp-config.php
+    sed -i 's+\$table_prefix = '\''wp_'\'';+\$table_prefix = '\''qyc_'\'';+' /var/www/"$domain"/wp-config.php
 
     [[ "$wptitle" == "" ]] && wptitle=$domain
     [[ "$wpadmin" == "" ]] && wpadmin=qycli
