@@ -206,6 +206,36 @@ upd_get_new_cf_ips() {
     fi
 }
 
+upd_composer() {
+    EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
+    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+    ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
+
+    if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+        echo >&2 'ERROR: Invalid installer checksum'
+        rm composer-setup.php
+        exit 1
+    fi
+
+    php composer-setup.php --quiet --filename=composer-binary --install-dir=/usr/local/bin/
+    RESULT=$?
+    rm composer-setup.php
+    echo $RESULT
+
+    tee /usr/local/bin/composer >/dev/null <<'EOF'
+runuser -u qycli -- composer-binary $@
+EOF
+    chmod +x /usr/local/bin/composer
+}
+
+upd_phpmyadmin() {
+    composer -d/var/www/pma update
+}
+
+upd_tinyfilemanager() {
+    git -C /var/www/tinyfilemanager pull
+}
+
 upd_fn() {
     upd_qycli
     upd_apt
@@ -218,4 +248,7 @@ upd_fn() {
     upd_php
     upd_redis_conf
     upd_redis_service
+    upd_composer
+    upd_phpmyadmin
+    upd_tinyfilemanager
 }

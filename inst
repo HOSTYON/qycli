@@ -14,8 +14,10 @@ inst_qycli() {
     echo "sec_install=$sec_install" >>/var/opt/qycli/cnf
     echo "php_version=$php_version" >>/var/opt/qycli/cnf
     apt update && apt -y install git
+    git config --global submodule.recurse true
     git -C /opt clone -b "$branch_name" https://github.com/HOSTYON/qycli
     git -C /opt clone https://github.com/HOSTYON/qycli-plugin
+    #git -C /opt/qycli-plugin submodule update --init --recursive
     cp /opt/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
     #chmod 755 /opt/qycli/kernel

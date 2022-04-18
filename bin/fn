@@ -80,6 +80,13 @@ mk_wp() {
     echo "Linking PMA..."
     ln -s /var/www/pma /var/www/"$domain"/htdocs/qyc-pma
 
+    echo "Linking Tiny File Manager..."
+    mkdir /var/www/"$domain"/htdocs/qyc-files
+    ln -s /var/www/tinyfilemanager/tinyfilemanager.php /var/www/"$domain"/htdocs/qyc-files/index.php
+    hashed_pw=$(php -r "\$pw=password_hash(\""$dbpassword"\", PASSWORD_DEFAULT); echo(\$pw);")
+    sed -i "/'admin' => .*/a '$dbnaming' => '$hashed_pw'," /var/www/tinyfilemanager/config.php
+    chown -R qycli:qycli /var/www/"$domain"/htdocs/qyc-files
+
     echo "Installing WordPress..."
     systemctl reload php-fpm
     wget -qrO /var/www/"$domain"/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
@@ -90,6 +97,7 @@ mk_wp() {
 
     mkdir /var/www/"$domain"/htdocs/wp-content/mu-plugins
     ln -s /opt/qycli-plugin/qycli.php /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli.php
+    #ln -s /opt/qycli-plugin/qycli-plugin /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli-plugin
 
     cp /var/www/"$domain"/htdocs/wp-config-sample.php /var/www/"$domain"/wp-config.php
     chown qycli:qycli -R /var/www/"$domain"/*

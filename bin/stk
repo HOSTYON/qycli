@@ -125,25 +125,7 @@ EOF
 }
 
 stk_composer_install() {
-    EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
-    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-    ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
-
-    if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
-        echo >&2 'ERROR: Invalid installer checksum'
-        rm composer-setup.php
-        exit 1
-    fi
-
-    php composer-setup.php --quiet --filename=composer-binary --install-dir=/usr/local/bin/
-    RESULT=$?
-    rm composer-setup.php
-    echo $RESULT
-
-    tee /usr/local/bin/composer >/dev/null <<'EOF'
-runuser -u qycli -- composer-binary $@
-EOF
-    chmod +x /usr/local/bin/composer
+    upd_composer
 }
 
 stk_pma_install() {
@@ -168,6 +150,13 @@ EOF
     systemctl restart php-fpm
 }
 
+stk_tinyfilemanager_install() {
+    git -C /var/www clone https://github.com/prasathmani/tinyfilemanager.git
+    cp /var/www/tinyfilemanager/config-sample.php /var/www/tinyfilemanager/config.php
+    sed -i "/'user' =>.*/d" /var/www/tinyfilemanager/config.php
+    sed -i "s+'admin' =>.*+'admin' => ''+" /var/www/tinyfilemanager/config.php
+}
+
 stk_install() {
     stk_utility_and_repos
     stk_postfix_install
@@ -178,5 +167,6 @@ stk_install() {
     stk_wpcli_install
     stk_composer_install
     stk_pma_install
+    stk_tinyfilemanager_install
     printf "\nqycli stack was installed.\n\n"
 }
