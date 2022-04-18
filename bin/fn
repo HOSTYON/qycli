@@ -83,6 +83,7 @@ mk_wp() {
     echo "Linking Tiny File Manager..."
     mkdir /var/www/"$domain"/htdocs/qyc-files
     ln -s /var/www/tinyfilemanager/tinyfilemanager.php /var/www/"$domain"/htdocs/qyc-files/index.php
+    # shellcheck disable=2027,2086
     hashed_pw=$(php -r "\$pw=password_hash(\""$dbpassword"\", PASSWORD_DEFAULT); echo(\$pw);")
     sed -i "/'admin' => .*/a '$dbnaming' => '$hashed_pw'," /var/www/tinyfilemanager/config.php
     chown -R qycli:qycli /var/www/"$domain"/htdocs/qyc-files
