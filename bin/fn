@@ -158,18 +158,18 @@ $domain is ready.
 EOF
     if [[ $ipv6 != "" ]]; then
         cat <<EOF
-Add this IPv6 address as an AAAA record in Cloudflare with proxy enabled (orange cloud):
+Add this IPv6 address manually as an AAAA record in Cloudflare with proxy enabled (orange cloud):
 $ipv6
 
-Then login manually here: https://$domain/wp-login.php
+Then login here: https://$domain/wp-login.php
 
 EOF
     elif [[ $ipv4 != "" ]]; then
         cat <<EOF
-Add this IPv4 address as an A record in Cloudflare with proxy enabled (orange cloud):
+Add this IPv4 address manually as an A record in Cloudflare with proxy enabled (orange cloud):
 $ipv4
 
-Then login manually here: https://$domain/wp-login.php
+Then login here: https://$domain/wp-login.php
 
 EOF
     else
