@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# shellcheck disable=1091
+source /opt/qycli/bin/upd
+
 # function library for qyc
 
 mk_db() {
@@ -21,21 +24,61 @@ mk_site() {
     mkdir -p /var/www/"$domain"/nginx-conf
     cp /etc/nginx/"$template" /etc/nginx/sites-available/"$domain"
     sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/"$domain"
+    if [[ $subdomain == true ]]; then
+        domainlist=$domain
+    else
+        # shellcheck disable=2116
+        domainlist=$(echo "$domain
+www.$domain")
+    fi
     tee /var/www/"$domain"/nginx-conf/server-names.conf >/dev/null <<EOF
 server_name
-$domain
-www.$domain
+$domainlist
 ;
 EOF
+
     ln -s /etc/nginx/sites-available/"$domain" /etc/nginx/sites-enabled/
     chown qycli:qycli -R /var/www/"$domain"/*
     nginx -s reload
+}
+
+mk_dns_entry() {
+    # List DNS records for a Zone
+    existing_dns_records=$(curl -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain" \
+        -H "Authorization: Bearer $cf_token" \
+        -H "Content-Type: application/json" |
+        jq -r '.result[].id')
+
+    # Delete DNS records for a Zone if they exist
+    if [[ $existing_dns_records != "" ]]; then
+        for id in $existing_dns_records; do
+            curl -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
+                -H "Authorization: Bearer $cf_token" \
+                -H "Content-Type: application/json"
+        done
+    fi
+
+    # Create new DNS record in zone
+    curl -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
+        -H "Authorization: Bearer $cf_token" \
+        -H "Content-Type: application/json" \
+        --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' \
+        >"$domain"_cf_dns.json
 }
 
 mk_wp() {
     if [[ "$1" == *"."* ]]; then
         domain="$1"
         [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
+        root_domain=$domain
+        domain_dot_count=$(echo "$domain" | grep -o "\." | grep -c "\.")
+        if [[ $domain_dot_count -gt 2 ]]; then
+            echo "Subdomains deeper than one level are not supported with Cloudflare SSL. Use bla-sub.domain.com instead of bla.sub.domain.com. Aborting..." && exit
+        elif [[ $domain_dot_count == 2 ]]; then
+            subdomain=true
+            # shellcheck disable=2001
+            root_domain=$(echo "$domain" | sed "s+^[^\.]*\.++")
+        fi
         [[ -d /var/www/$domain ]] && printf "\nWP site already exists.\n" && exit
         shift
     else
@@ -148,7 +191,17 @@ mk_wp() {
     ipv6_dev=$(ip -6 r | awk '/default via/ {print $5}')
     ipv6=$(ip -6 a show dev "$ipv6_dev" scope global | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80 | grep -v ^fd00)
 
+    if [[ $(jq -r --arg queryname "$root_domain" '.result[] | select(.name == $queryname).id' </var/opt/qycli/cfzones.json) != "" ]]; then
+        cf_token=$(grep "cloudflare_token" /var/opt/qycli/cnf | sed s+cloudflare_token=++)
+        root_domain_zone_id=$(jq -r --arg queryname "$root_domain" '.result[] | select(.name == $queryname).id' </var/opt/qycli/cfzones.json)
+    else
+        echo "Root domain "$root_domain" cannot be found in /var/opt/qycli/cfzones.json,"
+        echo "because the file either doen't exist or the Cloudflare API token is not linked"
+        echo "to the Account with the right Zone. You will have to set the DNS records manually."
+    fi
+
     cat <<EOF
+
 $domain is ready.
 
     User:     $wpadmin
@@ -157,21 +210,43 @@ $domain is ready.
 
 EOF
     if [[ $ipv6 != "" ]]; then
-        cat <<EOF
+        if [[ $cf_token != "" ]]; then
+            dns_value=$ipv6
+            dns_type=AAAA
+            mk_dns_entry
+            cat <<EOF
+The DNS entry has been made at Cloudflare automatically.
+You can login here: https://$domain/wp-login.php
+
+EOF
+        else
+            cat <<EOF
 Add this IPv6 address manually as an AAAA record in Cloudflare with proxy enabled (orange cloud):
 $ipv6
 
 Then login here: https://$domain/wp-login.php
 
 EOF
+        fi
     elif [[ $ipv4 != "" ]]; then
-        cat <<EOF
+        if [[ $cf_token != "" ]]; then
+            dns_value=$ipv4
+            dns_type=A
+            mk_dns_entry
+            cat <<EOF
+The DNS entry has been made at Cloudflare automatically.
+You can login here: https://$domain/wp-login.php
+
+EOF
+        else
+            cat <<EOF
 Add this IPv4 address manually as an A record in Cloudflare with proxy enabled (orange cloud):
 $ipv4
 
 Then login here: https://$domain/wp-login.php
 
 EOF
+        fi
     else
         echo "No ip address found. That is problematic, as your website will not be accessible."
     fi
@@ -516,7 +591,7 @@ fn_clone() {
     fi
 }
 
-stack_php_version() {
+cnf_php_version() {
     if [[ "$1" =~ (8.[0-1]|7.4) ]]; then
         new_ver=$1
         export new_ver
@@ -528,28 +603,32 @@ stack_php_version() {
     upd_php
 }
 
-stack_php_parser() {
+cnf_php_parser() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         v | ver | version)
             shift
-            stack_php_version "$@"
+            cnf_php_version "$@"
+            ;;
+        8.1 | 8.0 | 7.4)
+            cnf_php_version "$@"
             ;;
         esac
         shift
     done
 }
 
-fn_stack() {
+fn_cnf() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         php)
             shift
-            stack_php_parser "$@"
+            cnf_php_parser "$@"
             ;;
-        install | reinstall | inst)
+        cft | cloudflaretoken)
             shift
-            stk_install
+            sed "s/^cloudflare_token=.*/cloudflare_token=$1/" -i /var/opt/qycli/cnf
+            upd_get_cf_accounts_and_zones
             ;;
         esac
         shift

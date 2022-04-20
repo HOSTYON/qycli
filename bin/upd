@@ -206,6 +206,33 @@ upd_get_new_cf_ips() {
     fi
 }
 
+upd_get_cf_accounts_and_zones() {
+    cf_token=$(grep "cloudflare_token" /var/opt/qycli/cnf | sed s+cloudflare_token=++)
+    # Get all accounts
+    curl -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=1000" \
+        -H "Authorization: Bearer $cf_token" \
+        -H "Content-Type: application/json" >/var/opt/qycli/cfaccounts.json
+
+    # Get all zones of all accounts
+    for id in $(jq -r '.result[].id' </var/opt/qycli/cfaccounts.json); do
+        curl -X GET "https://api.cloudflare.com/client/v4/zones?status=active&account.id=$id&page=1&per_page=500" \
+            -H "Authorization: Bearer $cf_token" \
+            -H "Content-Type: application/json" >>/var/opt/qycli/cfzones.json
+    done
+}
+
+upd_dns_entry() {
+    cf_token=$(grep "cloudflare_token" /var/opt/qycli/cnf | sed s+cloudflare_token=++)
+    # Check if dns file exists
+    if [[ -f ${domain}_cf_dns.json ]]; then
+        dns_update_id=$(jq -r .result.id <"$domain"_cf_dns.json)
+        curl -X PUT "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$dns_update_id" \
+            -H "Authorization: Bearer $cf_token" \
+            -H "Content-Type: application/json" \
+            --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' >"$domain"_cf_dns.json
+    fi
+}
+
 upd_composer() {
     EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
     php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"

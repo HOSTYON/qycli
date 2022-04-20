@@ -30,8 +30,8 @@ elif [[ "$1" == "del" || "$1" == "delete" ]]; then
     fn_del "$@"
 elif [[ "$1" == "upd" || "$1" == "update" ]]; then
     upd_fn
-elif [[ "$1" == "stk" || "$1" == "stack" ]]; then
-    fn_stack "$@"
+elif [[ "$1" == "cnf" || "$1" == "conf" || "$1" == "configure" ]]; then
+    fn_cnf "$@"
 elif [[ "$1" == "info" ]]; then
     shift
     fn_info "$@"
