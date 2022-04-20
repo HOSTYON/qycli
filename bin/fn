@@ -142,7 +142,12 @@ mk_wp() {
 
     qyc set "$domain" cache o on
 
-    ipv6=$(ip -6 a | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80)
+    ipv4_dev=$(ip r | awk '/default via/ {print $5}')
+    ipv4=$(ip -4 a show dev "$ipv4_dev" scope global | grep inet | awk -F '[ \t]+|/' '{print $3}' | grep -Ev "10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" |
+        grep -Ev "172\.([1][6-9]|[2][0-9]|3[0-1]{1,3})\.[0-9]{1,3}\.[0-9]{1,3}" | grep -Ev "192\.168\.[0-9]{1,3}\.[0-9]{1,3}")
+    ipv6_dev=$(ip -6 r | awk '/default via/ {print $5}')
+    ipv6=$(ip -6 a show dev "$ipv6_dev" scope global | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80 | grep -v ^fd00)
+
     cat <<EOF
 $domain is ready.
 
@@ -150,12 +155,27 @@ $domain is ready.
     Email:    $wpemail
     Password: $wppw
 
+EOF
+    if [[ $ipv6 != "" ]]; then
+        cat <<EOF
 Add this IPv6 address as an AAAA record in Cloudflare with proxy enabled (orange cloud):
 $ipv6
 
 Then login manually here: https://$domain/wp-login.php
 
 EOF
+    elif [[ $ipv4 != "" ]]; then
+        cat <<EOF
+Add this IPv4 address as an A record in Cloudflare with proxy enabled (orange cloud):
+$ipv4
+
+Then login manually here: https://$domain/wp-login.php
+
+EOF
+    else
+        echo "No ip address found. That is problematic, as your website will not be accessible."
+    fi
+
     #Or login clicking or pasting the following link (Does'nt work yet)
     #wp --path=/var/www/"$domain"/htdocs login create $wpadmin
 }
