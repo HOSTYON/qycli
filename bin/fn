@@ -42,6 +42,25 @@ EOF
     nginx -s reload
 }
 
+mk_get_public_ips() {
+    ipv4_dev=$(ip r | awk '/default via/ {print $5}')
+    ipv4=$(ip -4 a show dev "$ipv4_dev" scope global | grep inet | awk -F '[ \t]+|/' '{print $3}' | grep -Ev "10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" |
+        grep -Ev "172\.([1][6-9]|[2][0-9]|3[0-1]{1,3})\.[0-9]{1,3}\.[0-9]{1,3}" | grep -Ev "192\.168\.[0-9]{1,3}\.[0-9]{1,3}")
+    ipv6_dev=$(ip -6 r | awk '/default via/ {print $5}')
+    ipv6=$(ip -6 a show dev "$ipv6_dev" scope global | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80 | grep -v ^fd00)
+}
+
+mk_check_cf_zones_file() {
+    if [[ $(jq -r --arg queryname "$root_domain" '.result[] | select(.name == $queryname).id' </var/opt/qycli/cfzones.json) != "" ]]; then
+        cf_token=$(grep "cloudflare_token" /var/opt/qycli/cnf | sed s+cloudflare_token=++)
+        root_domain_zone_id=$(jq -r --arg queryname "$root_domain" '.result[] | select(.name == $queryname).id' </var/opt/qycli/cfzones.json)
+    else
+        echo "Root domain $root_domain cannot be found in /var/opt/qycli/cfzones.json,"
+        echo "because the file either doen't exist or the Cloudflare API token is not linked"
+        echo "to the Account with the right Zone. You will have to set the DNS records manually."
+    fi
+}
+
 mk_dns_entry() {
     # List DNS records for a Zone
     existing_dns_records=$(curl -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain" \
@@ -64,6 +83,46 @@ mk_dns_entry() {
         -H "Content-Type: application/json" \
         --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' \
         >"$domain"_cf_dns.json
+}
+
+mk_wp_print_login_info() {
+    cat <<EOF
+
+$domain is ready.
+
+    User:     $wpadmin
+    Email:    $wpemail
+    Password: $wppw
+
+EOF
+}
+
+mk_wp_print_login_info_auto() {
+    cat <<EOF
+The DNS entry has been made at Cloudflare automatically.
+You can login here: https://$domain/wp-login.php
+
+EOF
+}
+
+mk_wp_print_login_info_manual_v6() {
+    cat <<EOF
+Add this IPv6 address manually as an AAAA record in Cloudflare with proxy enabled (orange cloud):
+$ipv6
+
+Then login here: https://$domain/wp-login.php
+
+EOF
+}
+
+mk_wp_print_login_info_manual_v4() {
+    cat <<EOF
+Add this IPv4 address manually as an A record in Cloudflare with proxy enabled (orange cloud):
+$ipv4
+
+Then login here: https://$domain/wp-login.php
+
+EOF
 }
 
 mk_wp() {
@@ -185,67 +244,28 @@ mk_wp() {
 
     qyc set "$domain" cache o on
 
-    ipv4_dev=$(ip r | awk '/default via/ {print $5}')
-    ipv4=$(ip -4 a show dev "$ipv4_dev" scope global | grep inet | awk -F '[ \t]+|/' '{print $3}' | grep -Ev "10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" |
-        grep -Ev "172\.([1][6-9]|[2][0-9]|3[0-1]{1,3})\.[0-9]{1,3}\.[0-9]{1,3}" | grep -Ev "192\.168\.[0-9]{1,3}\.[0-9]{1,3}")
-    ipv6_dev=$(ip -6 r | awk '/default via/ {print $5}')
-    ipv6=$(ip -6 a show dev "$ipv6_dev" scope global | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80 | grep -v ^fd00)
+    mk_get_public_ips
+    mk_check_cf_zones_file
 
-    if [[ $(jq -r --arg queryname "$root_domain" '.result[] | select(.name == $queryname).id' </var/opt/qycli/cfzones.json) != "" ]]; then
-        cf_token=$(grep "cloudflare_token" /var/opt/qycli/cnf | sed s+cloudflare_token=++)
-        root_domain_zone_id=$(jq -r --arg queryname "$root_domain" '.result[] | select(.name == $queryname).id' </var/opt/qycli/cfzones.json)
-    else
-        echo "Root domain $root_domain cannot be found in /var/opt/qycli/cfzones.json,"
-        echo "because the file either doen't exist or the Cloudflare API token is not linked"
-        echo "to the Account with the right Zone. You will have to set the DNS records manually."
-    fi
-
-    cat <<EOF
-
-$domain is ready.
-
-    User:     $wpadmin
-    Email:    $wpemail
-    Password: $wppw
-
-EOF
     if [[ $ipv6 != "" ]]; then
         if [[ $cf_token != "" ]]; then
             dns_value=$ipv6
             dns_type=AAAA
             mk_dns_entry
-            cat <<EOF
-The DNS entry has been made at Cloudflare automatically.
-You can login here: https://$domain/wp-login.php
-
-EOF
+            mk_wp_print_login_info
+            mk_wp_print_login_info_auto
         else
-            cat <<EOF
-Add this IPv6 address manually as an AAAA record in Cloudflare with proxy enabled (orange cloud):
-$ipv6
-
-Then login here: https://$domain/wp-login.php
-
-EOF
+            mk_wp_print_login_info_manual_v6
         fi
     elif [[ $ipv4 != "" ]]; then
         if [[ $cf_token != "" ]]; then
             dns_value=$ipv4
             dns_type=A
             mk_dns_entry
-            cat <<EOF
-The DNS entry has been made at Cloudflare automatically.
-You can login here: https://$domain/wp-login.php
-
-EOF
+            mk_wp_print_login_info
+            mk_wp_print_login_info_auto
         else
-            cat <<EOF
-Add this IPv4 address manually as an A record in Cloudflare with proxy enabled (orange cloud):
-$ipv4
-
-Then login here: https://$domain/wp-login.php
-
-EOF
+            mk_wp_print_login_info_manual_v4
         fi
     else
         echo "No ip address found. That is problematic, as your website will not be accessible."
