@@ -217,7 +217,7 @@ upd_get_cf_accounts_and_zones() {
     for id in $(jq -r '.result[].id' </var/opt/qycli/cfaccounts.json); do
         curl -X GET "https://api.cloudflare.com/client/v4/zones?status=active&account.id=$id&page=1&per_page=500" \
             -H "Authorization: Bearer $cf_token" \
-            -H "Content-Type: application/json" >>/var/opt/qycli/cfzones.json
+            -H "Content-Type: application/json" >/var/opt/qycli/cfzones.json
     done
 }
 

@@ -674,7 +674,6 @@ fn_info_db() {
         cat <<EOF
 
 There are no sites available on your server. Make a site and run this command again.
-You will then get a link that logs you in immediately to phpMyAdmin once opened in a browser.
 Here the admin DB user info just in case you need it for something else.
 
 user: admin
