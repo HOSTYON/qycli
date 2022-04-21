@@ -63,7 +63,7 @@ mk_check_cf_zones_file() {
 
 mk_dns_entry() {
     # List DNS records for a Zone
-    existing_dns_records=$(curl -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain" \
+    existing_dns_records=$(curl -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
         -H "Authorization: Bearer $cf_token" \
         -H "Content-Type: application/json" |
         jq -r '.result[].id')
