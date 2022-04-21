@@ -10,10 +10,12 @@
 inst_qycli() {
     [[ -f /usr/bin/qyc ]] && echo "qycli is already installed, stopping the process. Just type qyc to get the help message or go to qycli.org to learn." && exit
     [[ ! -d /var/opt/qycli ]] && mkdir /var/opt/qycli
-    echo "branch_name=$branch_name" >/var/opt/qycli/cnf
-    echo "sec_install=$sec_install" >>/var/opt/qycli/cnf
-    echo "php_version=$php_version" >>/var/opt/qycli/cnf
-    echo "cloudflare_token=$cloudflare_token" >>/var/opt/qycli/cnf
+    {
+        echo "branch_name=$branch_name"
+        echo "sec_install=$sec_install"
+        echo "php_version=$php_version"
+        echo "cloudflare_token=$cloudflare_token"
+    } >>/var/opt/qycli/cnf
     apt update && apt -y install git
     git config --global submodule.recurse true
     git -C /opt clone -b "$branch_name" https://github.com/HOSTYON/qycli

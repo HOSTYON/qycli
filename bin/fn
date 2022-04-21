@@ -195,7 +195,7 @@ mk_wp() {
         cf_token=$(grep "cloudflare_token" /var/opt/qycli/cnf | sed s+cloudflare_token=++)
         root_domain_zone_id=$(jq -r --arg queryname "$root_domain" '.result[] | select(.name == $queryname).id' </var/opt/qycli/cfzones.json)
     else
-        echo "Root domain "$root_domain" cannot be found in /var/opt/qycli/cfzones.json,"
+        echo "Root domain $root_domain cannot be found in /var/opt/qycli/cfzones.json,"
         echo "because the file either doen't exist or the Cloudflare API token is not linked"
         echo "to the Account with the right Zone. You will have to set the DNS records manually."
     fi
@@ -618,6 +618,11 @@ cnf_php_parser() {
     done
 }
 
+cnf_set_cloudflare_token() {
+    sed "s/^cloudflare_token=.*/cloudflare_token=$cf_token/" -i /var/opt/qycli/cnf
+    upd_get_cf_accounts_and_zones
+}
+
 fn_cnf() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
@@ -627,8 +632,8 @@ fn_cnf() {
             ;;
         cft | cloudflaretoken)
             shift
-            sed "s/^cloudflare_token=.*/cloudflare_token=$1/" -i /var/opt/qycli/cnf
-            upd_get_cf_accounts_and_zones
+            cf_token=$1
+            cnf_set_cloudflare_token
             ;;
         esac
         shift

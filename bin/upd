@@ -224,6 +224,7 @@ upd_get_cf_accounts_and_zones() {
 upd_dns_entry() {
     cf_token=$(grep "cloudflare_token" /var/opt/qycli/cnf | sed s+cloudflare_token=++)
     # Check if dns file exists
+    # shellcheck disable=SC2154
     if [[ -f ${domain}_cf_dns.json ]]; then
         dns_update_id=$(jq -r .result.id <"$domain"_cf_dns.json)
         curl -X PUT "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$dns_update_id" \
