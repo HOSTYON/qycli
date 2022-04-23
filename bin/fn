@@ -63,7 +63,7 @@ mk_check_cf_zones_file() {
 
 mk_dns_entry() {
     # List DNS records for a Zone
-    existing_dns_records=$(curl -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
+    existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
         -H "Authorization: Bearer $cf_token" \
         -H "Content-Type: application/json" |
         jq -r '.result[].id')
@@ -71,18 +71,24 @@ mk_dns_entry() {
     # Delete DNS records for a Zone if they exist
     if [[ $existing_dns_records != "" ]]; then
         for id in $existing_dns_records; do
-            curl -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
+            curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
                 -H "Authorization: Bearer $cf_token" \
                 -H "Content-Type: application/json"
         done
     fi
 
     # Create new DNS record in zone
-    curl -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
+    curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
         -H "Authorization: Bearer $cf_token" \
         -H "Content-Type: application/json" \
         --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' \
         >"$domain"_cf_dns.json
+
+    # Change zone settings
+    curl -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
+        -H "Authorization: Bearer $cf_token" \
+        -H "Content-Type: application/json" \
+        --data '{"items":[{"id":"ssl","value":"full"},{"id":"0rtt","value":"on"},{"id":"minify","value":{"css":"on","html":"on","js":"on"}},{"id":"rocket_loader","value":"on"}]}'
 }
 
 mk_wp_print_login_info() {
