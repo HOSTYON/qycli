@@ -73,7 +73,7 @@ mk_dns_entry() {
         for id in $existing_dns_records; do
             curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
                 -H "Authorization: Bearer $cf_token" \
-                -H "Content-Type: application/json"
+                -H "Content-Type: application/json" 1>/dev/null
         done
     fi
 
@@ -257,6 +257,14 @@ mk_wp() {
     mk_get_public_ips
     mk_check_cf_zones_file
 
+    if [[ $root_domain_zone_id != "" ]]; then
+        wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache
+        wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken "$cf_token"
+        wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
+        wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
+        sed -i "/include common/wpcommon.conf;/a include /wp-content/wp-cloudflare-super-page-cache/$domain/nginx.conf" /etc/nginx/sites-available/"$domain"
+    fi
+
     if [[ $ipv6 != "" ]]; then
         if [[ $cf_token != "" ]]; then
             dns_value=$ipv6
@@ -279,14 +287,6 @@ mk_wp() {
         fi
     else
         echo "No ip address found. That is problematic, as your website will not be accessible."
-    fi
-
-    if [[ $root_domain_zone_id != "" ]]; then
-        wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache
-        wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken "$cf_token"
-        wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
-        wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
-        sed -i "/include common/wpcommon.conf;/a include /wp-content/wp-cloudflare-super-page-cache/"$domain"/nginx.conf" /etc/nginx/sites-available/"$domain"
     fi
 
     #Or login clicking or pasting the following link (Does'nt work yet)
