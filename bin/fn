@@ -56,8 +56,8 @@ mk_check_cf_zones_file() {
         root_domain_zone_id=$(jq -r --arg queryname "$root_domain" '.result[] | select(.name == $queryname).id' </var/opt/qycli/cfzones.json)
     else
         echo "Root domain $root_domain cannot be found in /var/opt/qycli/cfzones.json,"
-        echo "because the file either doen't exist or the Cloudflare API token is not linked"
-        echo "to the Account with the right Zone. You will have to set the DNS records manually."
+        echo "because the file either doen't exist or the Cloudflare API token is not linked to"
+        echo "the Account with the right Zone. You will have to set the DNS records manually."
     fi
 }
 
@@ -263,7 +263,8 @@ mk_wp() {
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_auth_mode 1
-        sed -i '/include common\/wpcommon.conf;/a include /wp-content/wp-cloudflare-super-page-cache/'"$domain"'/nginx.conf;' /etc/nginx/sites-available/"$domain"
+        sed -i '/include common\/wpcommon.conf;/a include /var/www/'"$domain"'/htdocs/wp-content/wp-cloudflare-super-page-cache/'"$domain"'/nginx.conf;' /etc/nginx/sites-available/"$domain"
+        nginx -s reload
     fi
 
     if [[ $ipv6 != "" ]]; then
