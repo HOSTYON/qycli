@@ -85,10 +85,14 @@ mk_dns_entry() {
         >"$domain"_cf_dns.json
 
     # Change zone settings
-    curl -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
+    curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
         -H "Authorization: Bearer $cf_token" \
         -H "Content-Type: application/json" \
         --data '{"items":[{"id":"ssl","value":"full"},{"id":"0rtt","value":"on"},{"id":"minify","value":{"css":"on","html":"on","js":"on"}},{"id":"rocket_loader","value":"on"}]}'
+    curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/argo/tiered_caching" \
+        -H "Authorization: Bearer $cf_token" \
+        -H "Content-Type: application/json" \
+        --data '{"value":"on"}'
 }
 
 mk_wp_print_login_info() {
@@ -237,6 +241,13 @@ mk_wp() {
     done
     wp --path=/var/www/"$domain"/htdocs theme update --all
 
+    if [[ $root_domain_zone_id != "" ]]; then
+        wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache
+        wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken "$cf_token"
+        wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
+        wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
+        sed -i "/include common/wpcommon.conf;/a include /wp-content/wp-cloudflare-super-page-cache/"$domain"/nginx.conf" /etc/nginx/sites-available/"$domain"
+    fi
     #wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
     #wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
 
@@ -401,10 +412,22 @@ set_cache_fcgi() {
     fi
 }
 
+set_cache_cloudflare() {
+    if [[ "$1" == "on" ]]; then
+        wp --path=/var/www/"$domain"/htdocs cfcache enable_cf_cache
+    fi
+    if [[ "$1" == "off" ]]; then
+        wp --path=/var/www/"$domain"/htdocs cfcache disable_cf_cache
+    fi
+}
+
 set_cache_parser() {
     if [[ "$1" == "object" || "$1" == "o" ]]; then
         shift
         set_cache_object "$@"
+    elif [[ "$1" == "cf" || "$1" == "cloudflare" ]]; then
+        shift
+        set_cache_cloudflare "$@"
     elif [[ "$1" == "fcgi" || "$1" == "f" ]]; then
         shift
         set_cache_fcgi "$@"
