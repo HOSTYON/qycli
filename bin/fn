@@ -88,11 +88,11 @@ mk_dns_entry() {
     curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
         -H "Authorization: Bearer $cf_token" \
         -H "Content-Type: application/json" \
-        --data '{"items":[{"id":"ssl","value":"full"},{"id":"0rtt","value":"on"},{"id":"minify","value":{"css":"on","html":"on","js":"on"}},{"id":"rocket_loader","value":"on"}]}'
+        --data '{"items":[{"id":"ssl","value":"full"},{"id":"0rtt","value":"on"},{"id":"minify","value":{"css":"on","html":"on","js":"on"}},{"id":"rocket_loader","value":"on"}]}' 1>/dev/null
     curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/argo/tiered_caching" \
         -H "Authorization: Bearer $cf_token" \
         -H "Content-Type: application/json" \
-        --data '{"value":"on"}'
+        --data '{"value":"on"}' 1>/dev/null
 }
 
 mk_wp_print_login_info() {
