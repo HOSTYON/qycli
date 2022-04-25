@@ -263,7 +263,7 @@ mk_wp() {
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_auth_mode 1
-        sed -i "/'include common/wpcommon.conf;'/a 'include /wp-content/wp-cloudflare-super-page-cache/$domain/nginx.conf;'" /etc/nginx/sites-available/"$domain"
+        sed -i '/include common\/wpcommon.conf;/a include /wp-content/wp-cloudflare-super-page-cache/'"$domain"'/nginx.conf;' /etc/nginx/sites-available/"$domain"
     fi
 
     if [[ $ipv6 != "" ]]; then
