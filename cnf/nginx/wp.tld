@@ -24,6 +24,7 @@ server {
     }
     include common/7g.conf;
 
+    #include common/pagespeed.conf;
     include common/php.conf;
     #include common/wpfcgi.conf;
     include common/wpcommon.conf;
