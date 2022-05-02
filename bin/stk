@@ -157,6 +157,11 @@ stk_tinyfilemanager_install() {
     sed -i "s+'admin' =>.*+'admin' => ''+" /var/www/tinyfilemanager/config.php
 }
 
+stk_crowdsec_install() {
+    curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | sudo bash
+
+}
+
 stk_install() {
     stk_utility_and_repos
     stk_postfix_install

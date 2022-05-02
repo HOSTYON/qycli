@@ -79,8 +79,9 @@ upd_nginx_conf() {
 
 upd_nginx() {
     if ! cmp -s /snap/qycli-nginx/current/usr/local/nginx/sbin/nginx /usr/sbin/nginx; then
-        cp /snap/qycli-nginx/current/usr/local/nginx/sbin/nginx /usr/sbin/nginx
-        cp -rf /snap/qycli-nginx/current/usr/local/nginx/modules/* /usr/local/nginx/modules/
+        cp -rf /snap/qycli-nginx/current/usr/local/* /usr/local/
+        cp /usr/local/nginx/sbin/nginx /usr/sbin/nginx
+
         systemctl restart nginx
     fi
 
