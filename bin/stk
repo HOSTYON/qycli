@@ -6,6 +6,9 @@
 source /opt/qycli/bin/upd
 
 stk_utility_and_repos() {
+    # CrowdSec
+    curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | sudo bash
+    
     upd_apt
     # Utilities
     apt -y install ubuntu-standard ubuntu-server jq snap gnupg2 ca-certificates libpwquality-tools apt-transport-https #lsb-release
@@ -16,7 +19,7 @@ stk_utility_and_repos() {
     curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | bash -s -- --skip-maxscale
     # For GeoIP
     add-apt-repository -y ppa:maxmind/ppa
-
+    
     addgroup qycli
     adduser --disabled-password --gecos "" --ingroup qycli qycli
 }
@@ -158,7 +161,8 @@ stk_tinyfilemanager_install() {
 }
 
 stk_crowdsec_install() {
-    curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | sudo bash
+    apt -y install crowdsec
+    apt -y install crowdsec-firewall-bouncer-iptables
 
 }
 
