@@ -135,6 +135,10 @@ Then login here: https://$domain/wp-login.php
 EOF
 }
 
+mk_setup_crowdsec_cloudflare_bouncer() {
+    crowdsec-cloudflare-bouncer -g "$root_domain_zone_id" -o /etc/crowdsec/bouncers/crowdsec-cloudflare-bouncer.yaml
+}
+
 mk_wp() {
     if [[ "$1" == *"."* ]]; then
         domain="$1"
