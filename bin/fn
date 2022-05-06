@@ -321,16 +321,9 @@ EOF
 }
 
 del_parser() {
-    if [[ "$1" == *"."* ]]; then
-        domain="$1"
-        [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
-        [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_del && exit
-        shift
-    else
-        echo "Invalid domain: $1"
-        print_help_del
-        exit
-    fi
+    domain_parser
+    
+    [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_del && exit
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
