@@ -164,7 +164,7 @@ mk_setup_crowdsec_cloudflare_bouncer() {
 }
 
 mk_wp() {
-    domain_parser
+    domain_parser "$@"
 
     [[ -d /var/www/$domain ]] && printf "\nWP site already exists.\n" && exit
 
@@ -314,7 +314,7 @@ del_site() {
     else
         echo "DNS entries could not automatically be removed"
     fi
-    
+
     rm /etc/nginx/sites-enabled/"$domain"
     rm /etc/nginx/sites-available/"$domain"
     rm -r /var/www/"$domain"/*
@@ -333,9 +333,9 @@ EOF
 }
 
 del_parser() {
-    domain_parser
+    domain_parser "$@"
     cf_check_zones_file
-    
+
     [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_del && exit
 
     while [[ "$#" -gt 0 ]]; do
