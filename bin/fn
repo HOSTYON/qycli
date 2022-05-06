@@ -334,6 +334,7 @@ EOF
 
 del_parser() {
     domain_parser
+    cf_check_zones_file
     
     [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_del && exit
 
