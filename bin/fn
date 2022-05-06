@@ -80,7 +80,7 @@ EOF
     nginx -s reload
 }
 
-mk_dns_entry() {
+del_dns_entries() {
     # List DNS records for a Zone
     existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
         -H "Authorization: Bearer $cf_token" \
@@ -94,7 +94,12 @@ mk_dns_entry() {
                 -H "Authorization: Bearer $cf_token" \
                 -H "Content-Type: application/json" 1>/dev/null
         done
+        dns_entries_deleted=true
     fi
+}
+
+mk_dns_entry() {
+    del_dns_entries
 
     # Create new DNS record in zone
     curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
@@ -303,6 +308,13 @@ mk_wp() {
 }
 
 del_site() {
+    del_dns_entries
+    if [[ $dns_entries_deleted == "true" ]]; then
+        echo "DNS entries removed"
+    else
+        echo "DNS entries could not automatically be removed"
+    fi
+    
     rm /etc/nginx/sites-enabled/"$domain"
     rm /etc/nginx/sites-available/"$domain"
     rm -r /var/www/"$domain"/*
