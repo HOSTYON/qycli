@@ -32,9 +32,11 @@ ufw allow from 2606:4700:4700::1001 to any port 53 comment 'Cloudflare DNS IP'
 ufw allow from 1.1.1.1 to any port 53 comment 'Cloudflare DNS IP'
 ufw allow from 1.0.0.1 to any port 53 comment 'Cloudflare DNS IP'
 ufw allow proto tcp from "$cfip" to any port 443 comment 'Cloudflare IP'
-sed '0,/.*DNS.*/s++DNS=2606:4700:4700::1111 2606:4700:4700::1001+' -i /etc/systemd/resolved.conf
-sed '0,/.*FallbackDNS.*/s++FallbackDNS=1.1.1.1 1.0.0.1+' -i /etc/systemd/resolved.conf
-systemctl restart systemd-resolved
+
+### Following is problematic due to systemd-resolved issues - should use netplan only
+#sed '0,/.*DNS.*/s++DNS=2606:4700:4700::1111 2606:4700:4700::1001+' -i /etc/systemd/resolved.conf
+#sed '0,/.*FallbackDNS.*/s++FallbackDNS=1.1.1.1 1.0.0.1+' -i /etc/systemd/resolved.conf
+#systemctl restart systemd-resolved
 
 # Using Cloudflare for NTP
 for timeip in $(dig AAAA time.cloudflare.com +short && dig time.cloudflare.com +short); do
