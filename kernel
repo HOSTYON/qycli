@@ -263,10 +263,3 @@ if ! grep "qycli" /etc/security/limits.conf; then
     sed -i "/End of file/i \*               -       nofile          9030000" /etc/security/limits.conf
     sed -i "/End of file/i \*               -       memlock         unlimited" /etc/security/limits.conf
 fi
-
-# TXQueue Length Tweaks
-tee /lib/udev/rules.d/60-persistent-txqueuelen.rules >/dev/null <<'EOF'
-KERNEL=="eth[0,1]", RUN+="/sbin/ip link set %k txqueuelen 10000"
-KERNEL=="lxdbr0", RUN+="/sbin/ip link set %k txqueuelen 10000"
-EOF
-udevadm trigger
