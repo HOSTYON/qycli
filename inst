@@ -52,7 +52,7 @@ inst_qycli() {
 }
 
 branch_name=production
-sec_install=yes
+sec_install=no
 kernel_tweaks=yes
 php_version=7.4
 
