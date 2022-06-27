@@ -269,6 +269,15 @@ upd_tinyfilemanager() {
     git -C /var/www/tinyfilemanager pull
 }
 
+upd_yq() {
+    # Install/update yq
+    echo "Installing yq"
+    wget https://github.com"$(curl -s https://github.com/mikefarah/yq/releases | tac | tac | grep "mikefarah/yq" | grep -m1 "linux_amd64.tar.gz" | grep -Eo "/mikefarah/yq/[a-zA-Z0-9./?=_%:-]*")" -qO - |
+        tar xz && mv yq_linux_amd64 /usr/bin/yq
+    sh install-man-page.sh
+    rm install-man-page.sh && rm yq.1
+}
+
 upd_fn() {
     upd_qycli
     upd_apt
@@ -284,4 +293,5 @@ upd_fn() {
     upd_composer
     upd_phpmyadmin
     upd_tinyfilemanager
+    upd_yq
 }

@@ -22,6 +22,9 @@ stk_utility_and_repos() {
 
     addgroup qycli
     adduser --disabled-password --gecos "" --ingroup qycli qycli
+
+    # Install yq
+    upd_yq
 }
 
 stk_postfix_install() {
