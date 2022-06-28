@@ -6,6 +6,11 @@
 source /opt/qycli/bin/upd
 
 stk_utility_and_repos() {
+    if [[ -f /etc/needrestart/needrestart.conf ]]; then
+        export NEEDRESTART_MODE=a
+        sed "s+#\$nrconf{restart} = '.*';+\$nrconf{restart} = 'a';+" -i /etc/needrestart/needrestart.conf
+    fi
+
     # CrowdSec
     curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash
 
