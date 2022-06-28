@@ -29,6 +29,7 @@ stk_utility_and_repos() {
     adduser --disabled-password --gecos "" --ingroup qycli qycli
 
     # Install yq
+    echo "Installing yq"
     upd_yq
 }
 
