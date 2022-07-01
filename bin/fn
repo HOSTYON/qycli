@@ -683,8 +683,14 @@ cnf_php_parser() {
     done
 }
 
-cnf_set_cloudflare_token() {
+cnf_set_cloudflare_tokens() {
     sed "s/^cloudflare_token=.*/cloudflare_token=$cf_token/" -i /var/opt/qycli/cnf
+
+    # Create Accounts Zones and DNS Token
+    curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
+        -H "Authorization: Bearer $cf_token" \
+        -H "Content-Type: application/json" \
+        --data '{"name":"testtoken1","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id": "4755a26eedb94da69e1066d98aa820be","name":"DNS Write"}]}]}' >/var/opt/qycli/cf_token_accounts_zones_dns.json
     upd_get_cf_accounts_and_zones
 }
 

@@ -211,16 +211,19 @@ upd_get_new_cf_ips() {
 
 upd_get_cf_accounts_and_zones() {
     cf_token=$(grep "cloudflare_token" /var/opt/qycli/cnf | sed s+cloudflare_token=++)
+
+    cf_token_accounts_zones_dns=$(yq .result.value </var/opt/qycli/cf_token_accounts_zones_dns.json)
+
     # Get all accounts
     curl -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=1000" \
-        -H "Authorization: Bearer $cf_token" \
+        -H "Authorization: Bearer $cf_token_accounts_zones_dns" \
         -H "Content-Type: application/json" >/var/opt/qycli/cfaccounts.json
 
     # Get all zones of all accounts
     rm /var/opt/qycli/cfzones.json
     for id in $(jq -r '.result[].id' </var/opt/qycli/cfaccounts.json); do
         curl -X GET "https://api.cloudflare.com/client/v4/zones?status=active&account.id=$id&page=1&per_page=500" \
-            -H "Authorization: Bearer $cf_token" \
+            -H "Authorization: Bearer $cf_token_accounts_zones_dns" \
             -H "Content-Type: application/json" >>/var/opt/qycli/cfzones.json
     done
 }
