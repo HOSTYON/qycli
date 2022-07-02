@@ -14,9 +14,9 @@ get_public_ips() {
 }
 
 cf_check_zones_file() {
-    if [[ $(jq -r --arg queryname "$root_domain" '.result[] | select(.name == $queryname).id' </var/opt/qycli/cfzones.json) != "" ]]; then
-        cf_token=$(grep "cloudflare_token" /var/opt/qycli/cnf | sed s+cloudflare_token=++)
-        root_domain_zone_id=$(jq -r --arg queryname "$root_domain" '.result[] | select(.name == $queryname).id' </var/opt/qycli/cfzones.json)
+    if [[ $(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cfzones.json) != "" ]]; then
+        cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf)
+        root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cfzones.json)
     else
         echo "Root domain $root_domain cannot be found in /var/opt/qycli/cfzones.json,"
         echo "because the file either doen't exist or the Cloudflare API token is not linked to"
@@ -85,7 +85,7 @@ del_dns_entries() {
     existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
         -H "Authorization: Bearer $cf_token" \
         -H "Content-Type: application/json" |
-        jq -r '.result[].id')
+        yq '.result[].id')
 
     # Delete DNS records for a Zone if they exist
     if [[ $existing_dns_records != "" ]]; then
@@ -664,7 +664,7 @@ cnf_php_version() {
         echo "No correct version number for PHP, should be 7.4, 8.0 or 8.1"
         exit
     fi
-    sed "s/^php_version=.*/php_version=$1/" -i /var/opt/qycli/cnf
+    sed "s/^php_version: .*/php_version: $1/" -i /var/opt/qycli/cnf
     upd_php
 }
 
@@ -684,13 +684,8 @@ cnf_php_parser() {
 }
 
 cnf_set_cloudflare_tokens() {
-    sed "s/^cloudflare_token=.*/cloudflare_token=$cf_token/" -i /var/opt/qycli/cnf
-
-    # Create Accounts Zones and DNS Token
-    curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
-        -H "Authorization: Bearer $cf_token" \
-        -H "Content-Type: application/json" \
-        --data '{"name":"testtoken1","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id": "4755a26eedb94da69e1066d98aa820be","name":"DNS Write"}]}]}' >/var/opt/qycli/cf_token_accounts_zones_dns.json
+    sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/opt/qycli/cnf
+    upd_get_cf_token_accounts_and_zones
     upd_get_cf_accounts_and_zones
 }
 
@@ -720,7 +715,7 @@ fn_del() {
 }
 
 fn_info_db() {
-    admindbpass=$(grep "db_admin_password" /var/opt/qycli/cnf | sed 's/db_admin_password=//')
+    admindbpass=$(yq .db_admin_password /var/opt/qycli/cnf)
     if [[ -z "$(ls -A /etc/nginx/sites-available)" ]]; then
         cat <<EOF
 

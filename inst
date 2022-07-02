@@ -11,10 +11,10 @@ inst_qycli() {
     [[ -f /usr/bin/qyc ]] && echo "qycli is already installed, stopping the process. Just type qyc to get the help message or go to qycli.org to learn." && exit
     [[ ! -d /var/opt/qycli ]] && mkdir /var/opt/qycli
     {
-        echo "branch_name=$branch_name"
-        echo "sec_install=$sec_install"
-        echo "php_version=$php_version"
-        echo "cloudflare_token=$cloudflare_token"
+        echo "branch_name: $branch_name"
+        echo "sec_install: $sec_install"
+        echo "php_version: $php_version"
+        echo "cloudflare_token: $cloudflare_token"
     } >>/var/opt/qycli/cnf
     apt update && apt -y install git
     git config --global submodule.recurse true
@@ -44,6 +44,7 @@ inst_qycli() {
     fi
     if [[ $cloudflare_token != "" ]]; then
         printf "\nGetting Cloudflare data.\n\n"
+        upd_get_cf_token_accounts_and_zones
         upd_get_cf_accounts_and_zones
     fi
     printf "\nInstalling the qycli stack now.\n\n"

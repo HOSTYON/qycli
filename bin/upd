@@ -25,7 +25,7 @@ upd_apt() {
 }
 
 upd_get_snap_channel() {
-    branch_name=$(grep "branch_name" /var/opt/qycli/cnf | sed s+branch_name=++)
+    branch_name=$(yq .branch_name /var/opt/qycli/cnf)
     if [[ "$branch_name" == "dev" ]]; then
         snap_channel=edge
     elif [[ "$branch_name" == "beta" ]]; then
@@ -36,15 +36,15 @@ upd_get_snap_channel() {
 }
 
 upd_get_cpus() {
-    grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++
+    yq .cpus /var/opt/qycli/cnf
 }
 
 upd_get_ram_mb() {
-    grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++
+    yq .ram_in_mb /var/opt/qycli/cnf
 }
 
 upd_firewall() {
-    sec_install=$(grep "sec_install" /var/opt/qycli/cnf | sed s+sec_install=++)
+    sec_install=$(yq .sec_install /var/opt/qycli/cnf)
     if [[ "$sec_install" == "yes" ]]; then
         # shellcheck disable=SC1091
         source /opt/qycli/sec_firewall
@@ -136,7 +136,7 @@ upd_php_conf() {
 }
 
 upd_php() {
-    php_version=$(grep "php_version" /var/opt/qycli/cnf | sed 's/php_version=//') # Reading the qycli.cnf file
+    php_version=$(yq .php_version /var/opt/qycli/cnf) # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
 
     upd_get_snap_channel
@@ -184,17 +184,17 @@ upd_system_resources_qycli_cnf() {
     ram_in_mb=$(($(grep MemTotal /proc/meminfo | tr -d 'MemTotal: kB') / 1000))
 
     if ! grep -q "cpus" /var/opt/qycli/cnf; then
-        echo "cpus=$cpus" >>/var/opt/qycli/cnf
+        echo "cpus: $cpus" >>/var/opt/qycli/cnf
     fi
-    if [[ $cpus != $(grep "cpus" /var/opt/qycli/cnf | sed s+cpus=++) ]]; then
-        sed -i "s+.*cpus.*+cpus=$cpus+" /var/opt/qycli/cnf
+    if [[ $cpus != $(yq .cpus /var/opt/qycli/cnf) ]]; then
+        sed -i "s+.*cpus.*+cpus: $cpus+" /var/opt/qycli/cnf
     fi
 
     if ! grep -q "ram_in_mb" /var/opt/qycli/cnf; then
-        echo "ram_in_mb=$ram_in_mb" >>/var/opt/qycli/cnf
+        echo "ram_in_mb: $ram_in_mb" >>/var/opt/qycli/cnf
     fi
-    if [[ $ram_in_mb != $(grep "ram_in_mb" /var/opt/qycli/cnf | sed s+ram_in_mb=++) ]]; then
-        sed -i "s+.*ram_in_mb.*+ram_in_mb=$ram_in_mb+" /var/opt/qycli/cnf
+    if [[ $ram_in_mb != $(yq .ram_in_mb /var/opt/qycli/cnf) ]]; then
+        sed -i "s+.*ram_in_mb.*+ram_in_mb: $ram_in_mb+" /var/opt/qycli/cnf
     fi
 }
 
@@ -209,33 +209,41 @@ upd_get_new_cf_ips() {
     fi
 }
 
-upd_get_cf_accounts_and_zones() {
-    cf_token=$(grep "cloudflare_token" /var/opt/qycli/cnf | sed s+cloudflare_token=++)
+upd_get_cf_token_accounts_and_zones() {
+    cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf)
+    # Create Accounts Zones and DNS Token
+    curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
+        -H "Authorization: Bearer $cf_token" \
+        -H "Content-Type: application/json" \
+        --data '{"name":"qycli 2nd Token","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.*":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"}]}]}' >/var/opt/qycli/cf_token_accounts_zones.json
+}
 
-    cf_token_accounts_zones_dns=$(yq .result.value </var/opt/qycli/cf_token_accounts_zones_dns.json)
+upd_get_cf_accounts_and_zones() {
+    cf_token_accounts_zones=$(yq .result.value </var/opt/qycli/cf_token_accounts_zones.json)
 
     # Get all accounts
-    curl -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=1000" \
-        -H "Authorization: Bearer $cf_token_accounts_zones_dns" \
+    curl -s -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=1000" \
+        -H "Authorization: Bearer $cf_token_accounts_zones" \
         -H "Content-Type: application/json" >/var/opt/qycli/cfaccounts.json
 
     # Get all zones of all accounts
-    rm /var/opt/qycli/cfzones.json
-    for id in $(jq -r '.result[].id' </var/opt/qycli/cfaccounts.json); do
+    [[ -f /var/opt/qycli/cfzones.json ]] && rm /var/opt/qycli/cfzones.json
+    touch /var/opt/qycli/cfzones.json
+    for id in $(yq '.result[].id' </var/opt/qycli/cfaccounts.json); do
         curl -X GET "https://api.cloudflare.com/client/v4/zones?status=active&account.id=$id&page=1&per_page=500" \
-            -H "Authorization: Bearer $cf_token_accounts_zones_dns" \
-            -H "Content-Type: application/json" >>/var/opt/qycli/cfzones.json
+            -H "Authorization: Bearer $cf_token_accounts_zones" \
+            -H "Content-Type: application/json" | yq ea -i /var/opt/qycli/cfzones.json -
     done
 }
 
 upd_dns_entry() {
-    cf_token=$(grep "cloudflare_token" /var/opt/qycli/cnf | sed s+cloudflare_token=++)
+    cf_token_dns=$(yq .cloudflare_token /var/opt/qycli/cnf)
     # Check if dns file exists
     # shellcheck disable=SC2154
     if [[ -f ${domain}_cf_dns.json ]]; then
         dns_update_id=$(jq -r .result.id <"$domain"_cf_dns.json)
         curl -X PUT "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$dns_update_id" \
-            -H "Authorization: Bearer $cf_token" \
+            -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" \
             --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' >"$domain"_cf_dns.json
     fi
