@@ -13,17 +13,6 @@ get_public_ips() {
     ipv6=$(ip -6 a show dev "$ipv6_dev" scope global | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80 | grep -v ^fd00)
 }
 
-cf_check_zones_file() {
-    if [[ $(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cfzones.json) != "" ]]; then
-        cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf)
-        root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cfzones.json)
-    else
-        echo "Root domain $root_domain cannot be found in /var/opt/qycli/cfzones.json,"
-        echo "because the file either doen't exist or the Cloudflare API token is not linked to"
-        echo "the Account with the right Zone. You will have to set the DNS records manually."
-    fi
-}
-
 domain_parser() {
     if [[ "$1" == *"."* ]]; then
         domain="$1"
@@ -57,6 +46,26 @@ FLUSH PRIVILEGES;
 EOF
 }
 
+cf_api_token_crowdsec_and_dns() {
+    root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cfzones.json)
+    if [[ $root_domain_zone_id != "" ]]; then
+        if [[ ! -d /var/opt/qycli/"$root_domain" ]]; then
+            mkdir /var/opt/qycli/"$root_domain"
+
+            root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/opt/qycli/cfzones.json)
+            # Create CrowdSec and DNS Token
+            curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
+                -H "Authorization: Bearer $cf_token" \
+                -H "Content-Type: application/json" \
+                --data '{"name":"'"$root_domain"' qycli CrowdSec + DNS","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.'"$root_domain_account_id"'":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.'"$root_domain_zone_id"'":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"}]}]}' >/var/opt/qycli/"$root_domain"/cf_token_crowdsec_and_dns.json
+        fi
+    else
+        echo "Root domain $root_domain cannot be found in /var/opt/qycli/cfzones.json,"
+        echo "because the file either doesn't exist or the Cloudflare API token is not linked to"
+        echo "the Account with the right Zone/Domain."
+    fi
+}
+
 mk_site() {
     mkdir -p /var/www/"$domain"/htdocs
     mkdir -p /var/www/"$domain"/nginx-conf
@@ -78,6 +87,11 @@ EOF
     ln -s /etc/nginx/sites-available/"$domain" /etc/nginx/sites-enabled/
     chown qycli:qycli -R /var/www/"$domain"/*
     nginx -s reload
+
+    cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf)
+    if [[ $cf_token != "" ]]; then
+        cf_api_token_crowdsec_and_dns
+    fi
 }
 
 del_dns_entries() {
@@ -267,7 +281,6 @@ mk_wp() {
     qyc set "$domain" cache o on
 
     get_public_ips
-    cf_check_zones_file
 
     if [[ $root_domain_zone_id != "" ]]; then
         wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache

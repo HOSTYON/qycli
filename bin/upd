@@ -241,7 +241,7 @@ upd_dns_entry() {
     # Check if dns file exists
     # shellcheck disable=SC2154
     if [[ -f ${domain}_cf_dns.json ]]; then
-        dns_update_id=$(jq -r .result.id <"$domain"_cf_dns.json)
+        dns_update_id=$(yq .result.id "$domain"_cf_dns.json)
         curl -X PUT "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$dns_update_id" \
             -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" \
