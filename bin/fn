@@ -46,12 +46,10 @@ FLUSH PRIVILEGES;
 EOF
 }
 
-cf_api_token_crowdsec_and_dns() {
+mk_site_create_cf_api_token_crowdsec_and_dns() {
     root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cfzones.json)
     if [[ $root_domain_zone_id != "" ]]; then
         if [[ ! -d /var/opt/qycli/"$root_domain" ]]; then
-            mkdir /var/opt/qycli/"$root_domain"
-
             root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/opt/qycli/cfzones.json)
             # Create CrowdSec and DNS Token
             curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
@@ -66,9 +64,19 @@ cf_api_token_crowdsec_and_dns() {
     fi
 }
 
+cnf_crowdsec_cloudflare_bouncer() {
+    cf_crowdsec_tokens=$(for json in /var/opt/qycli/*/cf_token_crowdsec_and_dns.json; do; cf_cs_token=$(yq .result.value "$json"); printf "$cf_cs_token,"; done)
+
+    crowdsec-cloudflare-bouncer -d
+    crowdsec-cloudflare-bouncer -g "$cf_crowdsec_tokens" -o /etc/crowdsec/bouncers/crowdsec-cloudflare-bouncer.yaml
+    crowdsec-cloudflare-bouncer -s
+    systemctl restart crowdsec-cloudflare-bouncer
+}
+
 mk_site() {
     mkdir -p /var/www/"$domain"/htdocs
     mkdir -p /var/www/"$domain"/nginx-conf
+    mkdir /var/opt/qycli/"$root_domain"
     cp /etc/nginx/"$template" /etc/nginx/sites-available/"$domain"
     sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/"$domain"
     if [[ $subdomain == true ]]; then
@@ -90,7 +98,7 @@ EOF
 
     cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
     if [[ $cf_token != "" ]]; then
-        cf_api_token_crowdsec_and_dns
+        mk_site_create_cf_api_token_crowdsec_and_dns
     fi
 }
 
@@ -112,7 +120,7 @@ del_dns_entries() {
     fi
 }
 
-mk_dns_entry() {
+cf_dns_entry() {
     del_dns_entries
 
     # Create new DNS record in zone
@@ -138,6 +146,8 @@ mk_wp_print_login_info() {
 
 $domain is ready.
 
+EOF
+    tee /var/opt/qycli/"$root_domain"/login.yaml <<EOF
     User:     $wpadmin
     Email:    $wpemail
     Password: $wppw
@@ -173,8 +183,21 @@ Then login here: https://$domain/wp-login.php
 EOF
 }
 
-mk_setup_crowdsec_cloudflare_bouncer() {
-    crowdsec-cloudflare-bouncer -g "$root_domain_zone_id" -o /etc/crowdsec/bouncers/crowdsec-cloudflare-bouncer.yaml
+mk_wp_create_cf_api_token_wp_cf_page_cache() {
+    if [[ $root_domain_zone_id != "" ]]; then
+        if [[ ! -f /var/opt/qycli/$root_domain/cf_token_wp_cf_page_cache.json ]]; then
+            root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/opt/qycli/cfzones.json)
+            # Create WP Cloudflare Super Page Cache Token
+            curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
+                -H "Authorization: Bearer $cf_token" \
+                -H "Content-Type: application/json" \
+                --data '{"name":"'"$root_domain"' qycli WP Cloudflare Super Page Cache","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.'"$root_domain_account_id"'":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"},{"id":"e086da7e2179491d91ee5f35b3ca210a","name":"Workers Scripts Write"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.'"$root_domain_zone_id"'":"*"},"permission_groups":[{"id":"3030687196b94b638145a3953da2b699","name":"Zone Settings Write"},{"id":"e17beae8b8cb423a99b1730f21238bed","name":"Cache Purge"},{"id":"ed07f6c337da4195b4e72a1fb2c6bcae","name":"Page Rules Write"},{"id":"e6d2666161e84845a636613608cee8d5","name":"Zone Write"},{"id":"28f4b596e7d643029c524985477ae49a","name":"Workers Routes Write"}]}]}' >/var/opt/qycli/"$root_domain"/cf_token_wp_cf_page_cache.json
+        fi
+    else
+        echo "Root domain $root_domain cannot be found in /var/opt/qycli/cfzones.json,"
+        echo "because the file either doesn't exist or the Cloudflare API token is not linked to"
+        echo "the Account with the right Zone/Domain."
+    fi
 }
 
 mk_wp() {
@@ -280,23 +303,33 @@ mk_wp() {
 
     qyc set "$domain" cache o on
 
-    get_public_ips
+    # WP Cloudflare Super Page Cache Setup
+    wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache
+    sed -i '/include common\/wpcommon.conf;/a include /var/www/'"$domain"'/htdocs/wp-content/wp-cloudflare-super-page-cache/'"$domain"'/nginx.conf;' /etc/nginx/sites-available/"$domain"
+    nginx -s reload
+
+    cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
+    if [[ $cf_token != "" ]]; then
+        mk_wp_create_cf_api_token_wp_cf_page_cache
+    fi
 
     if [[ $root_domain_zone_id != "" ]]; then
-        wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache
-        wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken "$cf_token"
+        cf_token_wp_cf_page_cache=$(yq .result.value /var/opt/qycli/"$root_domain"/cf_token_wp_cf_page_cache.json)
+        wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_auth_mode 1
-        sed -i '/include common\/wpcommon.conf;/a include /var/www/'"$domain"'/htdocs/wp-content/wp-cloudflare-super-page-cache/'"$domain"'/nginx.conf;' /etc/nginx/sites-available/"$domain"
-        nginx -s reload
+    else
+        echo "You are going to need to set up Cloudflare Super Page Cache manually."
     fi
+
+    get_public_ips
 
     if [[ $ipv6 != "" ]]; then
         if [[ $cf_token != "" ]]; then
             dns_value=$ipv6
             dns_type=AAAA
-            mk_dns_entry
+            cf_dns_entry
             mk_wp_print_login_info
             mk_wp_print_login_info_auto
         else
@@ -306,7 +339,7 @@ mk_wp() {
         if [[ $cf_token != "" ]]; then
             dns_value=$ipv4
             dns_type=A
-            mk_dns_entry
+            cf_dns_entry
             mk_wp_print_login_info
             mk_wp_print_login_info_auto
         else
@@ -332,6 +365,7 @@ del_site() {
     rm /etc/nginx/sites-available/"$domain"
     rm -r /var/www/"$domain"/*
     rmdir /var/www/"$domain"
+    rm -r /var/opt/qycli/"$root_domain"/
     printf "Files deleted.\n"
 
     local snakedomain=${domain//[^0-9A-Za-z]/_}
