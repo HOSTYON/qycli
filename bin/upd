@@ -25,7 +25,7 @@ upd_apt() {
 }
 
 upd_get_snap_channel() {
-    branch_name=$(yq .branch_name /var/opt/qycli/cnf)
+    branch_name=$(yq .branch_name /var/opt/qycli/cnf.yaml)
     if [[ "$branch_name" == "dev" ]]; then
         snap_channel=edge
     elif [[ "$branch_name" == "beta" ]]; then
@@ -36,15 +36,15 @@ upd_get_snap_channel() {
 }
 
 upd_get_cpus() {
-    yq .cpus /var/opt/qycli/cnf
+    yq .cpus /var/opt/qycli/cnf.yaml
 }
 
 upd_get_ram_mb() {
-    yq .ram_in_mb /var/opt/qycli/cnf
+    yq .ram_in_mb /var/opt/qycli/cnf.yaml
 }
 
 upd_firewall() {
-    sec_install=$(yq .sec_install /var/opt/qycli/cnf)
+    sec_install=$(yq .sec_install /var/opt/qycli/cnf.yaml)
     if [[ "$sec_install" == "yes" ]]; then
         # shellcheck disable=SC1091
         source /opt/qycli/sec_firewall
@@ -136,7 +136,7 @@ upd_php_conf() {
 }
 
 upd_php() {
-    php_version=$(yq .php_version /var/opt/qycli/cnf) # Reading the qycli.cnf file
+    php_version=$(yq .php_version /var/opt/qycli/cnf.yaml) # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
 
     upd_get_snap_channel
@@ -183,18 +183,18 @@ upd_system_resources_qycli_cnf() {
     cpus=$(grep -c processor /proc/cpuinfo)
     ram_in_mb=$(($(grep MemTotal /proc/meminfo | tr -d 'MemTotal: kB') / 1000))
 
-    if ! grep -q "cpus" /var/opt/qycli/cnf; then
-        echo "cpus: $cpus" >>/var/opt/qycli/cnf
+    if ! grep -q "cpus" /var/opt/qycli/cnf.yaml; then
+        echo "cpus: $cpus" >>/var/opt/qycli/cnf.yaml
     fi
-    if [[ $cpus != $(yq .cpus /var/opt/qycli/cnf) ]]; then
-        sed -i "s+.*cpus.*+cpus: $cpus+" /var/opt/qycli/cnf
+    if [[ $cpus != $(yq .cpus /var/opt/qycli/cnf.yaml) ]]; then
+        sed -i "s+.*cpus.*+cpus: $cpus+" /var/opt/qycli/cnf.yaml
     fi
 
-    if ! grep -q "ram_in_mb" /var/opt/qycli/cnf; then
-        echo "ram_in_mb: $ram_in_mb" >>/var/opt/qycli/cnf
+    if ! grep -q "ram_in_mb" /var/opt/qycli/cnf.yaml; then
+        echo "ram_in_mb: $ram_in_mb" >>/var/opt/qycli/cnf.yaml
     fi
-    if [[ $ram_in_mb != $(yq .ram_in_mb /var/opt/qycli/cnf) ]]; then
-        sed -i "s+.*ram_in_mb.*+ram_in_mb: $ram_in_mb+" /var/opt/qycli/cnf
+    if [[ $ram_in_mb != $(yq .ram_in_mb /var/opt/qycli/cnf.yaml) ]]; then
+        sed -i "s+.*ram_in_mb.*+ram_in_mb: $ram_in_mb+" /var/opt/qycli/cnf.yaml
     fi
 }
 
@@ -210,7 +210,7 @@ upd_get_new_cf_ips() {
 }
 
 upd_get_cf_token_accounts_and_zones() {
-    cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf)
+    cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
     # Create Accounts Zones and DNS Token
     curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
         -H "Authorization: Bearer $cf_token" \
@@ -237,7 +237,7 @@ upd_get_cf_accounts_and_zones() {
 }
 
 upd_dns_entry() {
-    cf_token_dns=$(yq .cloudflare_token /var/opt/qycli/cnf)
+    cf_token_dns=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
     # Check if dns file exists
     # shellcheck disable=SC2154
     if [[ -f ${domain}_cf_dns.json ]]; then

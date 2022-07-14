@@ -98,7 +98,7 @@ CREATE USER 'admin'@'localhost' IDENTIFIED BY '${admin_password}';
 GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost';
 FLUSH PRIVILEGES;
 EOF
-    echo "db_admin_password=$admin_password" >>/var/opt/qycli/cnf
+    echo "db_admin_password=$admin_password" >>/var/opt/qycli/cnf.yaml
 }
 
 stk_mariadb_install() {

@@ -88,7 +88,7 @@ EOF
     chown qycli:qycli -R /var/www/"$domain"/*
     nginx -s reload
 
-    cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf)
+    cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
     if [[ $cf_token != "" ]]; then
         cf_api_token_crowdsec_and_dns
     fi
@@ -677,7 +677,7 @@ cnf_php_version() {
         echo "No correct version number for PHP, should be 7.4, 8.0 or 8.1"
         exit
     fi
-    sed "s/^php_version: .*/php_version: $1/" -i /var/opt/qycli/cnf
+    sed "s/^php_version: .*/php_version: $1/" -i /var/opt/qycli/cnf.yaml
     upd_php
 }
 
@@ -697,7 +697,7 @@ cnf_php_parser() {
 }
 
 cnf_set_cloudflare_tokens() {
-    sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/opt/qycli/cnf
+    sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/opt/qycli/cnf.yaml
     upd_get_cf_token_accounts_and_zones
     upd_get_cf_accounts_and_zones
 }
@@ -728,7 +728,7 @@ fn_del() {
 }
 
 fn_info_db() {
-    admindbpass=$(yq .db_admin_password /var/opt/qycli/cnf)
+    admindbpass=$(yq .db_admin_password /var/opt/qycli/cnf.yaml)
     if [[ -z "$(ls -A /etc/nginx/sites-available)" ]]; then
         cat <<EOF
 
@@ -757,7 +757,7 @@ EOF
 
 fn_info() {
     if [[ -z $1 ]]; then
-        cat /var/opt/qycli/cnf
+        cat /var/opt/qycli/cnf.yaml
     elif [[ $1 =~ (db|database|dbadmin) ]]; then
         fn_info_db
     else
