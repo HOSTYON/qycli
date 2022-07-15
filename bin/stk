@@ -57,7 +57,7 @@ stk_nginx_install() {
         exit
     fi
 
-    apt -y install libfontconfig1 libfreetype6 libgd3 libgeoip1 libicu66 libjbig0 libjpeg-turbo8 libmaxminddb0 libperl5.30 libpng16-16 libtiff5 libwebp6 libx11-6 libxau6 libxcb1 libxdmcp6 libxml2 libxpm4 libxslt1.1
+    apt -y install libfontconfig-dev libfreetype6 libgd3 libgeoip1 libicu66 libjbig0 libjpeg-turbo8 libmaxminddb0 libperl-dev libpng16-16 libtiff5 libwebp-dev libx11-6 libxau6 libxcb1 libxdmcp6 libxml2 libxpm4 libxslt1.1
 
     upd_get_snap_channel
     # shellcheck disable=SC2154
@@ -98,7 +98,7 @@ CREATE USER 'admin'@'localhost' IDENTIFIED BY '${admin_password}';
 GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost';
 FLUSH PRIVILEGES;
 EOF
-    echo "db_admin_password=$admin_password" >>/var/opt/qycli/cnf.yaml
+    echo "db_admin_password: $admin_password" >>/var/opt/qycli/cnf.yaml
 }
 
 stk_mariadb_install() {
@@ -108,7 +108,7 @@ stk_mariadb_install() {
 }
 
 stk_php_install() {
-    apt -y install imagemagick ghostscript libasn1-8-heimdal libbrotli1 libcurl4 libfftw3-double3 libfontconfig1 libfreetype6 libgomp1 libgssapi3-heimdal libhcrypto4-heimdal libheimbase1-heimdal libheimntlm0-heimdal libhx509-5-heimdal libicu66 libjpeg-turbo8 libkrb5-26-heimdal liblcms2-2 libldap-2.4-2 liblqr-1-0 libltdl7 libmagickcore-6.q16-6 libmagickwand-6.q16-6 libnghttp2-14 libonig5 libpng16-16 libpsl5 libroken18-heimdal librtmp1 libsasl2-2 libsodium23 libssh-4 libwebp6 libwind0-heimdal libx11-6 libxau6 libxcb1 libxdmcp6 libxext6 libxml2 libzip5
+    apt -y install imagemagick ghostscript libasn1-8-heimdal libbrotli1 libcurl4 libfftw3-double3 libfontconfig-dev libfreetype6 libgomp1 libgssapi3-heimdal libhcrypto4-heimdal libheimbase1-heimdal libheimntlm0-heimdal libhx509-5-heimdal libicu-dev libjpeg-turbo8 libkrb5-26-heimdal liblcms2-2 libldap-common liblqr-1-0 libltdl7 libmagickcore-6.q16-6 libmagickwand-6.q16-6 libnghttp2-14 libonig5 libpng16-16 libpsl5 libroken18-heimdal librtmp1 libsasl2-2 libsodium23 libssh-4 libwebp-dev libwind0-heimdal libx11-6 libxau6 libxcb1 libxdmcp6 libxext6 libxml2 libzip-dev
 
     mkdir /var/log/php/
     touch /var/log/php/php-fpm-error.log
