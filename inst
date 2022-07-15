@@ -42,14 +42,17 @@ inst_qycli() {
         # shellcheck disable=1091
         source /opt/qycli/sec_firewall
     fi
+
+    printf "\nInstalling the qycli stack now.\n\n"
+    stk_install
+
     if [[ $cloudflare_token != "" ]]; then
         printf "\nGetting Cloudflare data.\n\n"
         upd_get_cf_token_accounts_and_zones
         upd_get_cf_accounts_and_zones
     fi
-    printf "\nInstalling the qycli stack now.\n\n"
+
     upd_system_resources_qycli_cnf
-    stk_install
 }
 
 branch_name=production
