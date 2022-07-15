@@ -53,6 +53,7 @@ inst_qycli() {
     fi
 
     upd_system_resources_qycli_cnf
+    printf "\nqycli was installed.\n\n"
 }
 
 branch_name=production
