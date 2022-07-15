@@ -64,8 +64,10 @@ mk_site_create_cf_api_token_crowdsec_and_dns() {
     fi
 }
 
-cnf_crowdsec_cloudflare_bouncer() {
-    cf_crowdsec_tokens=$(for json in /var/opt/qycli/*/cf_token_crowdsec_and_dns.json; do; cf_cs_token=$(yq .result.value "$json"); printf "$cf_cs_token,"; done)
+mk_site_cnf_crowdsec_cloudflare_bouncer() {
+    cf_crowdsec_tokens=$(for json in /var/opt/qycli/*/cf_token_crowdsec_and_dns.json; do
+        echo -n "$(yq .result.value "$json")"","
+    done)
 
     crowdsec-cloudflare-bouncer -d
     crowdsec-cloudflare-bouncer -g "$cf_crowdsec_tokens" -o /etc/crowdsec/bouncers/crowdsec-cloudflare-bouncer.yaml
@@ -99,6 +101,7 @@ EOF
     cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
     if [[ $cf_token != "" ]]; then
         mk_site_create_cf_api_token_crowdsec_and_dns
+        mk_site_cnf_crowdsec_cloudflare_bouncer
     fi
 }
 
@@ -203,7 +206,7 @@ mk_wp_create_cf_api_token_wp_cf_page_cache() {
 mk_wp() {
     domain_parser "$@"
 
-    [[ -d /var/www/$domain ]] && printf "\nWP site already exists.\n" && exit
+    [[ -d /var/www/$domain ]] && printf "\nSite already exists.\n" && exit
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in

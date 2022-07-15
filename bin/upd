@@ -278,6 +278,7 @@ upd_phpmyadmin() {
 upd_tinyfilemanager() {
     git -C /var/www/tinyfilemanager reset --hard HEAD
     git -C /var/www/tinyfilemanager pull
+    systemctl restart php-fpm
 }
 
 upd_yq() {

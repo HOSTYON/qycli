@@ -166,7 +166,7 @@ stk_tinyfilemanager_install() {
     git -C /var/www clone https://github.com/prasathmani/tinyfilemanager.git
     cp /var/www/tinyfilemanager/config-sample.php /var/www/tinyfilemanager/config.php
     sed -i "/'user' =>.*/d" /var/www/tinyfilemanager/config.php
-    sed -i "s+'admin' =>.*+'admin' => ''+" /var/www/tinyfilemanager/config.php
+    sed -i "s+'admin' =>.*+'admin' => '',+" /var/www/tinyfilemanager/config.php
 }
 
 stk_crowdsec_install() {
@@ -186,5 +186,6 @@ stk_install() {
     stk_composer_install
     stk_pma_install
     stk_tinyfilemanager_install
+    stk_crowdsec_install
     printf "\nqycli stack was installed.\n\n"
 }
