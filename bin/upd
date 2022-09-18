@@ -132,7 +132,7 @@ upd_php_conf() {
     cp /opt/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/php/fpm/pool.d/qycli.conf
     sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" -i /etc/php/fpm/pool.d/qycli.conf
 
-    systemctl restart php-fpm
+    systemctl restart qycli"$snap_base_version"-php"$php_version_short"
 }
 
 upd_php() {
@@ -140,22 +140,18 @@ upd_php() {
     php_version_short=$(echo "$php_version" | tr -d ".")
 
     upd_get_snap_channel
-    snap install qycli-php"$php_version_short" --$snap_channel
+    snap install qycli-php"$php_version_short" --"$snap_channel"
 
-    if ! cmp -s /snap/qycli-php"$php_version_short"/current/php/sbin/php-fpm /usr/sbin/php-fpm; then
-        cp -f /snap/qycli-php"$php_version_short"/current/php/sbin/php-fpm /usr/sbin/php-fpm
-        cp -rf /snap/qycli-php"$php_version_short"/current/php/bin/* /usr/bin/
-        mkdir -p /php/lib/php/extensions
-        cp -r /snap/qycli-php"$php_version_short"/current/php/lib/php/extensions/* /php/lib/php/extensions/
-        systemctl restart php-fpm
-    fi
+    snap_base_version=$(grep "base:" </snap/qycli-php"$php_version_short"/current/meta/snap.yaml | sed "s/base: core//")
 
-    if ! cmp -s /opt/qycli/cnf/php/php-fpm.service /lib/systemd/system/php-fpm.service; then
-        cp /opt/qycli/cnf/php/php-fpm.service /lib/systemd/system/php-fpm.service
-        systemctl daemon-reload
-        systemctl enable php-fpm
-        systemctl restart php-fpm
-    fi
+    mkdir -p /var/lib/qycli/qycli"$snap_base_version"
+    rsync -av /snap/core"$snap_base_version"/current/* /var/lib/qycli/qycli"$snap_base_version"/ --exclude dev
+    rsync -av /snap/qycli-php"$php_version_short"/current/* /var/lib/qycli/qycli"$snap_base_version"/
+
+    cp /opt/qycli/cnf/php/php-fpm.service /var/lib/qycli/qycli"$snap_base_version"/lib/systemd/system/qycli"$snap_base_version"-php"$php_version_short".service
+    sed "s/PHPVER/$php_version_short/" -i /var/lib/qycli/qycli"$snap_base_version"/lib/systemd/system/qycli"$snap_base_version"-php"$php_version_short".service
+
+    portablectl reattach /var/lib/qycli/qycli"$snap_base_version" -p trusted
 }
 
 upd_redis_conf() {
