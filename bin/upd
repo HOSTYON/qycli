@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# qycli update functions
+#  qycli update functions
 upd_qycli() {
     git -C /opt/qycli reset --hard HEAD
     git -C /opt/qycli pull
