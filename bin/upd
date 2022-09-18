@@ -279,10 +279,17 @@ upd_tinyfilemanager() {
 
 upd_yq() {
     # Install/update yq
-    wget https://github.com"$(curl -s https://github.com/mikefarah/yq/releases | tac | tac | grep "mikefarah/yq" | grep -m1 "linux_amd64.tar.gz" | grep -Eo "/mikefarah/yq/[a-zA-Z0-9./?=_%:-]*")" -qO - |
-        tar xz && mv yq_linux_amd64 /usr/bin/yq
-    sh install-man-page.sh
-    rm install-man-page.sh && rm yq.1
+    cpuarch=amd64
+    yq_source=https://github.com$(curl -s https://github.com/mikefarah/yq/releases | tac | tac | grep -m1 "linux_$cpuarch.tar.gz" | grep -Eo "/mikefarah/yq/[a-zA-Z0-9./?=_%:-]*")
+    yq_source_old=$(cat /var/opt/qycli/yq_source_old)
+
+    if [[ $yq_source != "$yq_source_old" ]]; then
+        wget -qO - "$yq_source" |
+            tar xz && mv yq_linux_amd64 /usr/bin/yq
+        sh install-man-page.sh
+        rm install-man-page.sh && rm yq.1
+        echo "$yq_source" >/var/opt/qycli/yq_source_old
+    fi
 }
 
 upd_fn() {
