@@ -11,6 +11,9 @@ ExecStart=/usr/sbin/nginx
 ExecReload=/usr/sbin/nginx -s reload
 ExecStop=/bin/kill -s QUIT $MAINPID
 PrivateTmp=true
+BindPaths=/etc
+BindPaths=/run/qycli
+BindPaths=/var/log/qycli
 
 [Install]
 WantedBy=multi-user.target
