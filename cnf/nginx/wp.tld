@@ -1,6 +1,7 @@
 server {
 
     listen [::]:443 ssl;
+    listen 443 ssl;
 
     ssl_certificate /etc/ssl/qycli.crt;
     ssl_certificate_key /etc/ssl/qycli.key;
@@ -24,7 +25,6 @@ server {
     }
     include common/7g.conf;
 
-    #include common/pagespeed.conf;
     include common/php.conf;
     #include common/wpfcgi.conf;
     include common/wpcommon.conf;
