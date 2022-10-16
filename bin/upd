@@ -24,17 +24,6 @@ upd_apt() {
     apt update && apt upgrade -y && apt -y dist-upgrade && apt -y autoremove
 }
 
-upd_get_snap_channel() {
-    branch_name=$(yq .branch_name /var/opt/qycli/cnf.yaml)
-    if [[ "$branch_name" == "dev" ]]; then
-        snap_channel=edge
-    elif [[ "$branch_name" == "beta" ]]; then
-        snap_channel=beta
-    else
-        snap_channel=stable
-    fi
-}
-
 upd_get_cpus() {
     yq .cpus /var/opt/qycli/cnf.yaml
 }
@@ -142,9 +131,7 @@ upd_php() {
     php_version=$(yq .php_version /var/opt/qycli/cnf.yaml) # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
 
-    upd_get_snap_channel
     snap install qycli-php"$php_version_short" --"$snap_channel"
-    snap_base_version=$(grep "base:" </snap/qycli-php"$php_version_short"/current/meta/snap.yaml | sed "s/base: core//")
 
     mkdir -p /var/lib/qycli/qycli"$snap_base_version"
     rsync -av /snap/core"$snap_base_version"/current/* /var/lib/qycli/qycli"$snap_base_version"/ --exclude dev
