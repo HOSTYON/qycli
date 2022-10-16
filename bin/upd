@@ -130,10 +130,15 @@ upd_php_conf() {
 upd_php() {
     php_version=$(yq .php_version /var/opt/qycli/cnf.yaml) # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
+    if [[ $php_version =~ ^(7.4|8.0)$ ]]; then
+        ubuntu_version="21.10"
+    else
+        ubuntu_version="22.04"
+    fi
 
-    snap install qycli-php"$php_version_short" --"$snap_channel"
+    mkdir -p /var/lib/qycli/qycli"$ubuntu_version"
+    # Download .tar.gz from latest release
 
-    mkdir -p /var/lib/qycli/qycli"$snap_base_version"
     rsync -av /snap/core"$snap_base_version"/current/* /var/lib/qycli/qycli"$snap_base_version"/ --exclude dev
     rsync -av /snap/qycli-php"$php_version_short"/current/* /var/lib/qycli/qycli"$snap_base_version"/
 
