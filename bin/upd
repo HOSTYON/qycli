@@ -130,11 +130,11 @@ upd_php_conf() {
 upd_php() {
     php_version=$(yq .php_version /var/opt/qycli/cnf.yaml) # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
-    if [[ $php_version =~ ^(7.4|8.0)$ ]]; then
-        ubuntu_version="21.10"
-    else
-        ubuntu_version="22.04"
-    fi
+    #if [[ $php_version =~ ^(7.4|8.0)$ ]]; then
+    #    ubuntu_version="21.10"
+    #else
+    #    ubuntu_version="22.04"
+    #fi
 
     #[[ ! -d /var/lib/qycli/qycli"$ubuntu_version" ]] && mkdir -p /var/lib/qycli/qycli"$ubuntu_version"
     # Experiment to run portable service with minimal payload folder
@@ -146,7 +146,10 @@ upd_php() {
     fi
 
     # Download and install .tar.gz from latest release
-
+    [[ ! -d /var/cache/qycli ]] && mkdir -p /var/cache/qycli
+    php_release_tag=$(curl -si https://github.com/HOSTYON/qycli-php74/releases/latest | tac | tac | grep "location:" | sed -z "s+.*/++" | tr -d '\r')
+    curl -Lo /var/cache/qycli/qycli-php74.tar.xz https://github.com/HOSTYON/qycli-php74/releases/download/"$php_release_tag"/qycli-php74.tar.xz
+    tar xf /var/cache/qycli/qycli-php74.tar.xz -C /var/lib/qycli/qycli-php"$php_version_short"/
     #rsync -av /snap/core"$snap_base_version"/current/* /var/lib/qycli/qycli"$snap_base_version"/ --exclude dev
     #rsync -av /snap/qycli-php"$php_version_short"/current/* /var/lib/qycli/qycli"$snap_base_version"/
 
