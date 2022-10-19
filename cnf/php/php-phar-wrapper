@@ -1,2 +1,2 @@
 #!/bin/bash
-chroot /var/lib/qycli/qycliSNAPBASE/ /usr/local/phpPHPVER/bin/phar.phar "$@"
+chroot /var/lib/qycli/qycli-phpPHPVER/ /usr/local/phpPHPVER/bin/phar.phar "$@"

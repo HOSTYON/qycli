@@ -136,35 +136,37 @@ upd_php() {
         ubuntu_version="22.04"
     fi
 
-    mkdir -p /var/lib/qycli/qycli"$ubuntu_version"
-    # Download .tar.gz from latest release
+    #[[ ! -d /var/lib/qycli/qycli"$ubuntu_version" ]] && mkdir -p /var/lib/qycli/qycli"$ubuntu_version"
+    # Experiment to run portable service with minimal payload folder
 
-    rsync -av /snap/core"$snap_base_version"/current/* /var/lib/qycli/qycli"$snap_base_version"/ --exclude dev
-    rsync -av /snap/qycli-php"$php_version_short"/current/* /var/lib/qycli/qycli"$snap_base_version"/
+    if [[ ! -d /var/lib/qycli/qycli-php"$php_version_short" ]]; then
+        mkdir -p /var/lib/qycli/qycli-php"$php_version_short"/{usr/lib,etc,proc,sys,dev,run,tmp,var/tmp}
+        cp /usr/lib/os-release /var/lib/qycli/qycli-php"$php_version_short"/usr/lib/os-release
+        touch {/var/lib/qycli/qycli-php"$php_version_short"/etc/resolv.conf,/var/lib/qycli/qycli-php"$php_version_short"/etc/machine-id}
+    fi
 
-    cp /opt/qycli/cnf/php/php-fpm.service /var/lib/qycli/qycli"$snap_base_version"/lib/systemd/system/qycli"$snap_base_version"-php"$php_version_short".service
-    sed "s/PHPVER/$php_version_short/" -i /var/lib/qycli/qycli"$snap_base_version"/lib/systemd/system/qycli"$snap_base_version"-php"$php_version_short".service
+    # Download and install .tar.gz from latest release
+
+    #rsync -av /snap/core"$snap_base_version"/current/* /var/lib/qycli/qycli"$snap_base_version"/ --exclude dev
+    #rsync -av /snap/qycli-php"$php_version_short"/current/* /var/lib/qycli/qycli"$snap_base_version"/
+
+    cp /opt/qycli/cnf/php/php-fpm.service /var/lib/qycli/qycli-php"$php_version_short"/lib/systemd/system/qycli-php"$php_version_short".service
+    sed "s/PHPVER/$php_version_short/" -i /var/lib/qycli/qycli-php"$php_version_short"/lib/systemd/system/qycli-php"$php_version_short".service
 
     cp /opt/qycli/cnf/php/php-cli-wrapper /usr/local/bin/php
-    sed -e "s/PHPVER/$php_version_short/" \
-        -e "s/SNAPBASE/$snap_base_version/" \
-        -i /usr/local/bin/php
+    sed -e "s/PHPVER/$php_version_short/g" -i /usr/local/bin/php
     chmod +x /usr/local/bin/php
 
     cp /opt/qycli/cnf/php/php-phar-wrapper /usr/local/bin/phar.phar
-    sed -e "s/PHPVER/$php_version_short/" \
-        -e "s/SNAPBASE/$snap_base_version/" \
-        -i /usr/local/bin/phar.phar
+    sed -e "s/PHPVER/$php_version_short/g" -i /usr/local/bin/phar.phar
     chmod +x /usr/local/bin/phar.phar
     ln -s /usr/local/bin/phar.phar /usr/local/bin/phar
 
     cp /opt/qycli/cnf/php/php-phpize-wrapper /usr/local/bin/phpize
-    sed -e "s/PHPVER/$php_version_short/" \
-        -e "s/SNAPBASE/$snap_base_version/" \
-        -i /usr/local/bin/phpize
+    sed -e "s/PHPVER/$php_version_short/" -i /usr/local/bin/phpize
     chmod +x /usr/local/bin/phpize
 
-    portablectl reattach /var/lib/qycli/qycli"$snap_base_version" -p trusted
+    portablectl reattach /var/lib/qycli/qycli-php"$php_version_short" -p trusted --enable
 }
 
 upd_redis_conf() {
