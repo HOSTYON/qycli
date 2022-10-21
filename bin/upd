@@ -54,7 +54,7 @@ upd_nginx_conf_renew_cf_ips() {
 }
 
 upd_nginx_conf() {
-    cp -rf /snap/qycli-nginx/current/etc/nginx/* /etc/nginx/
+    cp -rf /var/lib/qycli/qycli-nginx/etc/nginx/* /etc/nginx/
     cp -rf /opt/qycli/cnf/nginx/* /etc/nginx/
 
     worker_processes=$(upd_get_cpus)                # 1 worker per CPU
@@ -66,18 +66,30 @@ upd_nginx_conf() {
 }
 
 upd_nginx() {
-    if ! cmp -s /snap/qycli-nginx/current/usr/local/nginx/sbin/nginx /usr/sbin/nginx; then
-        cp -rf /snap/qycli-nginx/current/usr/local/* /usr/local/
-        cp /usr/local/nginx/sbin/nginx /usr/sbin/nginx
+    nginx_release_tag=$(curl -si https://github.com/HOSTYON/qycli-nginx/releases/latest | tac | tac | grep "location:" | sed -z "s+.*/++" | tr -d '\r')
 
-        systemctl restart nginx
-    fi
+    if [[ ! -f /var/opt/qycli/nginx_release_tag_old || $nginx_release_tag != $(cat /var/opt/qycli/nginx_release_tag_old) ]]; then
+        echo "$nginx_release_tag" >/var/opt/qycli/nginx_release_tag_old
 
-    if ! cmp -s /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service; then
-        cp /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
-        systemctl daemon-reload
-        systemctl restart nginx
-        systemctl enable nginx
+        if [[ ! -d /var/lib/qycli/qycli-nginx ]]; then
+            mkdir -p /var/lib/qycli/qycli-nginx/{usr/lib,etc,proc,sys,dev,run,tmp,var/tmp}
+            cp /usr/lib/os-release /var/lib/qycli/qycli-nginx/usr/lib/os-release
+            touch {/var/lib/qycli/qycli-nginx/etc/resolv.conf,/var/lib/qycli/qycli-nginx/etc/machine-id}
+        fi
+
+        # Download and install .tar.gz from latest release
+        curl -Lo - https://github.com/HOSTYON/qycli-nginx/releases/download/"$nginx_release_tag"/qycli-nginx.tar.xz |
+            tar xJ -C /var/lib/qycli/qycli-nginx/
+
+        cp /opt/qycli/cnf/nginx/nginx.service /var/lib/qycli/qycli-nginx/lib/systemd/system/qycli-nginx.service
+
+        if [[ $(portablectl is-attached /var/lib/qycli/qycli-nginx) =~ ^(attached|running)$ ]]; then
+            portablectl reattach /var/lib/qycli/qycli-nginx -p trusted --enable --now
+            systemctl daemon-reload
+        else
+            portablectl attach /var/lib/qycli/qycli-nginx -p trusted --enable --now
+            systemctl daemon-reload
+        fi
     fi
 }
 
