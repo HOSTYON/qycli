@@ -114,6 +114,8 @@ stk_php_install() {
     touch /var/log/php/php-fpm-error.log
     chown -R qycli:qycli /var/log/php/
 
+    mkdir /run/qycli
+
     upd_php
     upd_php_conf
 }

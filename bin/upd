@@ -123,6 +123,7 @@ upd_php_conf() {
     php_version=$(yq .php_version /var/opt/qycli/cnf.yaml) # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
 
+    [[ ! -d /run/qycli ]] && mkdir /run/qycli
     systemctl restart php-fpm
 }
 
