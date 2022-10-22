@@ -56,7 +56,7 @@ upd_nginx_conf_renew_cf_ips() {
 }
 
 upd_nginx_conf() {
-    cp -rf /var/lib/qycli/qycli-nginx/etc/nginx/* /etc/nginx/
+    cp /var/lib/qycli/qycli-nginx/etc/nginx/default /etc/nginx/
     cp -rf /opt/qycli/cnf/nginx/* /etc/nginx/
 
     worker_processes=$(upd_get_cpus)                # 1 worker per CPU

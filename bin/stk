@@ -48,7 +48,7 @@ stk_nginx_cert() {
 }
 
 stk_nginx_install() {
-    if [[ -d /etc/nginx ]] && [[ -d /usr/lib/nginx/modules ]]; then
+    if [[ -d /etc/nginx && -d /usr/lib/nginx/modules ]]; then
         printf "\nNGINX is already installed, start on a fresh system please.\n"
         exit
     fi
@@ -56,7 +56,7 @@ stk_nginx_install() {
     mkdir /var/log/nginx
     touch /var/log/nginx/error.log
     chown -R qycli:qycli /var/log/nginx/
-    mkdir /etc/nginx/sites-enabled
+    mkdir -p /etc/nginx/sites-enabled
     mkdir /etc/nginx/sites-available
     mkdir -p /var/lib/nginx/proxy
 
