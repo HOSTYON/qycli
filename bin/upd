@@ -50,7 +50,9 @@ upd_nginx_conf_renew_cf_ips() {
     echo 'real_ip_header CF-Connecting-IP;' | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
     echo 'real_ip_recursive on;' | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
 
-    nginx -s reload
+    if [[ $(portablectl is-attached /var/lib/qycli/qycli-nginx) =~ ^(attached|running)$ ]]; then
+        systemctl reload qycli-nginx
+    fi
 }
 
 upd_nginx_conf() {
@@ -62,7 +64,9 @@ upd_nginx_conf() {
     sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/nginx/nginx.conf
     sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/nginx/nginx.conf
 
-    nginx -s reload
+    if [[ $(portablectl is-attached /var/lib/qycli/qycli-nginx) =~ ^(attached|running)$ ]]; then
+        systemctl reload qycli-nginx
+    fi
 }
 
 upd_nginx() {

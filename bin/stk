@@ -48,47 +48,26 @@ stk_nginx_cert() {
 }
 
 stk_nginx_install() {
-    # Copying over default nginx conf and html files
-    if [[ ! -d /etc/nginx ]] && [[ ! -d /usr/lib/nginx/modules ]]; then
-        mkdir /etc/nginx
-        mkdir -p /usr/lib/nginx/modules
-    else
+    if [[ -d /etc/nginx ]] && [[ -d /usr/lib/nginx/modules ]]; then
         printf "\nNGINX is already installed, start on a fresh system please.\n"
         exit
     fi
 
-    apt -y install libfontconfig-dev libfreetype6 libgd3 libgeoip1 libicu-dev libjbig0 libjpeg-turbo8 libmaxminddb0 libperl-dev libpng16-16 libtiff5 libwebp-dev libx11-6 libxau6 libxcb1 libxdmcp6 libxml2 libxpm4 libxslt1.1
-
-    upd_get_snap_channel
-    # shellcheck disable=SC2154
-    snap install qycli-nginx --"$snap_channel"
-
-    mkdir -p /usr/local/nginx/html
-    mkdir /usr/local/nginx/modules
-    cp -r /snap/qycli-nginx/current/usr/local/nginx/html/ /usr/local/nginx/
-
     mkdir /var/log/nginx
     touch /var/log/nginx/error.log
     chown -R qycli:qycli /var/log/nginx/
-
-    mkdir /var/lib/nginx
-
     mkdir /etc/nginx/sites-enabled
     mkdir /etc/nginx/sites-available
-
-    upd_nginx
+    mkdir -p /var/lib/nginx/proxy
 
     stk_nginx_cert
-
     upd_nginx_conf
     upd_nginx_conf_renew_cf_ips
 
-    mkdir -p /var/www
+    mkdir /var/www
     chown qycli:qycli /var/www
-    #chown qycli:qycli -R /var/www
-    #chown root:root /var/www
 
-    nginx -t && systemctl start nginx
+    upd_nginx
 }
 
 stk_mariadb_admin_user() {
