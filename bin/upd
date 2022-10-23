@@ -57,6 +57,7 @@ upd_nginx_conf_renew_cf_ips() {
 
 upd_nginx_conf() {
     cp -rf /opt/qycli/cnf/nginx/* /etc/nginx/
+    [[ -f /var/lib/qycli/qycli-nginx/lib/systemd/system/qycli-nginx.service ]] && cp /opt/qycli/cnf/nginx/nginx.service /var/lib/qycli/qycli-nginx/lib/systemd/system/qycli-nginx.service
 
     worker_processes=$(upd_get_cpus)                # 1 worker per CPU
     worker_connections=$(($(upd_get_cpus) * 10000)) # 10000 per CPU
@@ -80,12 +81,13 @@ upd_nginx() {
             touch {/var/lib/qycli/qycli-nginx/etc/resolv.conf,/var/lib/qycli/qycli-nginx/etc/machine-id}
         fi
 
+        cp /opt/qycli/cnf/nginx/nginx.service /var/lib/qycli/qycli-nginx/lib/systemd/system/qycli-nginx.service
+
         # Download and install .tar.gz from latest release
         curl -Lo - https://github.com/HOSTYON/qycli-nginx/releases/download/"$nginx_release_tag"/qycli-nginx.tar.xz |
             tar xJ -C /var/lib/qycli/qycli-nginx/
 
         cp /var/lib/qycli/qycli-nginx/etc/nginx/default /etc/nginx/
-        cp /opt/qycli/cnf/nginx/nginx.service /var/lib/qycli/qycli-nginx/lib/systemd/system/qycli-nginx.service
 
         if [[ $(portablectl is-attached /var/lib/qycli/qycli-nginx) =~ ^(attached|running)$ ]]; then
             portablectl reattach /var/lib/qycli/qycli-nginx -p trusted --enable --now
