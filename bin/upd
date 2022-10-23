@@ -87,10 +87,12 @@ upd_nginx() {
         curl -Lo - https://github.com/HOSTYON/qycli-nginx/releases/download/"$nginx_release_tag"/qycli-nginx.tar.xz |
             tar xJ -C /var/lib/qycli/qycli-nginx/
 
-        cp /var/lib/qycli/qycli-nginx/etc/nginx/default /etc/nginx/
+        cp -r /var/lib/qycli/qycli-nginx/etc/nginx/default /etc/nginx/
+        cp /var/lib/qycli/qycli-nginx/etc/nginx/default/mime.types /etc/nginx/mime.types
 
         if [[ $(portablectl is-attached /var/lib/qycli/qycli-nginx) =~ ^(attached|running)$ ]]; then
-            portablectl reattach /var/lib/qycli/qycli-nginx -p trusted --enable --now
+            portablectl detach /var/lib/qycli/qycli-nginx -p trusted --enable --now
+            portablectl attach /var/lib/qycli/qycli-nginx -p trusted --enable --now
             systemctl daemon-reload
         else
             portablectl attach /var/lib/qycli/qycli-nginx -p trusted --enable --now

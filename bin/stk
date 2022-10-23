@@ -56,9 +56,12 @@ stk_nginx_install() {
     mkdir /var/log/nginx
     touch /var/log/nginx/error.log
     chown -R qycli:qycli /var/log/nginx/
+
     mkdir -p /etc/nginx/sites-enabled
     mkdir /etc/nginx/sites-available
+
     mkdir -p /var/lib/nginx/proxy
+    chown -R qycli:qycli /var/lib/nginx
 
     stk_nginx_cert
 
