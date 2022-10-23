@@ -31,13 +31,13 @@ upd_get_ram_mb() {
     yq .ram_in_mb /var/opt/qycli/cnf.yaml
 }
 
-upd_firewall() {
-    sec_install=$(yq .sec_install /var/opt/qycli/cnf.yaml)
-    if [[ "$sec_install" == "yes" ]]; then
-        # shellcheck disable=SC1091
-        source /opt/qycli/sec_firewall
-    fi
-}
+#upd_firewall() {
+#sec_install=$(yq .sec_install /var/opt/qycli/cnf.yaml)
+#if [[ "$sec_install" == "yes" ]]; then
+# shellcheck disable=SC1091
+#source /opt/qycli/sec_firewall
+#fi
+#}
 
 upd_nginx_conf_renew_cf_ips() {
     if [[ -f /etc/nginx/conf.d/cloudflare.conf ]]; then
@@ -56,7 +56,6 @@ upd_nginx_conf_renew_cf_ips() {
 }
 
 upd_nginx_conf() {
-    cp /var/lib/qycli/qycli-nginx/etc/nginx/default /etc/nginx/
     cp -rf /opt/qycli/cnf/nginx/* /etc/nginx/
 
     worker_processes=$(upd_get_cpus)                # 1 worker per CPU
@@ -76,7 +75,7 @@ upd_nginx() {
         echo "$nginx_release_tag" >/var/opt/qycli/nginx_release_tag_old
 
         if [[ ! -d /var/lib/qycli/qycli-nginx ]]; then
-            mkdir -p /var/lib/qycli/qycli-nginx/{usr/lib,etc,proc,sys,dev,run,tmp,var/tmp}
+            mkdir -p /var/lib/qycli/qycli-nginx/{usr/lib,etc,lib/systemd/system,proc,sys,dev,run,tmp,var/tmp}
             cp /usr/lib/os-release /var/lib/qycli/qycli-nginx/usr/lib/os-release
             touch {/var/lib/qycli/qycli-nginx/etc/resolv.conf,/var/lib/qycli/qycli-nginx/etc/machine-id}
         fi
@@ -85,6 +84,7 @@ upd_nginx() {
         curl -Lo - https://github.com/HOSTYON/qycli-nginx/releases/download/"$nginx_release_tag"/qycli-nginx.tar.xz |
             tar xJ -C /var/lib/qycli/qycli-nginx/
 
+        cp /var/lib/qycli/qycli-nginx/etc/nginx/default /etc/nginx/
         cp /opt/qycli/cnf/nginx/nginx.service /var/lib/qycli/qycli-nginx/lib/systemd/system/qycli-nginx.service
 
         if [[ $(portablectl is-attached /var/lib/qycli/qycli-nginx) =~ ^(attached|running)$ ]]; then
@@ -154,7 +154,7 @@ upd_php() {
         echo "$php_release_tag" >/var/opt/qycli/php_release_tag_old
 
         if [[ ! -d /var/lib/qycli/qycli-php"$php_version_short" ]]; then
-            mkdir -p /var/lib/qycli/qycli-php"$php_version_short"/{usr/lib,etc,proc,sys,dev,run,tmp,var/tmp}
+            mkdir -p /var/lib/qycli/qycli-php"$php_version_short"/{usr/lib,etc,lib/systemd/system,proc,sys,dev,run,tmp,var/tmp}
             cp /usr/lib/os-release /var/lib/qycli/qycli-php"$php_version_short"/usr/lib/os-release
             touch {/var/lib/qycli/qycli-php"$php_version_short"/etc/resolv.conf,/var/lib/qycli/qycli-php"$php_version_short"/etc/machine-id}
         fi
@@ -237,7 +237,7 @@ upd_get_new_cf_ips() {
     if ! cmp -s /var/opt/qycli/cloudflare_ipv4_ips_new /var/opt/qycli/cloudflare_ipv4_ips || ! cmp -s /var/opt/qycli/cloudflare_ipv6_ips_new /var/opt/qycli/cloudflare_ipv6_ips; then
         cp /var/opt/qycli/cloudflare_ipv4_ips_new /var/opt/qycli/cloudflare_ipv4_ips
         cp /var/opt/qycli/cloudflare_ipv6_ips_new /var/opt/qycli/cloudflare_ipv6_ips
-        upd_firewall
+        #upd_firewall
         upd_nginx_conf_renew_cf_ips
     fi
 }

@@ -43,7 +43,7 @@ stk_postfix_install() {
 
 stk_nginx_cert() {
     openssl genpkey -algorithm Ed25519 -out /etc/ssl/qycli.key
-    openssl req -new -x509 -key /etc/ssl/qycli.key -out /etc/ssl/qycli.crt -days 36500 -subj "/C=AQ/ST=qycli/L=qycli/O=HOSTYON/OU=DevOps/CN=HOSTYON"
+    openssl req -new -x509 -key /etc/ssl/qycli.key -out /etc/ssl/qycli.crt -days 36500 -subj "/C=AQ/ST=qycli/L=qycli/O=HOSTYON/OU=SysOps/CN=HOSTYON"
     chown qycli:qycli -R /etc/ssl/*
 }
 
@@ -61,8 +61,10 @@ stk_nginx_install() {
     mkdir -p /var/lib/nginx/proxy
 
     stk_nginx_cert
+
+    upd_get_new_cf_ips
+
     upd_nginx_conf
-    upd_nginx_conf_renew_cf_ips
 
     mkdir /var/www
     chown qycli:qycli /var/www
