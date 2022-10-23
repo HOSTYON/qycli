@@ -191,7 +191,8 @@ upd_php() {
 
         if [[ $(portablectl is-attached /var/lib/qycli/qycli-php"$php_version_short") =~ ^(attached|running)$ ]]; then
             rm /etc/systemd/system.attached/php-fpm.service
-            portablectl reattach /var/lib/qycli/qycli-php"$php_version_short" -p trusted --enable --now
+            portablectl detach /var/lib/qycli/qycli-php"$php_version_short" -p trusted --enable --now
+            portablectl attach /var/lib/qycli/qycli-php"$php_version_short" -p trusted --enable --now
             systemctl daemon-reload
         else
             [[ -f /etc/systemd/system.attached/php-fpm.service ]] && rm /etc/systemd/system.attached/php-fpm.service
