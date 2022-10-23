@@ -13,7 +13,7 @@ ExecStop=/bin/kill -s QUIT $MAINPID
 PrivateTmp=true
 BindPaths=/etc
 BindPaths=/run
-BindPaths=/var/log
+BindPaths=/var
 
 [Install]
 WantedBy=multi-user.target
