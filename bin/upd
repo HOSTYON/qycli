@@ -126,6 +126,11 @@ upd_mariadb_conf() {
     systemctl restart mariadb
 }
 
+upd_php_service_file() {
+    cp /opt/qycli/cnf/php/php-fpm.service /var/lib/qycli/qycli-php"$php_version_short"/lib/systemd/system/qycli-php"$php_version_short".service
+    sed "s/PHPVER/$php_version_short/" -i /var/lib/qycli/qycli-php"$php_version_short"/lib/systemd/system/qycli-php"$php_version_short".service
+}
+
 upd_php_conf() {
     [[ ! -d /etc/php/fpm ]] && mkdir -p /etc/php/fpm
     cp -rf /opt/qycli/cnf/php/* /etc/php/
@@ -142,6 +147,8 @@ upd_php_conf() {
 
     php_version=$(yq .php_version /var/opt/qycli/cnf.yaml) # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
+
+    [[ -f /var/lib/qycli/qycli-php"$php_version_short"/lib/systemd/system/qycli-php"$php_version_short".service ]] && upd_php_service_file
 
     [[ ! -d /run/qycli ]] && mkdir /run/qycli
     systemctl restart php-fpm
@@ -167,8 +174,7 @@ upd_php() {
         curl -Lo - https://github.com/HOSTYON/qycli-php"$php_version_short"/releases/download/"$php_release_tag"/qycli-php74.tar.xz |
             tar xJ -C /var/lib/qycli/qycli-php"$php_version_short"/
 
-        cp /opt/qycli/cnf/php/php-fpm.service /var/lib/qycli/qycli-php"$php_version_short"/lib/systemd/system/qycli-php"$php_version_short".service
-        sed "s/PHPVER/$php_version_short/" -i /var/lib/qycli/qycli-php"$php_version_short"/lib/systemd/system/qycli-php"$php_version_short".service
+        upd_php_service_file
 
         cp /opt/qycli/cnf/php/php-cli-wrapper /usr/local/bin/php
         sed -e "s/PHPVER/$php_version_short/g" -i /usr/local/bin/php
