@@ -1,2 +1,0 @@
-#!/bin/bash
-chroot /var/lib/qycli/qycli-phpPHPVER/ /usr/local/phpPHPVER/bin/php "$@"

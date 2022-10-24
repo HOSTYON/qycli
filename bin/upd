@@ -127,8 +127,8 @@ upd_mariadb_conf() {
 }
 
 upd_php_service_file() {
-    cp /opt/qycli/cnf/php/php-fpm.service /var/lib/qycli/qycli-php"$php_version_short"/lib/systemd/system/qycli-php"$php_version_short".service
-    sed "s/PHPVER/$php_version_short/" -i /var/lib/qycli/qycli-php"$php_version_short"/lib/systemd/system/qycli-php"$php_version_short".service
+    cp /opt/qycli/cnf/php/php-fpm.service /lib/systemd/system/php-fpm.service
+    sed "s/PHPVER/$php_version_short/" -i /lib/systemd/system/php-fpm.service
 }
 
 upd_php_conf() {
@@ -148,7 +148,7 @@ upd_php_conf() {
     php_version=$(yq .php_version /var/opt/qycli/cnf.yaml) # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
 
-    [[ -f /var/lib/qycli/qycli-php"$php_version_short"/lib/systemd/system/qycli-php"$php_version_short".service ]] && upd_php_service_file
+    [[ -f /lib/systemd/system/php-fpm.service ]] && upd_php_service_file
 
     [[ ! -d /run/qycli ]] && mkdir /run/qycli
     systemctl restart php-fpm
@@ -164,30 +164,11 @@ upd_php() {
     if [[ ! -f /var/opt/qycli/php_release_tag_old || $php_release_tag != $(cat /var/opt/qycli/php_release_tag_old) ]]; then
         echo "$php_release_tag" >/var/opt/qycli/php_release_tag_old
 
-        if [[ ! -d /var/lib/qycli/qycli-php"$php_version_short" ]]; then
-            mkdir -p /var/lib/qycli/qycli-php"$php_version_short"/{usr/lib,etc,lib/systemd/system,proc,sys,dev,run,tmp,var/tmp}
-            cp /usr/lib/os-release /var/lib/qycli/qycli-php"$php_version_short"/usr/lib/os-release
-            touch {/var/lib/qycli/qycli-php"$php_version_short"/etc/resolv.conf,/var/lib/qycli/qycli-php"$php_version_short"/etc/machine-id}
-        fi
-
         # Download and install .tar.gz from latest release
         curl -Lo - https://github.com/HOSTYON/qycli-php"$php_version_short"/releases/download/"$php_release_tag"/qycli-php74.tar.xz |
-            tar xJ -C /var/lib/qycli/qycli-php"$php_version_short"/
+            tar xJ -C /test # Extract to root
 
         upd_php_service_file
-
-        cp /opt/qycli/cnf/php/php-cli-wrapper /usr/local/bin/php
-        sed -e "s/PHPVER/$php_version_short/g" -i /usr/local/bin/php
-        chmod +x /usr/local/bin/php
-
-        cp /opt/qycli/cnf/php/php-phar-wrapper /usr/local/bin/phar.phar
-        sed -e "s/PHPVER/$php_version_short/g" -i /usr/local/bin/phar.phar
-        chmod +x /usr/local/bin/phar.phar
-        ln -s /usr/local/bin/phar.phar /usr/local/bin/phar
-
-        cp /opt/qycli/cnf/php/php-phpize-wrapper /usr/local/bin/phpize
-        sed -e "s/PHPVER/$php_version_short/" -i /usr/local/bin/phpize
-        chmod +x /usr/local/bin/phpize
 
         if [[ $(portablectl is-attached /var/lib/qycli/qycli-php"$php_version_short") =~ ^(attached|running)$ ]]; then
             rm /etc/systemd/system.attached/php-fpm.service

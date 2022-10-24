@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/phpPHPVER/sbin/php-fpm --nodaemonize --php-ini /etc/php/fpm/php.ini --fpm-config /etc/php/fpm/php-fpm.conf
+ExecStart=/usr/local/qycli/phpPHPVER/sbin/php-fpm --nodaemonize --php-ini /etc/php/fpm/php.ini --fpm-config /etc/php/fpm/php-fpm.conf
 ExecReload=/bin/kill -USR2 $MAINPID
 BindPaths=/etc
 BindPaths=/run/qycli
@@ -53,4 +53,3 @@ RestrictNamespaces=true
 
 [Install]
 WantedBy=multi-user.target
-Alias=php-fpm.service
