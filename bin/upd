@@ -75,29 +75,16 @@ upd_nginx() {
     if [[ ! -f /var/opt/qycli/nginx_release_tag_old || $nginx_release_tag != $(cat /var/opt/qycli/nginx_release_tag_old) ]]; then
         echo "$nginx_release_tag" >/var/opt/qycli/nginx_release_tag_old
 
-        if [[ ! -d /var/lib/qycli/qycli-nginx ]]; then
-            mkdir -p /var/lib/qycli/qycli-nginx/{usr/lib,etc,lib/systemd/system,proc,sys,dev,run,tmp,var/tmp}
-            cp /usr/lib/os-release /var/lib/qycli/qycli-nginx/usr/lib/os-release
-            touch {/var/lib/qycli/qycli-nginx/etc/resolv.conf,/var/lib/qycli/qycli-nginx/etc/machine-id}
-        fi
-
-        cp /opt/qycli/cnf/nginx/nginx.service /var/lib/qycli/qycli-nginx/lib/systemd/system/qycli-nginx.service
+        cp /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
 
         # Download and install .tar.gz from latest release
         curl -Lo - https://github.com/HOSTYON/qycli-nginx/releases/download/"$nginx_release_tag"/qycli-nginx.tar.xz |
-            tar xJ -C /var/lib/qycli/qycli-nginx/
+            tar xJ -C /
 
-        cp -r /var/lib/qycli/qycli-nginx/etc/nginx/default /etc/nginx/
-        cp /var/lib/qycli/qycli-nginx/etc/nginx/default/mime.types /etc/nginx/mime.types
+        cp -r /usr/local/qycli/nginx/etc/* /etc/nginx
 
-        if [[ $(portablectl is-attached /var/lib/qycli/qycli-nginx) =~ ^(attached|running)$ ]]; then
-            portablectl detach /var/lib/qycli/qycli-nginx -p trusted --enable --now
-            portablectl attach /var/lib/qycli/qycli-nginx -p trusted --enable --now
-            systemctl daemon-reload
-        else
-            portablectl attach /var/lib/qycli/qycli-nginx -p trusted --enable --now
-            systemctl daemon-reload
-        fi
+        systemctl restart nginx
+        systemctl reenable nginx
     fi
 }
 
@@ -176,6 +163,7 @@ upd_php() {
         done
 
         systemctl restart php-fpm
+        systemctl reenable php-fpm
     fi
 
 }

@@ -6,9 +6,6 @@ After=network.target
 Type=simple
 ExecStart=/usr/local/qycli/phpPHPVER/sbin/php-fpm --nodaemonize --php-ini /etc/php/fpm/php.ini --fpm-config /etc/php/fpm/php-fpm.conf
 ExecReload=/bin/kill -USR2 $MAINPID
-BindPaths=/etc
-BindPaths=/run/qycli
-BindPaths=/var/log
 
 # Set up a new file system namespace and mounts private /tmp and /var/tmp directories
 # so this service cannot access the global directories and other processes cannot

@@ -6,15 +6,11 @@ Wants=network-online.target
 [Service]
 Type=forking
 PIDFile=/run/nginx.pid
-ExecStartPre=/usr/local/nginx/sbin/nginx -t
-ExecStart=/usr/local/nginx/sbin/nginx
-ExecReload=/usr/local/nginx/sbin/nginx -s reload
+ExecStartPre=/usr/local/qycli/nginx/sbin/nginx -t
+ExecStart=/usr/local/qycli/nginx/sbin/nginx
+ExecReload=/usr/local/qycli/nginx/sbin/nginx -s reload
 ExecStop=/bin/kill -s QUIT $MAINPID
 PrivateTmp=true
-BindPaths=/etc
-BindPaths=/run
-BindPaths=/var
 
 [Install]
 WantedBy=multi-user.target
-Alias=nginx.service
