@@ -67,12 +67,11 @@ stk_nginx_install() {
 
     upd_get_new_cf_ips
 
-    upd_nginx_conf
-
     mkdir /var/www
     chown qycli:qycli /var/www
 
     upd_nginx
+    upd_nginx_conf
 }
 
 stk_mariadb_admin_user() {
