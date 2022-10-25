@@ -12,7 +12,7 @@ inst_qycli() {
     [[ ! -d /var/opt/qycli ]] && mkdir -p /var/opt/qycli/{cloudflare,logins}
     [[ ! -d /var/cache/qycli ]] && mkdir -p /var/cache/qycli/
     systemd_ver=$(systemd --version | grep "systemd" | cut -d" " -f 2)
-    [[ $systemd_ver -lt 239 ]] && echo "systemd has to be available and it's version 239 or greater. Not installing." && exit
+    #[[ $systemd_ver -lt 239 ]] && echo "systemd has to be available and it's version 239 or greater. Not installing." && exit
     {
         echo "branch_name: $branch_name"
         echo "sec_install: $sec_install"
