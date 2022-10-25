@@ -19,9 +19,13 @@ stk_utility_and_repos() {
     apt -y install ubuntu-standard ubuntu-server snap gnupg2 ca-certificates libpwquality-tools apt-transport-https rsync #lsb-release
 
     # redis repo
-    add-apt-repository -y ppa:redislabs/redis
+    curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
+    # old: add-apt-repository -y ppa:redislabs/redis
+
     # MariaDB repo
     curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | bash -s -- --skip-maxscale
+
     # For GeoIP
     add-apt-repository -y ppa:maxmind/ppa
 
