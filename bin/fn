@@ -308,7 +308,7 @@ mk_wp() {
 
     # WP Cloudflare Super Page Cache Setup
     wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache
-    sed -i '/include common\/wpcommon.conf;/a include /var/www/'"$domain"'/htdocs/wp-content/wp-cloudflare-super-page-cache/'"$domain"'/nginx.conf;' /etc/nginx/sites-available/"$domain"
+    sed -i '/include common\/wpcommon.conf;/a     include /var/www/'"$domain"'/htdocs/wp-content/wp-cloudflare-super-page-cache/'"$domain"'/nginx.conf;' /etc/nginx/sites-available/"$domain"
     nginx -s reload
 
     cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
