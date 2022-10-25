@@ -151,6 +151,7 @@ upd_php_conf() {
     [[ -f /lib/systemd/system/php-fpm.service ]] && upd_php_service_file
 
     [[ ! -d /run/qycli ]] && mkdir /run/qycli
+
     systemctl restart php-fpm
 }
 
@@ -165,22 +166,14 @@ upd_php() {
         echo "$php_release_tag" >/var/opt/qycli/php_release_tag_old
 
         # Download and install .tar.gz from latest release
-        curl -Lo - https://github.com/HOSTYON/qycli-php"$php_version_short"/releases/download/"$php_release_tag"/qycli-php74.tar.xz |
+        curl -Lo - https://github.com/HOSTYON/qycli-php"$php_version_short"/releases/download/"$php_release_tag"/qycli-php"$php_version_short".tar.xz |
             tar xJ -C / # Extract to root
 
         upd_php_service_file
 
-        if [[ $(portablectl is-attached /var/lib/qycli/qycli-php"$php_version_short") =~ ^(attached|running)$ ]]; then
-            rm /etc/systemd/system.attached/php-fpm.service
-            portablectl detach /var/lib/qycli/qycli-php"$php_version_short" -p trusted --enable --now
-            portablectl attach /var/lib/qycli/qycli-php"$php_version_short" -p trusted --enable --now
-            systemctl daemon-reload
-        else
-            [[ -f /etc/systemd/system.attached/php-fpm.service ]] && rm /etc/systemd/system.attached/php-fpm.service
-            portablectl attach /var/lib/qycli/qycli-php"$php_version_short" -p trusted --enable --now
-            systemctl daemon-reload
-        fi
+        systemctl restart php-fpm
     fi
+
 }
 
 upd_redis_conf() {
