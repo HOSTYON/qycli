@@ -166,7 +166,7 @@ upd_php() {
 
         # Download and install .tar.gz from latest release
         curl -Lo - https://github.com/HOSTYON/qycli-php"$php_version_short"/releases/download/"$php_release_tag"/qycli-php74.tar.xz |
-            tar xJ -C /test # Extract to root
+            tar xJ -C / # Extract to root
 
         upd_php_service_file
 
