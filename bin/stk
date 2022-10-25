@@ -76,6 +76,8 @@ stk_nginx_install() {
 
     upd_nginx
     upd_nginx_conf
+
+    ln -s /usr/local/qycli/nginx/sbin/nginx /usr/bin/nginx
 }
 
 stk_mariadb_admin_user() {
@@ -105,6 +107,10 @@ stk_php_install() {
 
     upd_php
     upd_php_conf
+
+    for bin in /usr/local/qycli/php"$php_version_short"/bin/*; do
+        ln -s "$bin" /usr/bin/"$(basename "$bin")"
+    done
 }
 
 stk_redis_install() {

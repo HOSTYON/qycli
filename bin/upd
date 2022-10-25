@@ -158,10 +158,6 @@ upd_php() {
 
         upd_php_service_file
 
-        for bin in /usr/local/qycli/php"$php_version_short"/bin/*; do
-            ln -s "$bin" /usr/bin/"$(basename "$bin")"
-        done
-
         systemctl restart php-fpm
         systemctl reenable php-fpm
     fi
