@@ -108,6 +108,8 @@ stk_php_install() {
     upd_php
     upd_php_conf
 
+    php_version=$(yq .php_version /var/opt/qycli/cnf.yaml) # Reading the qycli.cnf file
+    php_version_short=$(echo "$php_version" | tr -d ".")
     for bin in /usr/local/qycli/php"$php_version_short"/bin/*; do
         ln -s "$bin" /usr/bin/"$(basename "$bin")"
     done
