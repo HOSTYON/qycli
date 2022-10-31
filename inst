@@ -2,7 +2,7 @@
 
 [[ $(whoami) != "root" ]] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 
-## Install qycli and stack with "wget -qO- qyc.li/inst | bash" or the dev version with "wget -q qyc.li/inst && bash inst v dev"
+## Install qycli and stack with "wget -qO- qyc.li/inst | bash" or the dev version with "wget qyc.li/inst && bash inst v dev"
 ## or "wget -q qyc.li/inst && bash inst v dev k no phpv 8.0"
 
 ## Optimize the host if you are not in a container with "wget -qO- qyc.li/kernel | bash"
@@ -11,14 +11,12 @@ inst_qycli() {
     [[ -f /usr/local/bin/qyc ]] && echo "qycli is already installed, stopping the process. Just type qyc to get the help message or go to qycli.org to learn." && exit
     [[ ! -d /var/opt/qycli ]] && mkdir -p /var/opt/qycli/{cloudflare,logins}
     [[ ! -d /var/cache/qycli ]] && mkdir -p /var/cache/qycli/
-    #systemd_ver=$(systemd --version | grep "systemd" | cut -d" " -f 2)
-    #[[ $systemd_ver -lt 239 ]] && echo "systemd has to be available and it's version 239 or greater. Not installing." && exit
-    {
-        echo "branch_name: $branch_name"
-        echo "sec_install: $sec_install"
-        echo "php_version: $php_version"
-        echo "cloudflare_token: $cloudflare_token"
-    } >>/var/opt/qycli/cnf.yaml
+    tee /var/opt/qycli/cnf.yaml <<EOF
+branch_name: $branch_name
+sec_install: $sec_install
+php_version: $php_version
+cloudflare_token: $cloudflare_token
+EOF
     apt update && apt -y install git
     git config --global submodule.recurse true
     git -C /opt clone -b "$branch_name" https://github.com/HOSTYON/qycli
@@ -62,7 +60,7 @@ inst_qycli() {
 branch_name=production
 sec_install=no
 kernel_tweaks=yes
-php_version=7.4
+php_version=8.1
 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -86,7 +84,7 @@ while [[ "$#" -gt 0 ]]; do
         fi
         shift
         ;;
-    phpv | php-version)
+    php | phpv | php-version)
         if [[ "$2" =~ ^(7.4|8.0|8.1)$ ]]; then
             php_version=$2
         else
