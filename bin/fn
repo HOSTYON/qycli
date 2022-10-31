@@ -111,7 +111,7 @@ EOF
 }
 
 del_dns_entries() {
-    cf_token_crowdsec_and_dns=$(yq .token /var/opt/qycli/cloudflare/"$root_domain"/cf_token_crowdsec_and_dns.json)
+    cf_token_crowdsec_and_dns=$(yq .result.value /var/opt/qycli/cloudflare/"$root_domain"/cf_token_crowdsec_and_dns.json)
 
     # List DNS records for a Zone
     existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
