@@ -50,8 +50,7 @@ EOF
 mk_site_create_cf_api_token_crowdsec_and_dns() {
     root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cloudflare/cfzones.json)
     if [[ $root_domain_zone_id != "" ]]; then
-        if [[ ! -d /var/opt/qycli/cloudflare/"$root_domain" ]]; then
-            mkdir /var/opt/qycli/cloudflare/"$root_domain"
+        if [[ ! -f /var/opt/qycli/cloudflare/"$root_domain"/cf_token_crowdsec_and_dns.json ]]; then
             root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/opt/qycli/cloudflare/cfzones.json)
             # Create CrowdSec and DNS Token
             curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
@@ -83,6 +82,7 @@ mk_site() {
 
     mkdir -p /var/www/"$domain"/htdocs
     mkdir -p /var/www/"$domain"/nginx-conf
+    [[ ! -d /var/opt/qycli/cloudflare/"$root_domain" ]] && mkdir /var/opt/qycli/cloudflare/"$root_domain"
 
     cp /etc/nginx/"$template" /etc/nginx/sites-available/"$domain"
     sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/"$domain"
