@@ -26,6 +26,7 @@ domain_parser() {
             # shellcheck disable=2001
             root_domain=$(echo "$domain" | sed "s+^[^\.]*\.++")
         fi
+        shift
     else
         echo "Invalid domain: $1"
         exit
@@ -205,7 +206,6 @@ mk_wp_create_cf_api_token_wp_cf_page_cache() {
 
 mk_wp() {
     domain_parser "$@"
-    shift
 
     [[ -d /var/www/$domain ]] && printf "\nSite already exists.\n" && exit
 
@@ -490,6 +490,24 @@ set_cache_cloudflare() {
     fi
 }
 
+set_cache_opcache() {
+    if [[ "$1" == "off" ]]; then
+        grep -q "opcache.enable = 0" /etc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing..." && exit
+        sed "s+opcache.enable = 1+opcache.enable = 0+" -i /etc/php/fpm/php.ini
+        sed "s+opcache.enable_cli = 1+opcache.enable_cli = 0+" -i /etc/php/fpm/php.ini
+        systemctl reload php-fpm
+    elif [[ "$1" == "on" ]]; then
+        grep -q "opcache.enable = 1" /etc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing..." && exit
+        sed "s+opcache.enable = 0+opcache.enable = 1+" -i /etc/php/fpm/php.ini
+        sed "s+opcache.enable_cli = 0+opcache.enable_cli = 1+" -i /etc/php/fpm/php.ini
+        systemctl reload php-fpm
+    else
+        echo 'Missing "on" or "off"'
+        print_help_set
+        exit
+    fi
+}
+
 set_cache_parser() {
     if [[ "$1" == "object" || "$1" == "o" ]]; then
         shift
@@ -500,6 +518,9 @@ set_cache_parser() {
     elif [[ "$1" == "fcgi" || "$1" == "f" ]]; then
         shift
         set_cache_fcgi "$@"
+    elif [[ "$1" == "opcache" || "$1" == "op" ]]; then
+        shift
+        set_cache_opcache "$@"
     elif [[ "$1" == "all" || "$1" == "both" ]]; then
         shift
         set_cache_object "$@"
@@ -601,16 +622,7 @@ set_firewall() {
 }
 
 fn_set() {
-    if [[ "$1" == *"."* ]]; then
-        domain="$1"
-        [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
-        [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_set && exit
-        shift
-    else
-        echo "Invalid domain: $1"
-        print_help_set
-        exit
-    fi
+    domain_parser "$@"
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
