@@ -457,7 +457,7 @@ set_cache_fcgi_nginx_helper_deactivate() {
 
 set_cache_fcgi() {
     if [[ "$1" == "on" ]]; then
-        if grep "#include common/php.conf" /etc/nginx/sites-available/"$domain" >/dev/null; then
+        if grep -q "#include common/php.conf" /etc/nginx/sites-available/"$domain"; then
             printf "\nFastCGI cache is already enabled.\n"
         else
             sed -i "s+    include common/php.conf;+    #include common/php.conf;+" /etc/nginx/sites-available/"$domain"
@@ -467,7 +467,7 @@ set_cache_fcgi() {
             printf "\nFastCGI microcache enabled.\n\n"
         fi
     elif [[ "$1" == "off" ]]; then
-        if grep "#include common/wpfcgi.conf" /etc/nginx/sites-available/"$domain" >/dev/null; then
+        if grep -q "#include common/wpfcgi.conf" /etc/nginx/sites-available/"$domain"; then
             printf "\nFastCGI cache is already disabled.\n"
         else
             sed -i "s+#include common/php.conf;+include common/php.conf;+" /etc/nginx/sites-available/"$domain"
