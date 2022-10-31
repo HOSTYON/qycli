@@ -458,23 +458,23 @@ set_cache_fcgi_nginx_helper_deactivate() {
 set_cache_fcgi() {
     if [[ "$1" == "on" ]]; then
         if grep -q "#include common/php.conf" /etc/nginx/sites-available/"$domain"; then
-            printf "\nFastCGI cache is already enabled.\n"
+            echo "FastCGI cache is already enabled."
         else
-            sed -i "s+    include common/php.conf;+    #include common/php.conf;+" /etc/nginx/sites-available/"$domain"
-            sed -i "s+#include common/wpfcgi.conf;+include common/wpfcgi.conf;+" /etc/nginx/sites-available/"$domain"
+            sed "s+    include common/php.conf;+    #include common/php.conf;+" -i /etc/nginx/sites-available/"$domain"
+            sed "s+#include common/wpfcgi.conf;+include common/wpfcgi.conf;+" -i /etc/nginx/sites-available/"$domain"
 
             nginx -s reload
-            printf "\nFastCGI microcache enabled.\n\n"
+            echo "FastCGI microcache enabled."
         fi
     elif [[ "$1" == "off" ]]; then
         if grep -q "#include common/wpfcgi.conf" /etc/nginx/sites-available/"$domain"; then
-            printf "\nFastCGI cache is already disabled.\n"
+            echo "FastCGI cache is already disabled."
         else
             sed -i "s+#include common/php.conf;+include common/php.conf;+" /etc/nginx/sites-available/"$domain"
             sed -i "s+    include common/wpfcgi.conf;+    #include common/wpfcgi.conf;+" /etc/nginx/sites-available/"$domain"
 
             nginx -s reload
-            printf "\nFastCGI microcache disabled.\n\n"
+            echo "FastCGI microcache disabled."
         fi
     else
         print_help_set
@@ -686,25 +686,16 @@ EOF
 }
 
 fn_clone() {
-    if [[ "$1" == *"."* ]]; then
-        clonefrom="$1"
-        [[ "$1" == www.* ]] && clonefrom=$(echo "$1" | cut -c 5-)
-        [[ ! -d /var/www/$clonefrom ]] && printf "\nSite does not exist." && print_help_clone && exit
-        shift
-    else
-        echo "Invalid domain: $1"
-        print_help_clone
-        exit
-    fi
+
+    domain_parser
+    clonefrom=$domain
 
     if [[ "$1" == "to" ]]; then
         shift
     fi
 
-    if [[ "$1" == *"."* ]]; then
-        cloneto="$1"
-        [[ "$1" == www.* ]] && cloneto=$(echo "$1" | cut -c 5-)
-    fi
+    domain_parser
+    cloneto=$domain
 
     if [[ -d /var/www/$cloneto ]]; then
         echo -n "Do you want to overwrite $cloneto from $clonefrom? [y/Y/yes]: "
@@ -713,7 +704,7 @@ fn_clone() {
             qyc del "$cloneto" -y
             clone_site
         else
-            printf "Not cloning site.\n"
+            echo "Not cloning site."
             exit
         fi
     else
