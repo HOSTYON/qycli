@@ -51,6 +51,7 @@ mk_site_create_cf_api_token_crowdsec_and_dns() {
     root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cloudflare/cfzones.json)
     if [[ $root_domain_zone_id != "" ]]; then
         if [[ ! -d /var/opt/qycli/cloudflare/"$root_domain" ]]; then
+            mkdir /var/opt/qycli/cloudflare/"$root_domain"
             root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/opt/qycli/cloudflare/cfzones.json)
             # Create CrowdSec and DNS Token
             curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
@@ -82,7 +83,7 @@ mk_site() {
 
     mkdir -p /var/www/"$domain"/htdocs
     mkdir -p /var/www/"$domain"/nginx-conf
-    [[ ! -d /var/opt/qycli/cloudflare/"$root_domain" ]] && mkdir /var/opt/qycli/cloudflare/"$root_domain"
+
     cp /etc/nginx/"$template" /etc/nginx/sites-available/"$domain"
     sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/"$domain"
     if [[ $subdomain == true ]]; then
@@ -110,9 +111,11 @@ EOF
 }
 
 del_dns_entries() {
+    cf_token_crowdsec_and_dns=$(yq .token /var/opt/qycli/cloudflare/"$root_domain"/cf_token_crowdsec_and_dns.json)
+
     # List DNS records for a Zone
     existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
-        -H "Authorization: Bearer $cf_token" \
+        -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
         -H "Content-Type: application/json" |
         yq '.result[].id')
 
@@ -120,7 +123,7 @@ del_dns_entries() {
     if [[ $existing_dns_records != "" ]]; then
         for id in $existing_dns_records; do
             curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
-                -H "Authorization: Bearer $cf_token" \
+                -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
                 -H "Content-Type: application/json" 1>/dev/null
         done
         dns_entries_deleted=true
@@ -132,18 +135,18 @@ cf_dns_entry() {
 
     # Create new DNS record in zone
     curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
-        -H "Authorization: Bearer $cf_token" \
+        -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
         -H "Content-Type: application/json" \
         --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' \
         >"$domain"_cf_dns.json
 
     # Change zone settings
     curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
-        -H "Authorization: Bearer $cf_token" \
+        -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
         -H "Content-Type: application/json" \
         --data '{"items":[{"id":"ssl","value":"full"},{"id":"0rtt","value":"on"},{"id":"minify","value":{"css":"on","html":"on","js":"on"}},{"id":"rocket_loader","value":"on"}]}' 1>/dev/null
     curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/argo/tiered_caching" \
-        -H "Authorization: Bearer $cf_token" \
+        -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
         -H "Content-Type: application/json" \
         --data '{"value":"on"}' 1>/dev/null
 }
@@ -195,6 +198,7 @@ dns_and_infos() {
         if [[ $cf_token != "" ]]; then
             dns_value=$ipv6
             dns_type=AAAA
+            echo "Setting DNS record"
             cf_dns_entry
             print_dns_info_auto
             print_login_info
@@ -206,6 +210,7 @@ dns_and_infos() {
         if [[ $cf_token != "" ]]; then
             dns_value=$ipv4
             dns_type=A
+            echo "Setting DNS record"
             cf_dns_entry
             print_dns_info_auto
             print_login_info
@@ -680,15 +685,8 @@ clone_site() {
     wp --path=/var/www/"$cloneto"/htdocs config set DB_PASSWORD "${dbpassword}"
     wp --path=/var/www/"$cloneto"/htdocs config set WP_CACHE_KEY_SALT "qyc_$cloneto"
 
-    ipv6=$(ip -6 a | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80)
-    cat <<EOF
-Cloning of $clonefrom to $cloneto is done.
-
-Add this IPv6 address as an AAAA record for $cloneto in Cloudflare with proxy enabled (orange cloud):
-$ipv6
-
-Then login here with the same login details as the original site: https://$cloneto/wp-login.php
-EOF
+    echo "Cloning of $clonefrom to $cloneto is done."
+    dns_and_infos
 }
 
 fn_clone() {
