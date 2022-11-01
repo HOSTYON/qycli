@@ -660,6 +660,33 @@ fn_set() {
     fi
 }
 
+fn_clone() {
+
+    domain_parser "$@"
+    clonefrom=$domain
+
+    if [[ "$1" == "to" ]]; then
+        shift
+    fi
+
+    domain_parser "$@"
+    cloneto=$domain
+
+    if [[ -d /var/www/$cloneto ]]; then
+        echo -n "Do you want to overwrite $cloneto from $clonefrom? [y/Y/yes]: "
+        read -r consent
+        if [[ "$consent" == "yes" || "$consent" == "y" || "$consent" == "Y" ]]; then
+            qyc del "$cloneto" -y
+            clone_site
+        else
+            echo "Not cloning site."
+            exit
+        fi
+    else
+        clone_site
+    fi
+}
+
 clone_site() {
     domain=$cloneto
     template=wp.template
@@ -687,33 +714,6 @@ clone_site() {
 
     echo "Cloning of $clonefrom to $cloneto is done."
     dns_and_infos
-}
-
-fn_clone() {
-
-    domain_parser "$@"
-    clonefrom=$domain
-
-    if [[ "$1" == "to" ]]; then
-        shift
-    fi
-
-    domain_parser "$@"
-    cloneto=$domain
-
-    if [[ -d /var/www/$cloneto ]]; then
-        echo -n "Do you want to overwrite $cloneto from $clonefrom? [y/Y/yes]: "
-        read -r consent
-        if [[ "$consent" == "yes" || "$consent" == "y" || "$consent" == "Y" ]]; then
-            qyc del "$cloneto" -y
-            clone_site
-        else
-            echo "Not cloning site."
-            exit
-        fi
-    else
-        clone_site
-    fi
 }
 
 cnf_php_version() {
