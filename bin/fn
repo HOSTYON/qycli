@@ -786,8 +786,18 @@ user: admin
 password: $admindbpass
 
 EOF
+    elif [[ -z "$(ls -A /etc/nginx/sites-enabled)" ]]; then
+        cat <<EOF
+
+You have at least one site through which you could access phpMyAdmin, but unfortunately none are enabled.
+Here the admin DB user info just in case you need it for something else.
+
+user: admin
+password: $admindbpass
+
+EOF
     else
-        firstdomain=$(find /etc/nginx/sites-available -maxdepth 1 -name "*.*" -type f -printf '%P\n')
+        firstdomain=$(find /etc/nginx/sites-available -maxdepth 1 -name "*.*" -type f -printf '%P\n' | head -1)
         cat <<EOF
    
 Log in as the priviledged admin user. 
