@@ -16,7 +16,7 @@ stk_utility_and_repos() {
 
     upd_apt
     # Utilities
-    apt -y install ubuntu-standard ubuntu-server snap gnupg2 ca-certificates libpwquality-tools apt-transport-https rsync #lsb-release
+    apt -y install ubuntu-standard ubuntu-server unzip snap gnupg2 ca-certificates libpwquality-tools apt-transport-https rsync #lsb-release
 
     # redis repo
     curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
@@ -138,7 +138,10 @@ stk_composer_install() {
 }
 
 stk_pma_install() {
-    composer -d/var/www create-project phpmyadmin/phpmyadmin /var/www/pma
+    composer -d/var/www create-project phpmyadmin/phpmyadmin --no-dev /var/www/pma
+    pma_version=$(yq .version /var/www/pma/package.json)
+    composer -d/var/www/pma config version "$pma_version"
+    composer -d/var/www/pma update
 
     mkdir /etc/pma
     cp /opt/qycli/cnf/pma/config.inc.php /etc/pma/config.inc.php

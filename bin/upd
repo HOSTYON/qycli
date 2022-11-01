@@ -66,7 +66,7 @@ upd_nginx_conf() {
 }
 
 upd_nginx() {
-    nginx_release_tag=$(curl -si https://github.com/HOSTYON/qycli-nginx/releases/latest | tac | tac | grep "location:" | sed -z "s+.*/++" | tr -d '\r')
+    nginx_release_tag=$(curl -sI https://github.com/HOSTYON/qycli-nginx/releases/latest | tac | tac | grep "location:" | sed -z "s+.*/++" | tr -d '\r')
 
     if [[ ! -f /var/cache/qycli/nginx_release_tag_old || $nginx_release_tag != $(cat /var/cache/qycli/nginx_release_tag_old) ]]; then
         echo "$nginx_release_tag" >/var/cache/qycli/nginx_release_tag_old
@@ -257,7 +257,7 @@ upd_composer() {
     php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
     ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
 
-    if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+    if [[ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]]; then
         echo >&2 'ERROR: Invalid installer checksum'
         rm composer-setup.php
         exit 1
@@ -275,7 +275,7 @@ EOF
 }
 
 upd_phpmyadmin() {
-    composer -d/var/www/pma update
+    composer -d/var/www/pma --with-all-dependencies update
 }
 
 upd_tinyfilemanager() {
