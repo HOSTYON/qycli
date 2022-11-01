@@ -28,8 +28,9 @@ domain_parser() {
         fi
         shift
     else
-        echo "Invalid domain: $1"
-        exit
+        invalid_domain=1
+        echo "Invalid or no domain: $1"
+        echo ""
     fi
 }
 
@@ -242,6 +243,9 @@ mk_wp_create_cf_api_token_wp_cf_page_cache() {
 
 mk_wp() {
     domain_parser "$@"
+    if [[ $invalid_domain == "1" ]]; then
+        exit
+    fi
 
     [[ -d /var/www/$domain ]] && printf "\nSite already exists.\n" && exit
 
@@ -397,6 +401,8 @@ EOF
 
 del_parser() {
     domain_parser "$@"
+    [[ $invalid_domain == "1" ]] && exit
+
     cf_check_zones_file
 
     [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_del && exit
@@ -633,6 +639,10 @@ set_firewall() {
 
 fn_set() {
     domain_parser "$@"
+    if [[ $invalid_domain == "1" ]]; then
+        print_help_set
+        exit
+    fi
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
@@ -663,6 +673,7 @@ fn_set() {
 fn_clone() {
 
     domain_parser "$@"
+    [[ $invalid_domain == "1" ]] && exit
     clonefrom=$domain
 
     if [[ "$1" == "to" ]]; then
@@ -670,6 +681,7 @@ fn_clone() {
     fi
 
     domain_parser "$@"
+    [[ $invalid_domain == "1" ]] && exit
     cloneto=$domain
 
     if [[ -d /var/www/$cloneto ]]; then
