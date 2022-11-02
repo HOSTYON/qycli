@@ -299,6 +299,10 @@ upd_yq() {
     fi
 }
 
+upd_psl() {
+    curl -s https://publicsuffix.org/list/public_suffix_list.dat | grep -vE "^//" | sed "s+\*\.++" | tr -s '\n' >/var/opt/qycli/psl
+}
+
 upd_fn() {
     upd_qycli
     upd_apt
@@ -315,4 +319,5 @@ upd_fn() {
     upd_phpmyadmin
     upd_tinyfilemanager
     upd_yq
+    upd_psl
 }

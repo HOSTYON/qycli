@@ -29,6 +29,10 @@ stk_utility_and_repos() {
     # For GeoIP
     add-apt-repository -y ppa:maxmind/ppa
 
+    # Get the Public Suffix List
+    upd_psl
+
+    # qycli user
     addgroup qycli
     adduser --disabled-password --gecos "" --ingroup qycli qycli
 

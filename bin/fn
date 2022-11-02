@@ -20,7 +20,7 @@ domain_parser() {
         root_domain=$domain
         domain_dot_count=$(echo "$domain" | grep -o "\." | grep -c "\.")
         if [[ $domain_dot_count -gt 2 ]]; then
-            echo "Subdomains deeper than one level are not supported with Cloudflare SSL. Use bla-sub.domain.com instead of bla.sub.domain.com. Aborting..." && exit
+            echo "Subdomains deeper than one level are not supported with Cloudflare Universal SSL. Use bla-sub.domain.com instead of bla.sub.domain.com. Aborting..." && exit
         elif [[ $domain_dot_count == 2 ]]; then
             subdomain=true
             # shellcheck disable=2001
