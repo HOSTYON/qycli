@@ -17,21 +17,32 @@ domain_parser() {
     if [[ "$1" == *"."* ]]; then
         domain="$1"
         [[ "$1" == www.* ]] && domain=$(echo "$1" | cut -c 5-)
-        root_domain=$domain
-        domain_dot_count=$(echo "$domain" | grep -o "\." | grep -c "\.")
-        if [[ $domain_dot_count -gt 2 ]]; then
-            echo "Subdomains deeper than one level are not supported with Cloudflare Universal SSL. Use bla-sub.domain.com instead of bla.sub.domain.com. Aborting..." && exit
-        elif [[ $domain_dot_count == 2 ]]; then
-            subdomain=true
+
+        ## Check if domain is valid accordin to the Public Suffix List that Cloudflare seems to respect https://publicsuffix.org/list/public_suffix_list.dat
+        # shellcheck disable=2001
+        domainsuffix=$(echo "$domain" | sed "s+^[^.]*\.++")
+        # shellcheck disable=2001
+        subdomainsuffix=$(echo "$domain" | sed "s+^[^.]*\.[^.]*\.++")
+        if grep -q "^$domainsuffix$" /var/opt/qycli/psl; then
+            root_domain=$domain
+        elif grep -q "^$subdomainsuffix$" /var/opt/qycli/psl; then
             # shellcheck disable=2001
-            root_domain=$(echo "$domain" | sed "s+^[^\.]*\.++")
+            root_domain=$(echo "$domain" | sed "s+^[^.]*\.++")
+            subdomain=true
+        else
+            echo "Subdomains deeper than one level are not supported with Cloudflare Universal SSL. Use bla-sub.domain.com instead of bla.sub.domain.com. Aborting..." && exit
         fi
+
         shift
     else
         invalid_domain=1
         echo "Invalid or no domain: $1"
         echo ""
     fi
+}
+
+test_domain() {
+
 }
 
 mk_db() {
