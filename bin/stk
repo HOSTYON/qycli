@@ -73,13 +73,13 @@ stk_nginx_install() {
 
     stk_nginx_cert
 
-    upd_get_new_cf_ips
-
     mkdir /var/www
     chown qycli:qycli /var/www
 
     upd_nginx
     upd_nginx_conf
+
+    upd_get_new_cf_ips
 
     ln -s /usr/local/qycli/nginx/sbin/nginx /usr/bin/nginx
 }
