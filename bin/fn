@@ -344,7 +344,7 @@ mk_wp() {
     #wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
     #wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
 
-    wp --path=/var/www/"$domain"/htdocs config set WP_AUTO_UPDATE_CORE true
+    wp --path=/var/www/"$domain"/htdocs config set WP_AUTO_UPDATE_CORE minor
     wp --path=/var/www/"$domain"/htdocs plugin auto-updates enable --all
     wp --path=/var/www/"$domain"/htdocs theme auto-updates enable --all
 

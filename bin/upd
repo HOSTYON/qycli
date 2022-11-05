@@ -44,7 +44,11 @@ upd_nginx_conf_renew_cf_ips() {
         rm /etc/nginx/conf.d/cloudflare.conf
     fi
     # shellcheck disable=SC2013
-    for cfip in $(cat /var/cache/qycli/cloudflare_ipv6_ips); do
+    for cfip in $(
+        cat /var/cache/qycli/cloudflare_ipv6_ips
+        echo ""
+        cat /var/cache/qycli/cloudflare_ipv4_ips
+    ); do
         echo "set_real_ip_from $cfip;" | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
     done
     echo 'real_ip_header CF-Connecting-IP;' | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
