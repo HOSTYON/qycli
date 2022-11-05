@@ -240,7 +240,7 @@ upd_get_cf_token_accounts_and_zones() {
     curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
         -H "Authorization: Bearer $cf_token" \
         -H "Content-Type: application/json" \
-        --data '{"name":"qycli - Accounts and Zones read - '"$hostname"' - '"$pub_ip"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.*":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"}]}]}' >/var/opt/qycli/cloudflare/cf_token_accounts_zones.json
+        --data '{"name":"qycli - Read Account Settings and Zones - '"$hostname"' - '"$pub_ip"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.*":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"}]}]}' >/var/opt/qycli/cloudflare/cf_token_accounts_zones.json
 }
 
 upd_get_cf_accounts_and_zones() {
