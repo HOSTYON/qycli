@@ -734,6 +734,11 @@ clone_site() {
     wp --path=/var/www/"$cloneto"/htdocs config set WP_CACHE_KEY_SALT "qyc_$cloneto"
 
     echo "Cloning of $clonefrom to $cloneto is done."
+
+    wpadmin=$(yq .[].User /var/opt/qycli/sites/"$clonefrom".yaml)
+    wpemail=$(yq .[].Email /var/opt/qycli/sites/"$clonefrom".yaml)
+    wppw=$(yq .[].Password /var/opt/qycli/sites/"$clonefrom".yaml)
+    cf_token=$(yq .result.value /var/opt/qycli/cloudflare/"$root_domain"/cf_token_crowdsec_and_dns.json)
     dns_and_infos
 }
 
