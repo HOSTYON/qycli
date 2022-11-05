@@ -111,43 +111,48 @@ EOF
 
 del_dns_entries() {
     cf_token_crowdsec_and_dns=$(yq .result.value /var/opt/qycli/cloudflare/"$root_domain"/cf_token_crowdsec_and_dns.json)
+    root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cloudflare/cfzones.json)
+    if [[ $cf_token_crowdsec_and_dns != "" && $root_domain_zone_id != "" ]]; then
 
-    # List DNS records for a Zone
-    existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
-        -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
-        -H "Content-Type: application/json" |
-        yq '.result[].id')
+        # List DNS records for a Zone
+        existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
+            -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
+            -H "Content-Type: application/json" | tee -a /var/cache/qycli/old_dns_entries.json |
+            yq '.result[].id')
 
-    # Delete DNS records for a Zone if they exist
-    if [[ $existing_dns_records != "" ]]; then
-        for id in $existing_dns_records; do
-            curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
-                -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
-                -H "Content-Type: application/json" 1>/dev/null
-        done
-        dns_entries_deleted=true
+        # Delete DNS records for a Zone if they exist
+        if [[ $existing_dns_records != "" ]]; then
+            for id in $existing_dns_records; do
+                curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
+                    -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
+                    -H "Content-Type: application/json" 1>/dev/null
+            done
+            dns_entries_deleted=true
+        fi
+
     fi
 }
 
 cf_dns_entry() {
     del_dns_entries
+    if [[ $cf_token_crowdsec_and_dns != "" && $root_domain_zone_id != "" ]]; then
+        # Create new DNS record in zone
+        curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
+            -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
+            -H "Content-Type: application/json" \
+            --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' \
+            >"$domain"_cf_dns.json
 
-    # Create new DNS record in zone
-    curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
-        -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
-        -H "Content-Type: application/json" \
-        --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' \
-        >"$domain"_cf_dns.json
-
-    # Change zone settings
-    curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
-        -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
-        -H "Content-Type: application/json" \
-        --data '{"items":[{"id":"ssl","value":"full"},{"id":"0rtt","value":"on"},{"id":"minify","value":{"css":"on","html":"on","js":"on"}},{"id":"rocket_loader","value":"on"}]}' 1>/dev/null
-    curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/argo/tiered_caching" \
-        -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
-        -H "Content-Type: application/json" \
-        --data '{"value":"on"}' 1>/dev/null
+        # Change zone settings
+        curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
+            -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
+            -H "Content-Type: application/json" \
+            --data '{"items":[{"id":"ssl","value":"full"},{"id":"0rtt","value":"on"},{"id":"minify","value":{"css":"on","html":"on","js":"on"}},{"id":"rocket_loader","value":"on"}]}' 1>/dev/null
+        curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/argo/tiered_caching" \
+            -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
+            -H "Content-Type: application/json" \
+            --data '{"value":"on"}' 1>/dev/null
+    fi
 }
 
 print_dns_info_auto() {
