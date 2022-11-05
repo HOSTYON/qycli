@@ -759,7 +759,7 @@ cnf_php_parser() {
     done
 }
 
-cnf_set_cloudflare_tokens() {
+cnf_set_cloudflare_token() {
     sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/opt/qycli/cnf.yaml
     upd_get_cf_token_accounts_and_zones
     upd_get_cf_accounts_and_zones
