@@ -80,8 +80,7 @@ mk_site() {
     type=$(grep -o "^.*\." <<<"$template" | tr -d ".")
     echo "site-type: $type" >/var/opt/qycli/sites/"$domain".yaml
 
-    mkdir -p /var/www/"$domain"/htdocs
-    mkdir -p /var/www/"$domain"/nginx-conf
+    mkdir -p /var/www/"$domain"/{htdocs,nginx-conf}
     [[ ! -d /var/opt/qycli/cloudflare/"$root_domain" ]] && mkdir /var/opt/qycli/cloudflare/"$root_domain"
 
     cp /etc/nginx/"$template" /etc/nginx/sites-available/"$domain"
@@ -375,11 +374,13 @@ mk_wp() {
 }
 
 del_site() {
-    del_dns_entries
+    if [[ ! $(yq .result.value /var/opt/qycli/cloudflare/"$root_domain"/cf_token_crowdsec_and_dns.json) == "" ]]; then
+        del_dns_entries
+    fi
     if [[ $dns_entries_deleted == "true" ]]; then
-        echo "DNS entries removed"
+        echo "DNS entries removed."
     else
-        echo "DNS entries could not automatically be removed"
+        echo "DNS entries could not automatically be removed."
     fi
 
     rm /etc/nginx/sites-enabled/"$domain"
