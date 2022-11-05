@@ -1,5 +1,13 @@
 #!/bin/bash
 
+get_public_ips() {
+    ipv4_dev=$(ip r | awk '/default via/ {print $5}' | head -n1)
+    ipv4=$(ip -4 a show dev "$ipv4_dev" scope global | grep inet | awk -F '[ \t]+|/' '{print $3}' | grep -Ev "10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" |
+        grep -Ev "172\.([1][6-9]|[2][0-9]|3[0-1]{1,3})\.[0-9]{1,3}\.[0-9]{1,3}" | grep -Ev "192\.168\.[0-9]{1,3}\.[0-9]{1,3}")
+    ipv6_dev=$(ip -6 r | awk '/default via/ {print $5}' | head -n1)
+    ipv6=$(ip -6 a show dev "$ipv6_dev" scope global | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80 | grep -v ^fd00)
+}
+
 #  qycli update functions
 upd_qycli() {
     git -C /opt/qycli reset --hard HEAD
@@ -220,11 +228,19 @@ upd_get_new_cf_ips() {
 
 upd_get_cf_token_accounts_and_zones() {
     cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
+    hostname=$(cat /etc/hostname)
+    get_public_ips
+    if [[ $ipv6 != "" ]]; then
+        pub_ip="$ipv6"
+    elif [[ $ipv4 != "" ]]; then
+        pub_ip="$ipv4"
+    fi
+
     # Create Accounts Zones and DNS Token
     curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
         -H "Authorization: Bearer $cf_token" \
         -H "Content-Type: application/json" \
-        --data '{"name":"qycli 2nd Token","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.*":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"}]}]}' >/var/opt/qycli/cloudflare/cf_token_accounts_zones.json
+        --data '{"name":"qycli - Accounts and Zones read - '"$hostname"' - '"$pub_ip"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.*":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"}]}]}' >/var/opt/qycli/cloudflare/cf_token_accounts_zones.json
 }
 
 upd_get_cf_accounts_and_zones() {
