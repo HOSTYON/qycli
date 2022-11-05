@@ -682,6 +682,7 @@ fn_clone() {
     domain_parser "$@"
     [[ $invalid_domain == "1" ]] && exit
     clonefrom=$domain
+    shift
 
     if [[ "$1" == "to" ]]; then
         shift
@@ -690,6 +691,7 @@ fn_clone() {
     domain_parser "$@"
     [[ $invalid_domain == "1" ]] && exit
     cloneto=$domain
+    shift
 
     if [[ -d /var/www/$cloneto ]]; then
         echo -n "Do you want to overwrite $cloneto from $clonefrom? [y/Y/yes]: "
