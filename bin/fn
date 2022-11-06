@@ -254,6 +254,7 @@ mk_wp() {
     if [[ $invalid_domain == "1" ]]; then
         exit
     fi
+    shift
 
     [[ -d /var/www/$domain ]] && printf "\nSite already exists.\n" && exit
 
@@ -412,6 +413,7 @@ EOF
 del_parser() {
     domain_parser "$@"
     [[ $invalid_domain == "1" ]] && exit
+    shift
 
     # cf_check_zones_file Deleting needs to be CF token enabled
 
@@ -653,6 +655,7 @@ fn_set() {
         print_help_set
         exit
     fi
+    shift
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
