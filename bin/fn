@@ -396,7 +396,10 @@ del_site() {
     rm /etc/nginx/sites-available/"$domain"
     rm -r /var/www/"$domain"/*
     rmdir /var/www/"$domain"
-    rm -r /var/opt/qycli/cloudflare/"$root_domain"/
+    # Must not delete when root_domain still in use
+    if [[ $(qyc list | grep "$root_domain") == "" ]]; then
+        rm -r /var/opt/qycli/cloudflare/"$root_domain"/
+    fi
     printf "Files deleted.\n"
 
     local snakedomain=${domain//[^0-9A-Za-z]/_}
