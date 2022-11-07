@@ -9,7 +9,7 @@
 
 inst_qycli() {
     [[ -f /usr/local/bin/qyc ]] && echo "qycli is already installed, stopping the process. Just type qyc to get the help message or go to qycli.org to learn." && exit
-    [[ ! -d /var/opt/qycli ]] && mkdir -p /var/opt/qycli/{cloudflare,sites}
+    [[ ! -d /var/opt/qycli ]] && mkdir -p /var/opt/qycli/{cloudflare/{dns,crowdsec},sites}
     [[ ! -d /var/cache/qycli ]] && mkdir -p /var/cache/qycli/
     tee /var/opt/qycli/cnf.yaml <<EOF
 branch_name: $branch_name
