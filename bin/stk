@@ -180,8 +180,8 @@ stk_crowdsec_install() {
 }
 
 stk_install() {
-    upd_system_resources_qycli_cnf
     stk_utility_and_repos
+    upd_system_resources_qycli_cnf
     stk_postfix_install
     stk_nginx_install
     stk_php_install
