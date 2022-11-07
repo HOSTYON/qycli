@@ -105,7 +105,7 @@ mk_site() {
     echo "site-type: $type" >/var/opt/qycli/sites/"$domain".yaml
 
     mkdir -p /var/www/"$domain"/{htdocs,nginx-conf}
-    [[ ! -d /var/opt/qycli/cloudflare/"$root_domain" ]] && mkdir /var/opt/qycli/cloudflare/"$root_domain"
+    [[ ! -d /var/opt/qycli/cloudflare/dns/"$root_domain" ]] && mkdir /var/opt/qycli/cloudflare/dns/"$root_domain"
 
     cp /etc/nginx/"$template" /etc/nginx/sites-available/"$domain"
     sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/"$domain"
