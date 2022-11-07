@@ -67,13 +67,13 @@ mk_site_create_cf_api_token_crowdsec() {
 mk_site_create_cf_api_token_dns() {
     root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cloudflare/cfzones.json)
     if [[ $root_domain_zone_id != "" ]]; then
-        if [[ ! -f /var/opt/qycli/cloudflare/dns/"$root_domain"/cf_token_dns.json ]]; then
+        if [[ ! -f /var/opt/qycli/cloudflare/"$root_domain"/cf_token_dns.json ]]; then
             root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/opt/qycli/cloudflare/cfzones.json)
             # Create CrowdSec and DNS Token
             curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
                 -H "Authorization: Bearer $cf_token" \
                 -H "Content-Type: application/json" \
-                --data '{"name":"'"$root_domain"' qycli CrowdSec + DNS","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.zone.'"$root_domain_zone_id"'":"*"},"permission_groups":[{"id":"3030687196b94b638145a3953da2b699","name":"Zone Settings Write"},{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"},{"id": "4755a26eedb94da69e1066d98aa820be","name":"DNS Write"}]}]}' >/var/opt/qycli/cloudflare/dns/"$root_domain"/cf_token_dns.json
+                --data '{"name":"'"$root_domain"' qycli DNS","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.zone.'"$root_domain_zone_id"'":"*"},"permission_groups":[{"id":"3030687196b94b638145a3953da2b699","name":"Zone Settings Write"},{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"},{"id": "4755a26eedb94da69e1066d98aa820be","name":"DNS Write"}]}]}' >/var/opt/qycli/cloudflare/"$root_domain"/cf_token_dns.json
         fi
     else
         echo "Root domain $root_domain cannot be found in /var/opt/qycli/cloudflare/cfzones.json,"
@@ -105,7 +105,7 @@ mk_site() {
     echo "site-type: $type" >/var/opt/qycli/sites/"$domain".yaml
 
     mkdir -p /var/www/"$domain"/{htdocs,nginx-conf}
-    [[ ! -d /var/opt/qycli/cloudflare/dns/"$root_domain" ]] && mkdir /var/opt/qycli/cloudflare/dns/"$root_domain"
+    [[ ! -d /var/opt/qycli/cloudflare/"$root_domain" ]] && mkdir /var/opt/qycli/cloudflare/"$root_domain"
 
     cp /etc/nginx/"$template" /etc/nginx/sites-available/"$domain"
     sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/"$domain"
@@ -135,7 +135,7 @@ EOF
 }
 
 del_dns_entries() {
-    cf_token_dns=$(yq .result.value /var/opt/qycli/cloudflare/dns/"$root_domain"/cf_token_dns.json)
+    cf_token_dns=$(yq .result.value /var/opt/qycli/cloudflare/"$root_domain"/cf_token_dns.json)
     root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cloudflare/cfzones.json)
     if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
 
@@ -166,7 +166,7 @@ cf_dns_entry() {
             -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" \
             --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' \
-            >/var/opt/qycli/cloudflare/dns/"$root_domain"/"$domain"_cf_dns_record.json
+            >/var/opt/qycli/cloudflare/"$root_domain"/"$domain"_cf_dns_record.json
 
         # Change zone settings #Change this to appropriate tokens
         curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
@@ -404,7 +404,7 @@ mk_wp() {
 }
 
 del_site() {
-    if [[ ! $(yq .result.value /var/opt/qycli/cloudflare/dns/"$root_domain"/cf_token_dns.json) == "" ]]; then
+    if [[ ! $(yq .result.value /var/opt/qycli/cloudflare/"$root_domain"/cf_token_dns.json) == "" ]]; then
         del_dns_entries
     fi
     if [[ $dns_entries_deleted == "true" ]]; then
