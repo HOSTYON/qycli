@@ -73,7 +73,7 @@ mk_site_create_cf_api_token_dns() {
             curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
                 -H "Authorization: Bearer $cf_token" \
                 -H "Content-Type: application/json" \
-                --data '{"name":"'"$root_domain"' qycli CrowdSec + DNS","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.'"$root_domain_account_id"'":"*"},"permission_groups":[{"id":"2edbf20661fd4661b0fe10e9e12f485c","name":"Account Rule Lists Write"},{"id":"a416acf9ef5a4af19fb11ed3b96b1fe6","name":"Account Firewall Access Rules Write"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.'"$root_domain_zone_id"'":"*"},"permission_groups":[{"id":"3030687196b94b638145a3953da2b699","name":"Zone Settings Write"},{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"},{"id": "4755a26eedb94da69e1066d98aa820be","name":"DNS Write"}]}]}' >/var/opt/qycli/cloudflare/dns/"$root_domain"/cf_token_dns.json
+                --data '{"name":"'"$root_domain"' qycli CrowdSec + DNS","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.'"$root_domain_account_id"'":"*"},"permission_groups":[]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.'"$root_domain_zone_id"'":"*"},"permission_groups":[{"id":"3030687196b94b638145a3953da2b699","name":"Zone Settings Write"},{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"},{"id": "4755a26eedb94da69e1066d98aa820be","name":"DNS Write"}]}]}' >/var/opt/qycli/cloudflare/dns/"$root_domain"/cf_token_dns.json
         fi
     else
         echo "Root domain $root_domain cannot be found in /var/opt/qycli/cloudflare/cfzones.json,"
@@ -135,13 +135,13 @@ EOF
 }
 
 del_dns_entries() {
-    cf_token_crowdsec_and_dns=$(yq .result.value /var/opt/qycli/cloudflare/"$root_domain"/cf_token_crowdsec_and_dns.json)
+    cf_token_dns=$(yq .result.value /var/opt/qycli/cloudflare/dns/"$root_domain"/cf_token_dns.json)
     root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cloudflare/cfzones.json)
-    if [[ $cf_token_crowdsec_and_dns != "" && $root_domain_zone_id != "" ]]; then
+    if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
 
         # List DNS records for a Zone
         existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
-            -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
+            -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" | tee -a /var/cache/qycli/old_dns_entries.json |
             yq '.result[].id')
 
@@ -149,7 +149,7 @@ del_dns_entries() {
         if [[ $existing_dns_records != "" ]]; then
             for id in $existing_dns_records; do
                 curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
-                    -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
+                    -H "Authorization: Bearer $cf_token_dns" \
                     -H "Content-Type: application/json" 1>/dev/null
             done
             dns_entries_deleted=true
@@ -160,21 +160,21 @@ del_dns_entries() {
 
 cf_dns_entry() {
     del_dns_entries
-    if [[ $cf_token_crowdsec_and_dns != "" && $root_domain_zone_id != "" ]]; then
+    if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
         # Create new DNS record in zone
         curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
-            -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
+            -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" \
             --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' \
-            >"$domain"_cf_dns.json
+            >/var/opt/qycli/cloudflare/dns/"$root_domain"/"$domain"_cf_dns_record.json
 
         # Change zone settings #Change this to appropriate tokens
         curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
-            -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
+            -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" \
             --data '{"items":[{"id":"ssl","value":"full"},{"id":"0rtt","value":"on"},{"id":"minify","value":{"css":"on","html":"on","js":"on"}},{"id":"rocket_loader","value":"on"}]}' 1>/dev/null
         curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/argo/tiered_caching" \
-            -H "Authorization: Bearer $cf_token_crowdsec_and_dns" \
+            -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" \
             --data '{"value":"on"}' 1>/dev/null
     fi
@@ -208,7 +208,6 @@ EOF
 print_login_info() {
     if [[ $(yq .site-type /var/opt/qycli/sites/"$domain".yaml) == "wp" ]]; then
         cat <<EOF
-
 $domain is ready.
 Login here: https://$domain/wp-login.php
 
@@ -405,7 +404,7 @@ mk_wp() {
 }
 
 del_site() {
-    if [[ ! $(yq .result.value /var/opt/qycli/cloudflare/"$root_domain"/cf_token_crowdsec_and_dns.json) == "" ]]; then
+    if [[ ! $(yq .result.value /var/opt/qycli/cloudflare/dns/"$root_domain"/cf_token_dns.json) == "" ]]; then
         del_dns_entries
     fi
     if [[ $dns_entries_deleted == "true" ]]; then
@@ -709,7 +708,6 @@ fn_set() {
 }
 
 fn_clone() {
-
     domain_parser "$@"
     [[ $invalid_domain == "1" ]] && exit
     clonefrom=$domain
@@ -764,12 +762,15 @@ clone_site() {
     wp --path=/var/www/"$cloneto"/htdocs config set DB_PASSWORD "${dbpassword}"
     wp --path=/var/www/"$cloneto"/htdocs config set WP_CACHE_KEY_SALT "qyc_$cloneto"
 
-    echo "Cloning of $clonefrom to $cloneto is done."
+    cat <<EOF
+Cloning of $clonefrom to $cloneto is done.
+
+EOF
 
     wpadmin=$(yq .[].User /var/opt/qycli/sites/"$clonefrom".yaml)
     wpemail=$(yq .[].Email /var/opt/qycli/sites/"$clonefrom".yaml)
     wppw=$(yq .[].Password /var/opt/qycli/sites/"$clonefrom".yaml)
-    cf_token=$(yq .result.value /var/opt/qycli/cloudflare/"$root_domain"/cf_token_crowdsec_and_dns.json)
+
     dns_and_infos
 }
 
