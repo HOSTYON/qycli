@@ -87,8 +87,8 @@ upd_nginx() {
         systemctl daemon-reload
 
         # Download and install .tar.gz from latest release
-        curl -Lo - https://github.com/HOSTYON/qycli-nginx/releases/download/"$nginx_release_tag"/qycli-nginx.tar.xz |
-            tar xJ -C /var/cache/qycli
+        wget -O /var/cache/qycli/qycli-nginx.tar.xz https://github.com/HOSTYON/qycli-nginx/releases/download/"$nginx_release_tag"/qycli-nginx.tar.xz
+        tar xJf /var/cache/qycli/qycli-nginx.tar.xz -C /var/cache/qycli
         rsync -a /var/cache/qycli/usr/local/qycli /usr/local/
 
         cp -r /usr/local/qycli/nginx/etc/* /etc/nginx
@@ -164,7 +164,7 @@ upd_php() {
         echo "$php_release_tag" >/var/cache/qycli/php_release_tag_old
 
         # Download and install .tar.gz from latest release
-        curl -Lo /var/cache/qycli/qycli-php"$php_version_short".tar.xz https://github.com/HOSTYON/qycli-php"$php_version_short"/releases/download/"$php_release_tag"/qycli-php"$php_version_short".tar.xz
+        wget -O /var/cache/qycli/qycli-php"$php_version_short".tar.xz https://github.com/HOSTYON/qycli-php"$php_version_short"/releases/download/"$php_release_tag"/qycli-php"$php_version_short".tar.xz
         tar xJf /var/cache/qycli/qycli-php"$php_version_short".tar.xz -C /var/cache/qycli
         rsync -a /var/cache/qycli/usr/local/qycli /usr/local/
 
