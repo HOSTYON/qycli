@@ -40,6 +40,7 @@ stk_utility_and_repos() {
     echo "Installing yq"
     upd_yq
 
+    # shellcheck disable=SC2154
     if [[ $auto_update == "yes" ]]; then
         tee /etc/cron.d/qycli-upd <<EOF
 SHELL=/bin/bash
