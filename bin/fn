@@ -681,6 +681,25 @@ set_firewall() {
     fi
 }
 
+fn_set_qycli_auto_update() {
+    if [[ "$1" =~ (on|enabled) ]]; then
+        tee /etc/cron.d/qycli-upd <<EOF
+SHELL=/bin/bash
+5 9 * * * root /usr/bin/qyc upd
+EOF
+        echo "Auto updates are enabled."
+    elif [[ "$1" =~ (off|disabled) ]]; then
+        if [[ -f /etc/cron.d/qycli-upd ]]; then
+            rm /etc/cron.d/qycli-upd
+            echo "Auto updates turned off."
+        else
+            echo "Auto updates are already turned off."
+        fi
+    else
+        print_help_set
+    fi
+}
+
 fn_set() {
     domain_parser "$@"
     if [[ $invalid_domain == "1" ]]; then
@@ -704,6 +723,11 @@ fn_set() {
         firewall | waf)
             shift
             set_firewall "$@"
+            set_success=1
+            ;;
+        autoupdate | autoupd)
+            shift
+            fn_set_qycli_auto_update "$@"
             set_success=1
             ;;
         esac

@@ -39,6 +39,13 @@ stk_utility_and_repos() {
     # Install yq
     echo "Installing yq"
     upd_yq
+
+    if [[ $auto_update == "yes" ]]; then
+        tee /etc/cron.d/qycli-upd <<EOF
+SHELL=/bin/bash
+5 9 * * * root /usr/bin/qyc upd
+EOF
+    fi
 }
 
 stk_postfix_install() {

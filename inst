@@ -16,6 +16,7 @@ branch_name: $branch_name
 sec_install: $sec_install
 php_version: $php_version
 cloudflare_token: $cloudflare_token
+auto_update: $auto_update
 EOF
     apt update && apt -y install git
     git config --global submodule.recurse true
@@ -61,6 +62,7 @@ branch_name=production
 sec_install=no
 kernel_tweaks=yes
 php_version=8.1
+auto_update=no
 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -95,6 +97,10 @@ while [[ "$#" -gt 0 ]]; do
         ;;
     cft | cloudflare-token)
         cloudflare_token=$2
+        shift
+        ;;
+    autoupd | autoupdate)
+        auto_update=$2
         shift
         ;;
     esac
