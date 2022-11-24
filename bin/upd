@@ -10,14 +10,14 @@ get_public_ips() {
 
 #  qycli update functions
 upd_qycli() {
-    git -C /opt/qycli reset --hard HEAD
-    git -C /opt/qycli pull
-    git -C /opt/qycli-plugin reset --hard HEAD
-    git -C /opt/qycli-plugin pull
-    cp /opt/qycli/bin/qyc /usr/bin/qyc
+    git -C /var/qyc/qycli reset --hard HEAD
+    git -C /var/qyc/qycli pull
+    git -C /var/qyc/qycli-plugin reset --hard HEAD
+    git -C /var/qyc/qycli-plugin pull
+    cp /var/qyc/qycli/bin/qyc /usr/bin/qyc
     chmod 755 /usr/bin/qyc
-    chmod 755 /opt/qycli/kernel
-    chmod 755 /opt/qycli/sec_firewall
+    chmod 755 /var/qyc/qycli/kernel
+    chmod 755 /var/qyc/qycli/sec_firewall
 }
 
 upd_apt() {
@@ -28,66 +28,65 @@ upd_apt() {
 }
 
 upd_get_cpus() {
-    yq .cpus /var/opt/qycli/cnf.yaml
+    yq .cpus /var/qyc/cnf.yaml
 }
 
 upd_get_ram_mb() {
-    yq .ram_in_mb /var/opt/qycli/cnf.yaml
+    yq .ram_in_mb /var/qyc/cnf.yaml
 }
 
 #upd_firewall() {
-#sec_install=$(yq .sec_install /var/opt/qycli/cnf.yaml)
+#sec_install=$(yq .sec_install /var/qyc/cnf.yaml)
 #if [[ "$sec_install" == "yes" ]]; then
 # shellcheck disable=SC1091
-#source /opt/qycli/sec_firewall
+#source /var/qyc/qycli/sec_firewall
 #fi
 #}
 
 upd_nginx_conf_renew_cf_ips() {
-    if [[ -f /etc/nginx/conf.d/cloudflare.conf ]]; then
-        rm /etc/nginx/conf.d/cloudflare.conf
+    if [[ -f /etc/qyc/nginx/conf.d/cloudflare.conf ]]; then
+        rm /etc/qyc/nginx/conf.d/cloudflare.conf
     fi
     # shellcheck disable=SC2013
     for cfip in $(
-        cat /var/cache/qycli/cloudflare_ipv6_ips
+        cat /var/qyc/cache/cloudflare_ipv6_ips
         echo ""
-        cat /var/cache/qycli/cloudflare_ipv4_ips
+        cat /var/qyc/cache/cloudflare_ipv4_ips
     ); do
-        echo "set_real_ip_from $cfip;" | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
+        echo "set_real_ip_from $cfip;" | tee -a /etc/qyc/nginx/conf.d/cloudflare.conf >/dev/null
     done
-    echo 'real_ip_header CF-Connecting-IP;' | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
-    echo 'real_ip_recursive on;' | tee -a /etc/nginx/conf.d/cloudflare.conf >/dev/null
+    echo 'real_ip_header CF-Connecting-IP;' | tee -a /etc/qyc/nginx/conf.d/cloudflare.conf >/dev/null
+    echo 'real_ip_recursive on;' | tee -a /etc/qyc/nginx/conf.d/cloudflare.conf >/dev/null
 
     systemctl reload nginx
 }
 
 upd_nginx_conf() {
-    cp -rf /opt/qycli/cnf/nginx/* /etc/nginx/
-    [[ -f /lib/systemd/system/nginx.service ]] && cp /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service && systemctl daemon-reload
+    cp -rf /var/qyc/qycli/cnf/nginx/* /etc/qyc/nginx/
+    [[ -f /lib/systemd/system/nginx.service ]] && cp /var/qyc/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service && systemctl daemon-reload
 
     worker_processes=$(upd_get_cpus)                # 1 worker per CPU
     worker_connections=$(($(upd_get_cpus) * 10000)) # 10000 per CPU
-    sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/nginx/nginx.conf
-    sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/nginx/nginx.conf
+    sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/qyc/nginx/nginx.conf
+    sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/qyc/nginx/nginx.conf
 
     systemctl reload nginx
 }
 
 upd_nginx() {
     nginx_release_tag=$(curl -sI https://github.com/HOSTYON/qycli-nginx/releases/latest | tac | tac | grep "location:" | sed -z "s+.*/++" | tr -d '\r')
+    nginx_source=$(eval echo "$(yq .nginx_source /var/qyc/cnf.yaml)")
 
-    if [[ ! -f /var/cache/qycli/nginx_release_tag_old || $nginx_release_tag != $(cat /var/cache/qycli/nginx_release_tag_old) ]]; then
-        echo "$nginx_release_tag" >/var/cache/qycli/nginx_release_tag_old
+    if [[ ! -f /var/qyc/cache/nginx_release_tag_old || $nginx_release_tag != $(cat /var/qyc/cache/nginx_release_tag_old) ]]; then
+        echo "$nginx_release_tag" >/var/qyc/cache/nginx_release_tag_old
 
-        cp /opt/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
+        cp /var/qyc/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
         systemctl daemon-reload
 
-        # Download and install .tar.gz from latest release
-        wget -O /var/cache/qycli/qycli-nginx.tar.xz https://github.com/HOSTYON/qycli-nginx/releases/download/"$nginx_release_tag"/qycli-nginx.tar.xz
-        tar xJf /var/cache/qycli/qycli-nginx.tar.xz -C /var/cache/qycli
-        rsync -a /var/cache/qycli/usr/local/qycli /usr/local/
+        eval "wget" -O- "$nginx_source" |
+            tar xJ --strip-components=4 -C /var/qyc/bin/
 
-        cp -r /usr/local/qycli/nginx/etc/* /etc/nginx
+        cp -r /var/qyc/bin/nginx/etc/* /etc/qyc/nginx
 
         systemctl restart nginx
         systemctl reenable nginx
@@ -113,33 +112,33 @@ upd_mariadb_conf_cpu_based() {
 }
 
 upd_mariadb_conf() {
-    cp /opt/qycli/cnf/mysql/mariadb.conf.d/99-qyc.cnf /etc/mysql/mariadb.conf.d/99-qyc.cnf
+    cp /var/qyc/qycli/cnf/mysql/mariadb.conf.d/99-qyc.cnf /etc/mysql/mariadb.conf.d/99-qyc.cnf
     upd_mariadb_conf_ram_based
     upd_mariadb_conf_cpu_based
     systemctl restart mariadb
 }
 
 upd_php_service_file() {
-    cp /opt/qycli/cnf/php/php-fpm.service /lib/systemd/system/php-fpm.service
+    cp /var/qyc/qycli/cnf/php/php-fpm.service /lib/systemd/system/php-fpm.service
     sed "s/PHPVER/$php_version_short/" -i /lib/systemd/system/php-fpm.service
     systemctl daemon-reload
 }
 
 upd_php_conf() {
-    [[ ! -d /etc/php/fpm ]] && mkdir -p /etc/php/fpm
-    cp -rf /opt/qycli/cnf/php/* /etc/php/
-    chown -R qycli:qycli /etc/php
+    [[ ! -d /etc/qyc/php/fpm ]] && mkdir -p /etc/qyc/php/fpm
+    cp -rf /var/qyc/qycli/cnf/php/* /etc/qyc/php/
+    chown -R qycli:qycli /etc/qyc/php
 
     local opmem=$(($(upd_get_ram_mb) * 15 / 100)) # 15% of all memory in MB
-    cp /opt/qycli/cnf/php/fpm/php.ini /etc/php/fpm/php.ini
+    cp /var/qyc/qycli/cnf/php/fpm/php.ini /etc/qyc/php/fpm/php.ini
     sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
-        -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/php/fpm/php.ini
+        -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/qyc/php/fpm/php.ini
 
     local maxchil=$(($(upd_get_ram_mb) * 70 / 80 / 100)) # pm.max_children = 70% Total Memory / 80MB
-    cp /opt/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/php/fpm/pool.d/qycli.conf
-    sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" -i /etc/php/fpm/pool.d/qycli.conf
+    cp /var/qyc/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/qyc/php/fpm/pool.d/qycli.conf
+    sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" -i /etc/qyc/php/fpm/pool.d/qycli.conf
 
-    php_version=$(yq .php_version /var/opt/qycli/cnf.yaml) # Reading the qycli.cnf file
+    php_version=$(yq .php_version /var/qyc/cnf.yaml) # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
 
     [[ -f /lib/systemd/system/php-fpm.service ]] && upd_php_service_file
@@ -150,19 +149,16 @@ upd_php_conf() {
 }
 
 upd_php() {
-    php_version=$(yq .php_version /var/opt/qycli/cnf.yaml) # Reading the qycli.cnf file
+    php_version=$(yq .php_version /var/qyc/cnf.yaml) # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
-
-    # Compare release tags
     php_release_tag=$(curl -si https://github.com/HOSTYON/qycli-php"$php_version_short"/releases/latest | tac | tac | grep "location:" | sed -z "s+.*/++" | tr -d '\r')
+    php_source=$(eval echo "$(yq .php_source /var/qyc/cnf.yaml)")
 
-    if [[ ! -f /var/cache/qycli/php_release_tag_old || $php_release_tag != $(cat /var/cache/qycli/php_release_tag_old) ]]; then
-        echo "$php_release_tag" >/var/cache/qycli/php_release_tag_old
+    if [[ ! -f /var/qyc/cache/php_release_tag_old || $php_release_tag != $(cat /var/qyc/cache/php_release_tag_old) ]]; then
+        echo "$php_release_tag" >/var/qyc/cache/php_release_tag_old
 
-        # Download and install .tar.gz from latest release
-        wget -O /var/cache/qycli/qycli-php"$php_version_short".tar.xz https://github.com/HOSTYON/qycli-php"$php_version_short"/releases/download/"$php_release_tag"/qycli-php"$php_version_short".tar.xz
-        tar xJf /var/cache/qycli/qycli-php"$php_version_short".tar.xz -C /var/cache/qycli
-        rsync -a /var/cache/qycli/usr/local/qycli /usr/local/
+        eval "wget" -O- "$php_source" |
+            tar xJ --strip-components=4 -C /var/qyc/bin/
 
         upd_php_service_file
 
@@ -172,15 +168,15 @@ upd_php() {
 }
 
 upd_redis_conf() {
-    cp /opt/qycli/cnf/redis/redis.conf /etc/redis/redis.conf
+    cp /var/qyc/qycli/cnf/redis/redis.conf /etc/redis/redis.conf
     local redismem=$(($(upd_get_ram_mb) * 20 / 100)) # 20% of all memory in MB
     sed -i "s+maxmemory[[:space:]].*+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
     systemctl restart redis-server
 }
 
 upd_redis_service() {
-    if ! cmp -s /opt/qycli/cnf/redis/redis-server.service /lib/systemd/system/redis-server.service; then
-        cp /opt/qycli/cnf/redis/redis-server.service /lib/systemd/system/redis-server.service
+    if ! cmp -s /var/qyc/qycli/cnf/redis/redis-server.service /lib/systemd/system/redis-server.service; then
+        cp /var/qyc/qycli/cnf/redis/redis-server.service /lib/systemd/system/redis-server.service
         systemctl daemon-reload
         systemctl enable redis-server
         systemctl restart redis-server
@@ -188,7 +184,7 @@ upd_redis_service() {
 }
 
 upd_pma_conf() {
-    cp /opt/qycli/cnf/redis/redis-server.service /lib/systemd/system/redis-server.service
+    cp /var/qyc/qycli/cnf/redis/redis-server.service /lib/systemd/system/redis-server.service
     cp /var/www/pma/config.sample.inc.php /var/www/pma/config.inc.php
 }
 
@@ -196,34 +192,34 @@ upd_system_resources_qycli_cnf() {
     cpus=$(grep -c processor /proc/cpuinfo)
     ram_in_mb=$(($(grep MemTotal /proc/meminfo | tr -d 'MemTotal: kB') / 1000))
 
-    if ! grep -q "cpus" /var/opt/qycli/cnf.yaml; then
-        echo "cpus: $cpus" >>/var/opt/qycli/cnf.yaml
+    if ! grep -q "cpus" /var/qyc/cnf.yaml; then
+        echo "cpus: $cpus" >>/var/qyc/cnf.yaml
     fi
-    if [[ $cpus != $(yq .cpus /var/opt/qycli/cnf.yaml) ]]; then
-        sed -i "s+.*cpus.*+cpus: $cpus+" /var/opt/qycli/cnf.yaml
+    if [[ $cpus != $(yq .cpus /var/qyc/cnf.yaml) ]]; then
+        sed -i "s+.*cpus.*+cpus: $cpus+" /var/qyc/cnf.yaml
     fi
 
-    if ! grep -q "ram_in_mb" /var/opt/qycli/cnf.yaml; then
-        echo "ram_in_mb: $ram_in_mb" >>/var/opt/qycli/cnf.yaml
+    if ! grep -q "ram_in_mb" /var/qyc/cnf.yaml; then
+        echo "ram_in_mb: $ram_in_mb" >>/var/qyc/cnf.yaml
     fi
-    if [[ $ram_in_mb != $(yq .ram_in_mb /var/opt/qycli/cnf.yaml) ]]; then
-        sed -i "s+.*ram_in_mb.*+ram_in_mb: $ram_in_mb+" /var/opt/qycli/cnf.yaml
+    if [[ $ram_in_mb != $(yq .ram_in_mb /var/qyc/cnf.yaml) ]]; then
+        sed -i "s+.*ram_in_mb.*+ram_in_mb: $ram_in_mb+" /var/qyc/cnf.yaml
     fi
 }
 
 upd_get_new_cf_ips() {
-    curl -s https://www.cloudflare.com/ips-v4 -o /var/cache/qycli/cloudflare_ipv4_ips_new
-    curl -s https://www.cloudflare.com/ips-v6 -o /var/cache/qycli/cloudflare_ipv6_ips_new
-    if ! cmp -s /var/cache/qycli/cloudflare_ipv4_ips_new /var/cache/qycli/cloudflare_ipv4_ips || ! cmp -s /var/cache/qycli/cloudflare_ipv6_ips_new /var/cache/qycli/cloudflare_ipv6_ips; then
-        cp /var/cache/qycli/cloudflare_ipv4_ips_new /var/cache/qycli/cloudflare_ipv4_ips
-        cp /var/cache/qycli/cloudflare_ipv6_ips_new /var/cache/qycli/cloudflare_ipv6_ips
+    curl -s https://www.cloudflare.com/ips-v4 -o /var/qyc/cache/cloudflare_ipv4_ips_new
+    curl -s https://www.cloudflare.com/ips-v6 -o /var/qyc/cache/cloudflare_ipv6_ips_new
+    if ! cmp -s /var/qyc/cache/cloudflare_ipv4_ips_new /var/qyc/cache/cloudflare_ipv4_ips || ! cmp -s /var/qyc/cache/cloudflare_ipv6_ips_new /var/qyc/cache/cloudflare_ipv6_ips; then
+        cp /var/qyc/cache/cloudflare_ipv4_ips_new /var/qyc/cache/cloudflare_ipv4_ips
+        cp /var/qyc/cache/cloudflare_ipv6_ips_new /var/qyc/cache/cloudflare_ipv6_ips
         #upd_firewall
         upd_nginx_conf_renew_cf_ips
     fi
 }
 
 upd_get_cf_token_accounts_and_zones() {
-    cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
+    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
     hostname=$(cat /etc/hostname)
     get_public_ips
     if [[ $ipv6 != "" ]]; then
@@ -236,29 +232,29 @@ upd_get_cf_token_accounts_and_zones() {
     curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
         -H "Authorization: Bearer $cf_token" \
         -H "Content-Type: application/json" \
-        --data '{"name":"qycli - Read Account Settings and Zones - '"$hostname"' - '"$pub_ip"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.*":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"}]}]}' >/var/opt/qycli/cloudflare/cf_token_accounts_zones.json
+        --data '{"name":"qycli - Read Account Settings and Zones - '"$hostname"' - '"$pub_ip"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.*":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"}]}]}' >/var/qyc/cloudflare/cf_token_accounts_zones.json
 }
 
 upd_get_cf_accounts_and_zones() {
-    cf_token_accounts_zones=$(yq .result.value </var/opt/qycli/cloudflare/cf_token_accounts_zones.json)
+    cf_token_accounts_zones=$(yq .result.value </var/qyc/cloudflare/cf_token_accounts_zones.json)
 
     # Get all accounts
     curl -s -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=1000" \
         -H "Authorization: Bearer $cf_token_accounts_zones" \
-        -H "Content-Type: application/json" >/var/opt/qycli/cloudflare/cfaccounts.json
+        -H "Content-Type: application/json" >/var/qyc/cloudflare/cfaccounts.json
 
     # Get all zones of all accounts
-    [[ -f /var/opt/qycli/cloudflare/cfzones.json ]] && rm /var/opt/qycli/cloudflare/cfzones.json
-    touch /var/opt/qycli/cloudflare/cfzones.json
-    for id in $(yq '.result[].id' </var/opt/qycli/cloudflare/cfaccounts.json); do
+    [[ -f /var/qyc/cloudflare/cfzones.json ]] && rm /var/qyc/cloudflare/cfzones.json
+    touch /var/qyc/cloudflare/cfzones.json
+    for id in $(yq '.result[].id' </var/qyc/cloudflare/cfaccounts.json); do
         curl -X GET "https://api.cloudflare.com/client/v4/zones?status=active&account.id=$id&page=1&per_page=500" \
             -H "Authorization: Bearer $cf_token_accounts_zones" \
-            -H "Content-Type: application/json" | yq ea -i /var/opt/qycli/cloudflare/cfzones.json -
+            -H "Content-Type: application/json" | yq ea -i /var/qyc/cloudflare/cfzones.json -
     done
 }
 
 upd_dns_entry() {
-    cf_token_dns=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
+    cf_token_dns=$(yq .cloudflare_token /var/qyc/cnf.yaml)
     # Check if dns file exists
     # shellcheck disable=SC2154
     if [[ -f ${domain}_cf_dns.json ]]; then
@@ -281,13 +277,13 @@ upd_composer() {
         exit 1
     fi
 
-    php composer-setup.php --quiet --filename=composer-binary --install-dir=/usr/local/bin/
+    php composer-setup.php --quiet --filename=composer --install-dir=/var/qyc/bin/
     RESULT=$?
     rm composer-setup.php
     echo $RESULT
 
     tee /usr/local/bin/composer >/dev/null <<'EOF'
-runuser -u qycli -- composer-binary $@
+runuser -u qycli -- /var/qyc/bin/composer $@
 EOF
     chmod +x /usr/local/bin/composer
 }
@@ -297,8 +293,11 @@ upd_phpmyadmin() {
 }
 
 upd_tinyfilemanager() {
-    git -C /var/www/tinyfilemanager reset --hard HEAD
-    git -C /var/www/tinyfilemanager pull
+    git -C /var/www/tfm reset --hard HEAD
+    git -C /var/www/tfm pull
+    for site in /var/www/*.*; do
+        cp /var/www/tfm/tinyfilemanager.php "$site"/htdocs/qyc/tfm/index.php
+    done
     systemctl restart php-fpm
 }
 
@@ -308,17 +307,17 @@ upd_yq() {
     yq_new_release_tag="$(curl -si https://github.com/mikefarah/yq/releases/latest | tac | tac | grep "location:" | sed -z "s+.*/++" | tr -d '\r')"
     yq_new_source=https://github.com/mikefarah/yq/releases/download/"$yq_new_release_tag"/yq_linux_"$cpuarch".tar.gz
 
-    if [[ ! -f /var/cache/qycli/yq_old_source || $yq_new_source != $(cat /var/cache/qycli/yq_old_source) ]]; then
+    if [[ ! -f /var/qyc/cache/yq_old_source || $yq_new_source != $(cat /var/qyc/cache/yq_old_source) ]]; then
         wget -qO - "$yq_new_source" |
             tar xz && mv yq_linux_"$cpuarch" /usr/bin/yq
         sh install-man-page.sh
         rm install-man-page.sh && rm yq.1
-        echo "$yq_new_source" >/var/cache/qycli/yq_old_source
+        echo "$yq_new_source" >/var/qyc/cache/yq_old_source
     fi
 }
 
 upd_psl() {
-    curl -s https://publicsuffix.org/list/public_suffix_list.dat | grep -vE "^//" | sed "s+\*\.++" | tr -s '\n' >/var/opt/qycli/psl
+    curl -s https://publicsuffix.org/list/public_suffix_list.dat | grep -vE "^//" | sed "s+\*\.++" | tr -s '\n' >/var/qyc/cache/psl
 }
 
 upd_fn() {

@@ -3,7 +3,7 @@
 # qycli stack install functions
 
 # shellcheck disable=SC1091
-source /opt/qycli/bin/upd
+source /var/qyc/qycli/bin/upd
 
 stk_utility_and_repos() {
     if [[ -f /etc/needrestart/needrestart.conf ]]; then
@@ -73,8 +73,8 @@ stk_nginx_install() {
     touch /var/log/nginx/error.log
     chown -R qycli:qycli /var/log/nginx/
 
-    mkdir -p /etc/nginx/sites-enabled
-    mkdir /etc/nginx/sites-available
+    mkdir -p /etc/qyc/nginx/sites-enabled
+    mkdir /etc/qyc/nginx/sites-available
 
     mkdir -p /var/lib/nginx/proxy
     chown -R qycli:qycli /var/lib/nginx
@@ -89,7 +89,7 @@ stk_nginx_install() {
 
     upd_get_new_cf_ips
 
-    ln -s /usr/local/qycli/nginx/sbin/nginx /usr/bin/nginx
+    ln -s /var/qyc/bin/nginx/sbin/nginx /usr/bin/nginx
 }
 
 stk_mariadb_admin_user() {
@@ -99,7 +99,7 @@ CREATE USER 'admin'@'localhost' IDENTIFIED BY '${admin_password}';
 GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost';
 FLUSH PRIVILEGES;
 EOF
-    echo "db_admin_password: $admin_password" >>/var/opt/qycli/cnf.yaml
+    echo "db_admin_password: $admin_password" >>/var/qyc/cnf.yaml
 }
 
 stk_mariadb_install() {
@@ -120,9 +120,9 @@ stk_php_install() {
     upd_php
     upd_php_conf
 
-    php_version=$(yq .php_version /var/opt/qycli/cnf.yaml) # Reading the qycli.cnf file
+    php_version=$(yq .php_version /var/qyc/cnf.yaml) # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
-    for bin in /usr/local/qycli/php"$php_version_short"/bin/*; do
+    for bin in /var/qyc/bin/php"$php_version_short"/bin/*; do
         ln -s "$bin" /usr/bin/"$(basename "$bin")"
     done
 }
@@ -136,10 +136,10 @@ stk_redis_install() {
 }
 
 stk_wpcli_install() {
-    wget -qO /usr/local/bin/wp-cli https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
-    chmod +x /usr/local/bin/wp-cli
+    wget -qO /var/qyc/bin/wp-cli https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    chmod +x /var/qyc/bin/wp-cli
     tee /usr/local/bin/wp >/dev/null <<'EOF'
-runuser -u qycli -- wp-cli $@
+runuser -u qycli -- /var/qyc/bin/wp-cli $@
 EOF
     chmod +x /usr/local/bin/wp
     #wp package install aaemnnosttv/wp-cli-login-command
@@ -156,7 +156,7 @@ stk_pma_install() {
     composer -d/var/www/pma update
 
     mkdir /etc/pma
-    cp /opt/qycli/cnf/pma/config.inc.php /etc/pma/config.inc.php
+    cp /var/qyc/qycli/cnf/pma/config.inc.php /etc/pma/config.inc.php
 
     blowfish_secret=$(tr -dc 'A-Za-z0-9!$%()*,-.:;<=>?@^_|~' </dev/urandom | head -c 32)
     sed "s+\['blowfish_secret'\] = ''+\['blowfish_secret'\] = '$blowfish_secret'+" -i /etc/pma/config.inc.php
@@ -175,10 +175,8 @@ EOF
 }
 
 stk_tinyfilemanager_install() {
-    git -C /var/www clone https://github.com/prasathmani/tinyfilemanager.git
-    cp /var/www/tinyfilemanager/config-sample.php /var/www/tinyfilemanager/config.php
-    sed -i "/'user' =>.*/d" /var/www/tinyfilemanager/config.php
-    sed -i "s+'admin' =>.*+'admin' => '',+" /var/www/tinyfilemanager/config.php
+    mkdir -p /var/www/tfm
+    git -C /var/www/tfm clone https://github.com/prasathmani/tinyfilemanager.git .
 }
 
 stk_crowdsec_install() {

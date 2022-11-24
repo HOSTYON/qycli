@@ -6,13 +6,13 @@
 [[ $(whoami) != "root" ]] && echo "qycli has to be run as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 
 # shellcheck disable=1091
-source /opt/qycli/bin/help
+source /var/qyc/qycli/bin/help
 # shellcheck disable=1091
-source /opt/qycli/bin/stk
+source /var/qyc/qycli/bin/stk
 # shellcheck disable=1091
-source /opt/qycli/bin/upd
+source /var/qyc/qycli/bin/upd
 # shellcheck disable=1091
-source /opt/qycli/bin/fn
+source /var/qyc/qycli/bin/fn
 
 if [[ "$1" == "mk" || "$1" == "make" ]]; then
     shift

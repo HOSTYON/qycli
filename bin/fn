@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # shellcheck disable=1091
-source /opt/qycli/bin/upd
+source /var/qyc/qycli/bin/upd
 
 # function library for qyc
 
@@ -15,9 +15,9 @@ domain_parser() {
         domainsuffix=$(echo "$domain" | sed "s+^[^.]*\.++")
         # shellcheck disable=2001
         subdomainsuffix=$(echo "$domain" | sed "s+^[^.]*\.[^.]*\.++")
-        if grep -q "^$domainsuffix$" /var/opt/qycli/psl; then
+        if grep -q "^$domainsuffix$" /var/qyc/cache/psl; then
             root_domain=$domain
-        elif grep -q "^$subdomainsuffix$" /var/opt/qycli/psl; then
+        elif grep -q "^$subdomainsuffix$" /var/qyc/cache/psl; then
             # shellcheck disable=2001
             root_domain=$(echo "$domain" | sed "s+^[^.]*\.++")
             subdomain=true
@@ -49,18 +49,18 @@ EOF
 
 mk_site_create_cf_api_token_dns() {
     now=$(date -u +"%Y-%m-%dT%H.%M.%SZ")
-    root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cloudflare/cfzones.json)
+    root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
     if [[ $root_domain_zone_id != "" ]]; then
-        if [[ ! -f /var/opt/qycli/cloudflare/"$root_domain"/cf_token_dns.json ]]; then
-            root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/opt/qycli/cloudflare/cfzones.json)
+        if [[ ! -f /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json ]]; then
+            root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
             # Create CrowdSec and DNS Token
             curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
                 -H "Authorization: Bearer $cf_token" \
                 -H "Content-Type: application/json" \
-                --data '{"name":"qycli DNS '"$root_domain"' '"$now"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.zone.'"$root_domain_zone_id"'":"*"},"permission_groups":[{"id":"3030687196b94b638145a3953da2b699","name":"Zone Settings Write"},{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"},{"id": "4755a26eedb94da69e1066d98aa820be","name":"DNS Write"}]}]}' >/var/opt/qycli/cloudflare/"$root_domain"/cf_token_dns.json
+                --data '{"name":"qycli DNS '"$root_domain"' '"$now"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.zone.'"$root_domain_zone_id"'":"*"},"permission_groups":[{"id":"3030687196b94b638145a3953da2b699","name":"Zone Settings Write"},{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"},{"id": "4755a26eedb94da69e1066d98aa820be","name":"DNS Write"}]}]}' >/var/qyc/cloudflare/"$root_domain"/cf_token_dns.json
         fi
     else
-        echo "Root domain $root_domain cannot be found in /var/opt/qycli/cloudflare/cfzones.json,"
+        echo "Root domain $root_domain cannot be found in /var/qyc/cloudflare/cfzones.json,"
         echo "because the file either doesn't exist or the Cloudflare API token is not linked to"
         echo "the Account with the right Zone/Domain."
     fi
@@ -69,16 +69,16 @@ mk_site_create_cf_api_token_dns() {
 mk_wp_create_cf_api_token_wp_cf_page_cache() {
     now=$(date -u +"%Y-%m-%dT%H.%M.%SZ")
     if [[ $root_domain_zone_id != "" ]]; then
-        if [[ ! -f /var/opt/qycli/cloudflare/$root_domain/cf_token_wp_cf_page_cache.json ]]; then
-            root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/opt/qycli/cloudflare/cfzones.json)
+        if [[ ! -f /var/qyc/cloudflare/$root_domain/cf_token_wp_cf_page_cache.json ]]; then
+            root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
             # Create WP Cloudflare Super Page Cache Token
             curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
                 -H "Authorization: Bearer $cf_token" \
                 -H "Content-Type: application/json" \
-                --data '{"name":"qycli WPCSP-Cache '"$root_domain"' '"$now"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.'"$root_domain_account_id"'":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"},{"id":"e086da7e2179491d91ee5f35b3ca210a","name":"Workers Scripts Write"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.'"$root_domain_zone_id"'":"*"},"permission_groups":[{"id":"3030687196b94b638145a3953da2b699","name":"Zone Settings Write"},{"id":"e17beae8b8cb423a99b1730f21238bed","name":"Cache Purge"},{"id":"ed07f6c337da4195b4e72a1fb2c6bcae","name":"Page Rules Write"},{"id":"e6d2666161e84845a636613608cee8d5","name":"Zone Write"},{"id":"28f4b596e7d643029c524985477ae49a","name":"Workers Routes Write"}]}]}' >/var/opt/qycli/cloudflare/"$root_domain"/cf_token_wp_cf_page_cache.json
+                --data '{"name":"qycli WPCSP-Cache '"$root_domain"' '"$now"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.'"$root_domain_account_id"'":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"},{"id":"e086da7e2179491d91ee5f35b3ca210a","name":"Workers Scripts Write"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.'"$root_domain_zone_id"'":"*"},"permission_groups":[{"id":"3030687196b94b638145a3953da2b699","name":"Zone Settings Write"},{"id":"e17beae8b8cb423a99b1730f21238bed","name":"Cache Purge"},{"id":"ed07f6c337da4195b4e72a1fb2c6bcae","name":"Page Rules Write"},{"id":"e6d2666161e84845a636613608cee8d5","name":"Zone Write"},{"id":"28f4b596e7d643029c524985477ae49a","name":"Workers Routes Write"}]}]}' >/var/qyc/cloudflare/"$root_domain"/cf_token_wp_cf_page_cache.json
         fi
     else
-        echo "Root domain $root_domain cannot be found in /var/opt/qycli/cloudflare/cfzones.json,"
+        echo "Root domain $root_domain cannot be found in /var/qyc/cloudflare/cfzones.json,"
         echo "because the file either doesn't exist or the Cloudflare API token is not linked to"
         echo "the Account with the right Zone/Domain."
     fi
@@ -86,17 +86,17 @@ mk_wp_create_cf_api_token_wp_cf_page_cache() {
 
 mk_site_create_cf_api_token_crowdsec() {
     now=$(date -u +"%Y-%m-%dT%H.%M.%SZ")
-    root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/opt/qycli/cloudflare/cfzones.json)
+    root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
     if [[ $root_domain_account_id != "" ]]; then
-        if [[ ! -f /var/opt/qycli/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json ]]; then
+        if [[ ! -f /var/qyc/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json ]]; then
             # Create CrowdSec and DNS Token
             curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
                 -H "Authorization: Bearer $cf_token" \
                 -H "Content-Type: application/json" \
-                --data '{"name":"qycli CrowdSec Account-ID:'"$root_domain_account_id"' '"$now"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.'"$root_domain_account_id"'":"*"},"permission_groups":[{"id":"2edbf20661fd4661b0fe10e9e12f485c","name":"Account Rule Lists Write"},{"id":"a416acf9ef5a4af19fb11ed3b96b1fe6","name":"Account Firewall Access Rules Write"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"},{"id": "fb6778dc191143babbfaa57993f1d275","name": "Zone WAF Write"},{"id": "43137f8d07884d3198dc0ee77ca6e79b","name": "Firewall Services Write"}]}]}' >/var/opt/qycli/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json
+                --data '{"name":"qycli CrowdSec Account-ID:'"$root_domain_account_id"' '"$now"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.'"$root_domain_account_id"'":"*"},"permission_groups":[{"id":"2edbf20661fd4661b0fe10e9e12f485c","name":"Account Rule Lists Write"},{"id":"a416acf9ef5a4af19fb11ed3b96b1fe6","name":"Account Firewall Access Rules Write"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"},{"id": "fb6778dc191143babbfaa57993f1d275","name": "Zone WAF Write"},{"id": "43137f8d07884d3198dc0ee77ca6e79b","name": "Firewall Services Write"}]}]}' >/var/qyc/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json
         fi
     else
-        echo "Account ID for the root domain $root_domain cannot be found in /var/opt/qycli/cloudflare/cfzones.json,"
+        echo "Account ID for the root domain $root_domain cannot be found in /var/qyc/cloudflare/cfzones.json,"
         echo "because the file either doesn't exist or the Cloudflare API token is not linked to"
         echo "the Account with the right Zone/Domain."
     fi
@@ -104,7 +104,7 @@ mk_site_create_cf_api_token_crowdsec() {
 
 mk_site_cnf_crowdsec_cloudflare_bouncer() {
     separator=''
-    cf_crowdsec_tokens=$(for json in /var/opt/qycli/cloudflare/crowdsec/cf_token_crowdsec_*.json; do
+    cf_crowdsec_tokens=$(for json in /var/qyc/cloudflare/crowdsec/cf_token_crowdsec_*.json; do
         echo -n "$separator""$(yq .result.value "$json")"
         separator=','
     done)
@@ -121,14 +121,14 @@ mk_site_cnf_crowdsec_cloudflare_bouncer() {
 }
 
 mk_site() {
-    type=$(grep -o "^.*\." <<<"$template" | tr -d ".")
-    echo "site-type: $type" >/var/opt/qycli/sites/"$domain".yaml
+    type=$(grep -Po "^.*(?=-template)" <<<"$template" | tr -d ".")
+    echo "site-type: $type" >/var/qyc/sites/"$domain".yaml
 
     mkdir -p /var/www/"$domain"/{htdocs,nginx-conf}
-    [[ ! -d /var/opt/qycli/cloudflare/"$root_domain" ]] && mkdir /var/opt/qycli/cloudflare/"$root_domain"
+    [[ ! -d /var/qyc/cloudflare/"$root_domain" ]] && mkdir /var/qyc/cloudflare/"$root_domain"
 
-    cp /etc/nginx/"$template" /etc/nginx/sites-available/"$domain"
-    sed -i "s/dmn.tld/$domain/g" /etc/nginx/sites-available/"$domain"
+    cp /etc/qyc/nginx/"$template" /etc/qyc/nginx/sites-available/"$domain"
+    sed -i "s/dmn.tld/$domain/g" /etc/qyc/nginx/sites-available/"$domain"
     if [[ $subdomain == true ]]; then
         domainlist=$domain
     else
@@ -142,11 +142,11 @@ $domainlist
 ;
 EOF
 
-    ln -s /etc/nginx/sites-available/"$domain" /etc/nginx/sites-enabled/
+    ln -s /etc/qyc/nginx/sites-available/"$domain" /etc/qyc/nginx/sites-enabled/
     chown qycli:qycli -R /var/www/"$domain"/*
     nginx -s reload
 
-    cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
+    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
     if [[ $cf_token != "" ]]; then
         mk_site_create_cf_api_token_dns
         mk_site_create_cf_api_token_crowdsec
@@ -155,14 +155,14 @@ EOF
 }
 
 del_dns_entries() {
-    cf_token_dns=$(yq .result.value /var/opt/qycli/cloudflare/"$root_domain"/cf_token_dns.json)
-    root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/opt/qycli/cloudflare/cfzones.json)
+    cf_token_dns=$(yq .result.value /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json)
+    root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
     if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
 
         # List DNS records for a Zone
         existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
             -H "Authorization: Bearer $cf_token_dns" \
-            -H "Content-Type: application/json" | tee -a /var/cache/qycli/old_dns_entries.json |
+            -H "Content-Type: application/json" | tee -a /var/qyc/cache/old_dns_entries.json |
             yq '.result[].id')
 
         # Delete DNS records for a Zone if they exist
@@ -186,7 +186,7 @@ cf_dns_entry() {
             -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" \
             --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' \
-            >/var/opt/qycli/cloudflare/"$root_domain"/"$domain"_cf_dns_record.json
+            >/var/qyc/cloudflare/"$root_domain"/"$domain"_cf_dns_record.json
 
         # Change zone settings #Change this to appropriate tokens
         curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
@@ -226,17 +226,17 @@ EOF
 }
 
 print_login_info() {
-    if [[ $(yq .site-type /var/opt/qycli/sites/"$domain".yaml) == "wp" ]]; then
+    if [[ $(yq .site-type /var/qyc/sites/"$domain".yaml) == "wp" ]]; then
         cat <<EOF
 $domain is ready.
 Login here: https://$domain/wp-login.php
 
 EOF
-        tee -a /var/opt/qycli/sites/"$domain".yaml <<EOF
-WP-login:
-    User:     $wpadmin
-    Email:    $wpemail
-    Password: $wppw
+        tee -a /var/qyc/sites/"$domain".yaml <<EOF
+wp-login:
+    user:     $wpadmin
+    email:    $wpemail
+    password: $wppw
 
 EOF
     fi
@@ -312,19 +312,21 @@ mk_wp() {
     mk_db
 
     echo "Creating folders..."
-    template=wp.template
+    template=wp-template.conf
     mk_site
 
-    echo "Linking PMA..."
-    ln -s /var/www/pma /var/www/"$domain"/htdocs/qyc-pma
+    echo "Linking phpMyAdmin..."
+    mkdir /var/www/"$domain"/htdocs/qyc
+    ln -s /var/www/pma /var/www/"$domain"/htdocs/qyc
 
-    echo "Linking Tiny File Manager..."
-    mkdir /var/www/"$domain"/htdocs/qyc-files
-    ln -s /var/www/tinyfilemanager/tinyfilemanager.php /var/www/"$domain"/htdocs/qyc-files/index.php
+    echo "Installing Tiny File Manager..."
+    mkdir -p /var/www/"$domain"/htdocs/qyc/tfm
+    cp /var/www/tfm/tinyfilemanager.php /var/www/"$domain"/htdocs/qyc/tfm/index.php
+    cp /var/qyc/qycli/cnf/tfm/config.php /var/www/"$domain"/htdocs/qyc/tfm/config.php
     # shellcheck disable=2027,2086
     hashed_pw=$(php -r "\$pw=password_hash(\""$dbpassword"\", PASSWORD_DEFAULT); echo(\$pw);")
-    sed -i "/'admin' => .*/a '$dbnaming' => '$hashed_pw'," /var/www/tinyfilemanager/config.php
-    chown -R qycli:qycli /var/www/"$domain"/htdocs/qyc-files
+    sed -i "/'admin' => .*/a '$dbnaming' => '$hashed_pw'," /var/www/"$domain"/htdocs/qyc/tfm/config.php
+    chown -R qycli:qycli /var/www/"$domain"/htdocs/qyc
 
     echo "Installing WordPress..."
     systemctl reload php-fpm
@@ -335,8 +337,8 @@ mk_wp() {
     rm /var/www/"$domain"/htdocs/latest.tar.gz
 
     mkdir /var/www/"$domain"/htdocs/wp-content/mu-plugins
-    ln -s /opt/qycli-plugin/qycli.php /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli.php
-    #ln -s /opt/qycli-plugin/qycli-plugin /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli-plugin
+    ln -s /var/qyc/qycli-plugin/qycli.php /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli.php
+    #ln -s /var/qyc/qycli-plugin/qycli-plugin /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli-plugin
 
     cp /var/www/"$domain"/htdocs/wp-config-sample.php /var/www/"$domain"/wp-config.php
     chown qycli:qycli -R /var/www/"$domain"/*
@@ -382,16 +384,16 @@ mk_wp() {
 
     # WP Cloudflare Super Page Cache Setup
     wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache
-    #sed -i '/include common\/wpcommon.conf;/a     include /var/www/'"$domain"'/htdocs/wp-content/wp-cloudflare-super-page-cache/'"$domain"'/nginx.conf;' /etc/nginx/sites-available/"$domain"
+    #sed -i '/include common\/wpcommon.conf;/a     include /var/www/'"$domain"'/htdocs/wp-content/wp-cloudflare-super-page-cache/'"$domain"'/nginx.conf;' /etc/qyc/nginx/sites-available/"$domain"
     nginx -s reload
 
-    cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
+    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
     if [[ $cf_token != "" ]]; then
         mk_wp_create_cf_api_token_wp_cf_page_cache
     fi
 
     if [[ $root_domain_zone_id != "" ]]; then
-        cf_token_wp_cf_page_cache=$(yq .result.value /var/opt/qycli/cloudflare/"$root_domain"/cf_token_wp_cf_page_cache.json)
+        cf_token_wp_cf_page_cache=$(yq .result.value /var/qyc/cloudflare/"$root_domain"/cf_token_wp_cf_page_cache.json)
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
@@ -407,7 +409,7 @@ mk_wp() {
 }
 
 del_site() {
-    if [[ ! $(yq .result.value /var/opt/qycli/cloudflare/"$root_domain"/cf_token_dns.json) == "" ]]; then
+    if [[ ! $(yq .result.value /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json) == "" ]]; then
         del_dns_entries
     fi
     if [[ $dns_entries_deleted == "true" ]]; then
@@ -416,18 +418,18 @@ del_site() {
         echo "DNS entries could not automatically be removed."
     fi
 
-    rm /etc/nginx/sites-enabled/"$domain"
-    rm /etc/nginx/sites-available/"$domain"
+    rm /etc/qyc/nginx/sites-enabled/"$domain"
+    rm /etc/qyc/nginx/sites-available/"$domain"
     rm -r /var/www/"$domain"/*
     rmdir /var/www/"$domain"
     # Must not delete when root_domain still in use
     if [[ $(qyc list | grep "$root_domain") == "" ]]; then
-        cf_token=$(yq .cloudflare_token /var/opt/qycli/cnf.yaml)
-        for id in $(yq .result.id /var/opt/qycli/cloudflare/"$root_domain"/*.json); do
+        cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
+        for id in $(yq .result.id /var/qyc/cloudflare/"$root_domain"/*.json); do
             curl -X DELETE "https://api.cloudflare.com/client/v4/user/tokens/$id" \
                 -H "Authorization: Bearer $cf_token"
         done
-        rm -r /var/opt/qycli/cloudflare/"$root_domain"
+        rm -r /var/qyc/cloudflare/"$root_domain"
     fi
     printf "Files deleted.\n"
 
@@ -517,21 +519,21 @@ set_cache_fcgi_nginx_helper_deactivate() {
 
 set_cache_fcgi() {
     if [[ "$1" == "on" ]]; then
-        if grep -q "#include common/php.conf" /etc/nginx/sites-available/"$domain"; then
+        if grep -q "#include common/php.conf" /etc/qyc/nginx/sites-available/"$domain"; then
             echo "FastCGI cache is already enabled."
         else
-            sed "s+    include common/php.conf;+    #include common/php.conf;+" -i /etc/nginx/sites-available/"$domain"
-            sed "s+#include common/wpfcgi.conf;+include common/wpfcgi.conf;+" -i /etc/nginx/sites-available/"$domain"
+            sed "s+    include common/php.conf;+    #include common/php.conf;+" -i /etc/qyc/nginx/sites-available/"$domain"
+            sed "s+#include common/wpfcgi.conf;+include common/wpfcgi.conf;+" -i /etc/qyc/nginx/sites-available/"$domain"
 
             nginx -s reload
             echo "FastCGI microcache enabled."
         fi
     elif [[ "$1" == "off" ]]; then
-        if grep -q "#include common/wpfcgi.conf" /etc/nginx/sites-available/"$domain"; then
+        if grep -q "#include common/wpfcgi.conf" /etc/qyc/nginx/sites-available/"$domain"; then
             echo "FastCGI cache is already disabled."
         else
-            sed -i "s+#include common/php.conf;+include common/php.conf;+" /etc/nginx/sites-available/"$domain"
-            sed -i "s+    include common/wpfcgi.conf;+    #include common/wpfcgi.conf;+" /etc/nginx/sites-available/"$domain"
+            sed -i "s+#include common/php.conf;+include common/php.conf;+" /etc/qyc/nginx/sites-available/"$domain"
+            sed -i "s+    include common/wpfcgi.conf;+    #include common/wpfcgi.conf;+" /etc/qyc/nginx/sites-available/"$domain"
 
             nginx -s reload
             echo "FastCGI microcache disabled."
@@ -552,14 +554,14 @@ set_cache_cloudflare() {
 
 set_cache_opcache() {
     if [[ "$1" == "off" ]]; then
-        grep -q "opcache.enable = 0" /etc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing..." && exit
-        sed "s+opcache.enable = 1+opcache.enable = 0+" -i /etc/php/fpm/php.ini
-        sed "s+opcache.enable_cli = 1+opcache.enable_cli = 0+" -i /etc/php/fpm/php.ini
+        grep -q "opcache.enable = 0" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing..." && exit
+        sed "s+opcache.enable = 1+opcache.enable = 0+" -i /etc/qyc/php/fpm/php.ini
+        sed "s+opcache.enable_cli = 1+opcache.enable_cli = 0+" -i /etc/qyc/php/fpm/php.ini
         systemctl reload php-fpm
     elif [[ "$1" == "on" ]]; then
-        grep -q "opcache.enable = 1" /etc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing..." && exit
-        sed "s+opcache.enable = 0+opcache.enable = 1+" -i /etc/php/fpm/php.ini
-        sed "s+opcache.enable_cli = 0+opcache.enable_cli = 1+" -i /etc/php/fpm/php.ini
+        grep -q "opcache.enable = 1" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing..." && exit
+        sed "s+opcache.enable = 0+opcache.enable = 1+" -i /etc/qyc/php/fpm/php.ini
+        sed "s+opcache.enable_cli = 0+opcache.enable_cli = 1+" -i /etc/qyc/php/fpm/php.ini
         systemctl reload php-fpm
     else
         echo 'Missing "on" or "off"'
@@ -653,26 +655,26 @@ fn_mk() {
 
 fn_ls() {
     printf "\nAll sites available:\n"
-    dir -1 /etc/nginx/sites-available/
+    dir -1 /etc/qyc/nginx/sites-available/
     printf "\nAll sites enabled:\n"
-    dir -1 /etc/nginx/sites-enabled/
+    dir -1 /etc/qyc/nginx/sites-enabled/
     printf "\n"
 }
 
 set_firewall() {
     if [[ "$1" =~ (on|enabled) ]]; then
-        if ! grep "#include common/7g.conf;" /etc/nginx/sites-available/"$domain" >/dev/null; then
+        if ! grep "#include common/7g.conf;" /etc/qyc/nginx/sites-available/"$domain" >/dev/null; then
             printf "\n7g Firewall is already enabled.\n"
         else
-            sed -i "s+#include common/7g.conf;+include common/7g.conf;+" /etc/nginx/sites-available/"$domain"
+            sed -i "s+#include common/7g.conf;+include common/7g.conf;+" /etc/qyc/nginx/sites-available/"$domain"
             nginx -s reload
             printf "\n7g Firewall enabled.\n\n"
         fi
     elif [[ "$1" =~ (off|disabled) ]]; then
-        if grep "#include common/7g.conf;" /etc/nginx/sites-available/"$domain" >/dev/null; then
+        if grep "#include common/7g.conf;" /etc/qyc/nginx/sites-available/"$domain" >/dev/null; then
             printf "\n7g Firewall is already disabled.\n"
         else
-            sed -i "s+include common/7g.conf;+#include common/7g.conf;+" /etc/nginx/sites-available/"$domain"
+            sed -i "s+include common/7g.conf;+#include common/7g.conf;+" /etc/qyc/nginx/sites-available/"$domain"
             nginx -s reload
             printf "\n7g Firewall disabled.\n\n"
         fi
@@ -771,7 +773,7 @@ fn_clone() {
 
 clone_site() {
     domain=$cloneto
-    template=wp.template
+    template=wp-template.conf
 
     echo "Making new site..."
     mk_site
@@ -799,9 +801,9 @@ Cloning of $clonefrom to $cloneto is done.
 
 EOF
 
-    wpadmin=$(yq .[].User /var/opt/qycli/sites/"$clonefrom".yaml)
-    wpemail=$(yq .[].Email /var/opt/qycli/sites/"$clonefrom".yaml)
-    wppw=$(yq .[].Password /var/opt/qycli/sites/"$clonefrom".yaml)
+    wpadmin=$(yq .[].User /var/qyc/sites/"$clonefrom".yaml)
+    wpemail=$(yq .[].Email /var/qyc/sites/"$clonefrom".yaml)
+    wppw=$(yq .[].Password /var/qyc/sites/"$clonefrom".yaml)
 
     dns_and_infos
 }
@@ -814,7 +816,7 @@ cnf_php_version() {
         echo "No correct version number for PHP, should be 7.4, 8.0 or 8.1"
         exit
     fi
-    sed "s/^php_version: .*/php_version: $1/" -i /var/opt/qycli/cnf.yaml
+    sed "s/^php_version: .*/php_version: $1/" -i /var/qyc/cnf.yaml
     upd_php
 }
 
@@ -834,7 +836,7 @@ cnf_php_parser() {
 }
 
 cnf_set_cloudflare_token() {
-    sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/opt/qycli/cnf.yaml
+    sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/qyc/cnf.yaml
     upd_get_cf_token_accounts_and_zones
     upd_get_cf_accounts_and_zones
 }
@@ -865,8 +867,8 @@ fn_del() {
 }
 
 fn_info_db() {
-    admindbpass=$(yq .db_admin_password /var/opt/qycli/cnf.yaml)
-    if [[ -z "$(ls -A /etc/nginx/sites-available)" ]]; then
+    admindbpass=$(yq .db_admin_password /var/qyc/cnf.yaml)
+    if [[ -z "$(ls -A /etc/qyc/nginx/sites-available)" ]]; then
         cat <<EOF
 
 There are no sites available on your server. Make a site and run this command again.
@@ -876,7 +878,7 @@ user: admin
 password: $admindbpass
 
 EOF
-    elif [[ -z "$(ls -A /etc/nginx/sites-enabled)" ]]; then
+    elif [[ -z "$(ls -A /etc/qyc/nginx/sites-enabled)" ]]; then
         cat <<EOF
 
 You have at least one site through which you could access phpMyAdmin, but unfortunately none are enabled.
@@ -887,7 +889,7 @@ password: $admindbpass
 
 EOF
     else
-        firstdomain=$(find /etc/nginx/sites-available -maxdepth 1 -name "*.*" -type f -printf '%P\n' | head -1)
+        firstdomain=$(find /etc/qyc/nginx/sites-available -maxdepth 1 -name "*.*" -type f -printf '%P\n' | head -1)
         cat <<EOF
    
 Log in as the priviledged admin user. 
@@ -904,7 +906,7 @@ EOF
 
 fn_info() {
     if [[ -z $1 ]]; then
-        cat /var/opt/qycli/cnf.yaml
+        cat /var/qyc/cnf.yaml
     elif [[ $1 =~ (db|database|dbadmin) ]]; then
         fn_info_db
     else

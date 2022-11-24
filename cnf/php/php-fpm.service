@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/qycli/phpPHPVER/sbin/php-fpm --nodaemonize --php-ini /etc/php/fpm/php.ini --fpm-config /etc/php/fpm/php-fpm.conf
+ExecStart=/var/qyc/bin/phpPHPVER/sbin/php-fpm --nodaemonize --php-ini /etc/qyc/php/fpm/php.ini --fpm-config /etc/qyc/php/fpm/php-fpm.conf
 ExecReload=/bin/kill -USR2 $MAINPID
 
 # Set up a new file system namespace and mounts private /tmp and /var/tmp directories

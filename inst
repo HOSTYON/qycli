@@ -9,40 +9,44 @@
 
 inst_qycli() {
     [[ -f /usr/local/bin/qyc ]] && echo "qycli is already installed, stopping the process. Just type qyc to get the help message or go to qycli.org to learn." && exit
-    [[ ! -d /var/opt/qycli ]] && mkdir -p /var/opt/qycli/{cloudflare/{dns,crowdsec},sites}
-    [[ ! -d /var/cache/qycli ]] && mkdir -p /var/cache/qycli/
-    tee /var/opt/qycli/cnf.yaml <<EOF
+    [[ ! -d /var/qyc ]] && mkdir -p /var/qyc/{qycli,cloudflare/{dns,crowdsec},sites,cache,bin}
+    tee /var/qyc/cnf.yaml <<EOF
 branch_name: $branch_name
 sec_install: $sec_install
 php_version: $php_version
 cloudflare_token: $cloudflare_token
 auto_update: $auto_update
+nginx_source: $nginx_source
+php_source: $php_source
 EOF
+
     apt update && apt -y install git
     git config --global submodule.recurse true
+
     git -C /opt clone -b "$branch_name" https://github.com/HOSTYON/qycli
     git -C /opt clone https://github.com/HOSTYON/qycli-plugin
-    #git -C /opt/qycli-plugin submodule update --init --recursive
-    cp /opt/qycli/bin/qyc /usr/local/bin/qyc
+
+    #git -C /var/qyc/qycli-plugin submodule update --init --recursive
+    cp /var/qyc/qycli/bin/qyc /usr/local/bin/qyc
     chmod 755 /usr/local/bin/qyc
-    #chmod 755 /opt/qycli/kernel
-    #chmod 755 /opt/qycli/sec_firewall
+    #chmod 755 /var/qyc/qycli/kernel
+    #chmod 755 /var/qyc/qycli/sec_firewall
     # shellcheck disable=1091
-    source /opt/qycli/bin/stk
+    source /var/qyc/qycli/bin/stk
     # shellcheck disable=1091
-    source /opt/qycli/bin/help
+    source /var/qyc/qycli/bin/help
     # shellcheck disable=1091
-    source /opt/qycli/bin/upd
+    source /var/qyc/qycli/bin/upd
     echo "qycli ($branch_name) was installed."
     if [[ "$kernel_tweaks" == "yes" ]]; then
         printf "Optimizing kernel configurations. You should restart after the full installation has finished.\n\n"
         # shellcheck disable=1091
-        source /opt/qycli/kernel
+        source /var/qyc/qycli/kernel
     fi
     if [[ "$sec_install" == "yes" ]]; then
         printf "Securing the network. Only SSH and Cloudflare connections will be allowed.\n\n"
         # shellcheck disable=1091
-        source /opt/qycli/sec_firewall
+        source /var/qyc/qycli/sec_firewall
     fi
 
     printf "\nInstalling the qycli stack now.\n\n"
@@ -58,11 +62,15 @@ EOF
     printf "\nqycli was installed.\n\n"
 }
 
-branch_name=production
+branch_name=stable
 sec_install=no
 kernel_tweaks=yes
 php_version=8.1
 auto_update=no
+# shellcheck disable=2016
+nginx_source='"https://github.com/HOSTYON/qycli-nginx/releases/download/\"$nginx_release_tag\"/qycli-nginx.tar.xz"'
+# shellcheck disable=2016
+php_source='"https://github.com/HOSTYON/qycli-php\"$php_version_short\"/releases/download/\"$php_release_tag\"/qycli-php\"$php_version_short\".tar.xz"'
 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
