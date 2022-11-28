@@ -1,5 +1,5 @@
 [mysqld]
-skip-networking
+#skip-networking
 skip-name-resolve
 innodb_file_per_table = 1
 innodb_buffer_pool_size = innodbbpsM

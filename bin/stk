@@ -107,6 +107,9 @@ stk_mariadb_install() {
     apt -y install mariadb-server
     upd_mariadb_conf
     stk_mariadb_admin_user
+
+    sed 's+# port = 3306+port = 3306+' -i /etc/mysql/my.cnf
+    systemctl restart mariadb
 }
 
 stk_php_install() {
