@@ -189,9 +189,11 @@ stk_crowdsec_install() {
     domain=crowdsec
     mk_db
     yq '.db_config.type = "mysql"' -i /etc/crowdsec/config.yaml
-    yq '.db_config += {"user": "'$dbnaming'"}' -i /etc/crowdsec/config.yaml
-    yq '.db_config += {"db_name": "'$dbnaming'"}' -i /etc/crowdsec/config.yaml
-    yq '.db_config += {"password": "'$dbpassword'"}' -i /etc/crowdsec/config.yaml
+    # shellcheck disable=2154
+    yq '.db_config += {"user": "'"$dbnaming"'"}' -i /etc/crowdsec/config.yaml
+    yq '.db_config += {"db_name": "'"$dbnaming"'"}' -i /etc/crowdsec/config.yaml
+    # shellcheck disable=2154
+    yq '.db_config += {"password": "'"$dbpassword"'"}' -i /etc/crowdsec/config.yaml
     yq '.db_config += {"host": "unix:///run/mysqld/mysqld.sock"}' -i /etc/crowdsec/config.yaml
     systemctl reload crowdsec
 }
