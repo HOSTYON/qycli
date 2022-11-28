@@ -1,6 +1,7 @@
 [mysqld]
 #skip-networking
-skip-name-resolve
+bind-address = 127.0.0.1
+#skip-name-resolve
 innodb_file_per_table = 1
 innodb_buffer_pool_size = innodbbpsM
 innodb_log_file_size = innodblfsM
