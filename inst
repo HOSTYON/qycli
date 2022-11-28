@@ -23,7 +23,7 @@ EOF
     apt update && apt -y install git
     git config --global submodule.recurse true
 
-    git -C /var/qyc clone -b "$branch_name" https://github.com/HOSTYON/qycli
+    git -C /var/qyc/qycli clone -b "$branch_name" https://github.com/HOSTYON/qycli .
     git -C /var/qyc clone https://github.com/HOSTYON/qycli-plugin
 
     #git -C /var/qyc/qycli-plugin submodule update --init --recursive
