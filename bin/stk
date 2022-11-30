@@ -42,7 +42,7 @@ stk_utility_and_repos() {
     upd_yq
 
     # shellcheck disable=SC2154
-    if [[ $auto_update == "yes" ]]; then
+    if [[ $auto_update == "yes" || $auto_update == "on" ]]; then
         tee /etc/cron.d/qycli-upd <<EOF
 SHELL=/bin/bash
 5 9 * * * root /usr/bin/qyc upd

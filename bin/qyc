@@ -22,7 +22,7 @@ elif [[ "$1" == "ls" || "$1" == "list" ]]; then
 elif [[ "$1" == "set" ]]; then
     shift
     fn_set "$@"
-elif [[ "$1" == "clone" ]]; then
+elif [[ "$1" == "cl" || "$1" == "clone" ]]; then
     shift
     fn_clone "$@"
 elif [[ "$1" == "del" || "$1" == "delete" ]]; then

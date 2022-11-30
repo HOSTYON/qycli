@@ -27,8 +27,8 @@ EOF
     git -C /var/qyc clone https://github.com/HOSTYON/qycli-plugin
 
     #git -C /var/qyc/qycli-plugin submodule update --init --recursive
-    cp /var/qyc/qycli/bin/qyc /usr/local/bin/qyc
-    chmod 755 /usr/local/bin/qyc
+    cp /var/qyc/qycli/bin/qyc /usr/bin/qyc
+    chmod 755 /usr/bin/qyc
     #chmod 755 /var/qyc/qycli/kernel
     #chmod 755 /var/qyc/qycli/sec_firewall
     # shellcheck disable=1091
@@ -107,7 +107,7 @@ while [[ "$#" -gt 0 ]]; do
         cloudflare_token=$2
         shift
         ;;
-    autoupd | autoupdate)
+    aupd | autoupd | autoupdate)
         auto_update=$2
         shift
         ;;

@@ -7,90 +7,124 @@ show_qycli_version() {
 }
 
 print_help_qyc() {
-    printf "\n\n"
-    echo "Description:"
-    echo "  qycli command line client"
-    echo ""
-    echo "  Install WordPress on a powerful LEMP stack enhanced with Cloudflare and Redis"
-    echo ""
-    echo "Usage:"
-    echo "  qyc [command]"
-    echo ""
-    echo "Available commands:"
-    echo "  mk | make         Make a website"
-    echo "  upd | update      Update server, qycli and WordPress"
-    printf "\n\n"
+    cat <<EOF
+
+Description:
+  qycli command line client - Powerful hosting script
+
+Usage:
+  qyc [command]
+
+Available commands:
+  ls | list                 List all available and enabled sites
+  mk | make                 Make a website
+  cl | clone                Clone/Copy a site
+  del | delete              Delete a site
+  set                       Change site level settings
+  cnf | conf | configure    Change qycli configuration
+  info                      Prints the qycli configuration
+  upd | update              Update server apps and qycli
+
+To see the help section of a command just type "qyc [command]".
+
+EOF
 }
 
 print_help_mk() {
-    printf "\n\n"
-    echo "Description:"
-    echo "  Make a site with qycli."
-    echo ""
-    echo "Usage:"
-    echo "  qyc mk [command]"
-    echo ""
-    echo "Available commands:"
-    echo "  wp              Make a wordpress site"
-    printf "\n\n"
+    cat <<EOF
+
+Description:
+  Make a site with qycli
+
+Usage:
+  qyc mk [command]
+
+Available commands:
+  wp              Make a WordPress site
+
+To see the help section of a command just type "qyc mk [command]".
+
+EOF
 }
 
 print_help_wp() {
-    printf "\n\n"
-    echo "Description:"
-    echo "  Make a wordpress site with qycli."
-    echo ""
-    echo "Usage:"
-    echo "  qyc mk wp <domain> [option] [value] [option] [value] ..."
-    echo ""
-    echo "  <domain> has to be a valid TLD"
-    echo ""
-    echo "Available options:"
-    echo "  u|user|admin    Set the user name for the WordPress admin account."
-    echo "  p|password      Set the password for the WordPress admin account."
-    echo "  e|email         Set the email address for the WordPress admin account."
-    echo "  t|title         Set the title for the WordPress site."
-    printf "\n\n"
+    cat <<EOF
+
+Description:
+  Make a WordPress site with qycli
+
+Usage:
+  qyc mk wp <domain> [option] [value] [option] [value] ...
+
+  <domain> has to be valid
+
+Available options:
+  u|user|admin    Set the user name for the WordPress admin account.
+  p|password      Set the password for the WordPress admin account.
+  e|email         Set the email address for the WordPress admin account.
+  t|title         Set the title for the WordPress site.
+
+Example:
+  qyc mk wp domain.com u user p password e e@mail.com t "Awesome Website"
+
+EOF
+}
+
+print_help_clone() {
+    cat <<EOF
+
+Description:
+  Clone a site with qycli
+
+Usage:
+  qyc clone <domain1> to <domain2>
+
+Copies domain1 to domain2, if domain2 exists it will aks if you want to overwrite.
+
+EOF
 }
 
 print_help_del() {
-    printf "\n\n"
-    echo "Description:"
-    echo "  Delete a site (and database) made with qycli."
-    echo ""
-    echo "Usage:"
-    echo "  qyc del <domain> [-y]"
-    echo ""
-    echo "  <domain> has to be a valid TLD"
-    echo ""
-    echo "Available flag:"
-    echo "  -y       Deletes the site without asking for further consent."
-    printf "\n\n"
+    cat <<EOF
+
+Description:
+  Delete a site (and database) made with qycli
+
+Usage:
+  qyc del <domain> [-y]
+
+  <domain> has to be valid
+
+Available option:
+  -y       Deletes the site without asking for consent
+
+EOF
 }
 
 print_help_set() {
-    printf "\n\n"
-    echo "Description:"
-    echo "  Change site settings."
-    echo ""
-    echo "Usage:"
-    echo "  qyc set <domain> [option] [option] [value] [option] [value] ..."
-    echo ""
-    echo "  <domain> has to be a valid TLD"
-    echo ""
-    echo "Available options:"
-    echo "  cache              values: on|off    Turn FastCGI page and Redis object caching on or off"
-    echo "    └─ o|object      values: on|off    Turn Redis object caching on or off"
-    echo "    └─ f|fcgi        values: on|off    Turn Redis object caching on or off"
-    echo "    └─ all|both      values: on|off    Turn FastCGI page and Redis object caching on or off"
-    echo "  alias|domain|name"
-    echo "    └─ add           values: <domain>    Ads domain to site's nginx server block"
-    echo "    └─ del|delete    values: <domain>    Removes domain from site's nginx server block"
-    echo "    └─ ls|list       values: none        Lists all domain names of the site"
-    echo ""
-    echo "Examples:"
-    echo "  qyc set domain.com cache f on"
-    echo "  qyc set domain.com name add sub.domain2.com"
-    #echo "  staging     no values             Disables caching and discourages seach engines from indexing the site"
-    printf "\n\n"
+    cat <<EOF
+Description:
+  Change site settings.
+
+Usage:
+  qyc set <domain> [option] [option] [value] [option] [value] ...
+
+  <domain> has to be valid
+
+Available options:
+  cache              values: on|off    Turn FastCGI page and Redis object caching on or off
+    └─ o|object      values: on|off    Turn Redis object caching on or off
+    └─ f|fcgi        values: on|off    Turn Redis object caching on or off
+    └─ all|both      values: on|off    Turn FastCGI page and Redis object caching on or off
+  alias|domain|name
+    └─ add           values: <domain>    Ads domain to site's nginx server block
+    └─ del|delete    values: <domain>    Removes domain from site's nginx server block
+    └─ ls|list       values: none        Lists all domain names of the site
+
+Examples:
+  qyc set domain.com cache f on
+  qyc set domain.com name add sub.domain2.com
+    #echo "  staging     no values             Disables caching and discourages seach engines from indexing the site
+
+EOF
 }

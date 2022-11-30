@@ -28,7 +28,7 @@ domain_parser() {
         shift
     else
         invalid_domain=1
-        echo "Invalid or no domain: $1"
+        echo "Invalid or no domain $1"
         echo ""
     fi
 }
@@ -451,7 +451,7 @@ del_parser() {
 
     # cf_check_zones_file Deleting needs to be CF token enabled
 
-    [[ ! -d /var/www/$domain ]] && printf "\nSite does not exist." && print_help_del && exit
+    [[ ! -d /var/www/$domain ]] && echo "Site does not exist." && print_help_del && exit
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
@@ -743,16 +743,18 @@ fn_set() {
 
 fn_clone() {
     domain_parser "$@"
-    [[ $invalid_domain == "1" ]] && exit
+    [[ $invalid_domain == "1" ]] && print_help_clone && exit
     clonefrom=$domain
     shift
 
     if [[ "$1" == "to" ]]; then
         shift
+    else
+        print_help_clone
     fi
 
     domain_parser "$@"
-    [[ $invalid_domain == "1" ]] && exit
+    [[ $invalid_domain == "1" ]] && print_help_clone && exit
     cloneto=$domain
     shift
 
@@ -835,10 +837,27 @@ cnf_php_parser() {
     done
 }
 
-cnf_set_cloudflare_token() {
+cnf_cloudflare_token() {
     sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/qyc/cnf.yaml
     upd_get_cf_token_accounts_and_zones
     upd_get_cf_accounts_and_zones
+}
+
+cnf_auto_update() {
+    if [[ $auto_update == "yes" || $auto_update == "on" ]]; then
+        yq '.auto_update = "yes"' -i /var/qyc/cnf.yaml
+        tee /etc/cron.d/qycli-upd <<EOF
+SHELL=/bin/bash
+5 9 * * * root /usr/bin/qyc upd
+EOF
+        echo "qycli auto updates have been turned on."
+    elif [[ $auto_update == "no" || $auto_update == "off" ]]; then
+        yq '.auto_update = "no"' -i /var/qyc/cnf.yaml
+        rm /etc/cron.d/qycli-upd
+        echo "qycli auto updates have been turned off."
+    else
+        echo "The options for auto updates can be 'on', 'off' or 'yes' and 'no', but you gave: $1"
+    fi
 }
 
 fn_cnf() {
@@ -851,7 +870,12 @@ fn_cnf() {
         cft | cloudflaretoken)
             shift
             cf_token=$1
-            cnf_set_cloudflare_token
+            cnf_cloudflare_token
+            ;;
+        aupd | autoupd | autoupdate)
+            shift
+            auto_update=$1
+            cnf_cloudflare_token
             ;;
         esac
         shift
