@@ -3,11 +3,11 @@
 # help library
 
 show_qycli_version() {
-    git -C /var/qyc/qycli branch --show-current
+  git -C /var/qyc/qycli branch --show-current
 }
 
 print_help_qyc() {
-    cat <<EOF
+  cat <<EOF
 
 Description:
   qycli command line client - Powerful hosting script
@@ -31,7 +31,7 @@ EOF
 }
 
 print_help_mk() {
-    cat <<EOF
+  cat <<EOF
 
 Description:
   Make a site with qycli
@@ -48,7 +48,7 @@ EOF
 }
 
 print_help_wp() {
-    cat <<EOF
+  cat <<EOF
 
 Description:
   Make a WordPress site with qycli
@@ -59,19 +59,20 @@ Usage:
   <domain> has to be valid
 
 Available options:
-  u|user|admin    Set the user name for the WordPress admin account.
-  p|password      Set the password for the WordPress admin account.
-  e|email         Set the email address for the WordPress admin account.
-  t|title         Set the title for the WordPress site.
+  u | user| admin   Set the user name for the WordPress admin account
+  p | password      Set the password for the WordPress admin account
+  e | email         Set the email address for the WordPress admin account
+  t | title         Set the title for the WordPress site
 
-Example:
+Examples:
+  qyc mk wp domain.com
   qyc mk wp domain.com u user p password e e@mail.com t "Awesome Website"
 
 EOF
 }
 
 print_help_clone() {
-    cat <<EOF
+  cat <<EOF
 
 Description:
   Clone a site with qycli
@@ -85,7 +86,7 @@ EOF
 }
 
 print_help_del() {
-    cat <<EOF
+  cat <<EOF
 
 Description:
   Delete a site (and database) made with qycli
@@ -102,7 +103,7 @@ EOF
 }
 
 print_help_set() {
-    cat <<EOF
+  cat <<EOF
 Description:
   Change site settings.
 

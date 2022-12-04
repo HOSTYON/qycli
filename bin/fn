@@ -276,7 +276,7 @@ dns_and_infos() {
 mk_wp() {
     domain_parser "$@"
     if [[ $invalid_domain == "1" ]]; then
-        exit
+        print_help_wp && exit
     fi
     shift
 
