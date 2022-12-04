@@ -583,13 +583,6 @@ set_cache_parser() {
     elif [[ "$1" == "opcache" || "$1" == "op" ]]; then
         shift
         set_cache_opcache "$@"
-    elif [[ "$1" == "all" || "$1" == "both" ]]; then
-        shift
-        set_cache_object "$@"
-        set_cache_fcgi "$@"
-    elif [[ "$1" == "on" || "$1" == "off" ]]; then
-        set_cache_object "$@"
-        set_cache_fcgi "$@"
     else
         echo "Invalid option: $1"
         print_help_set
@@ -808,15 +801,24 @@ cnf_php_parser() {
         8.1 | 8.0 | 7.4)
             cnf_php_version "$@"
             ;;
+        *)
+            echo "Invalid option: $1"
+            print_help_cnf
+            ;;
         esac
         shift
     done
 }
 
 cnf_cloudflare_token() {
-    sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/qyc/cnf.yaml
-    upd_get_cf_token_accounts_and_zones
-    upd_get_cf_accounts_and_zones
+    if [[ -z $cf_token ]]; then
+        echo "No Cloudflare token was given."
+        print_help_cnf
+    else
+        sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/qyc/cnf.yaml
+        upd_get_cf_token_accounts_and_zones
+        upd_get_cf_accounts_and_zones
+    fi
 }
 
 cnf_auto_update() {
@@ -824,7 +826,7 @@ cnf_auto_update() {
         yq '.auto_update = "yes"' -i /var/qyc/cnf.yaml
         tee /etc/cron.d/qycli-upd <<EOF
 SHELL=/bin/bash
-5 9 * * * root /usr/bin/qyc upd
+0 4 * * * root /usr/bin/qyc upd
 EOF
         echo "qycli auto updates have been turned on."
     elif [[ $auto_update == "no" || $auto_update == "off" ]]; then
@@ -852,6 +854,10 @@ fn_cnf() {
             shift
             auto_update=$1
             cnf_auto_update "$@"
+            ;;
+        *)
+            echo "Invalid option: $1"
+            print_help_cnf
             ;;
         esac
         shift
