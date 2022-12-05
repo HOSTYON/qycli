@@ -185,8 +185,6 @@ stk_tinyfilemanager_install() {
 
 stk_crowdsec_install() {
     apt -y install crowdsec
-    apt -y install crowdsec-firewall-bouncer-nftables
-    apt -y install crowdsec-cloudflare-bouncer
 
     # shellcheck disable=2034
     domain=crowdsec
@@ -206,6 +204,9 @@ stk_crowdsec_install() {
     systemctl reload crowdsec
     cscli machines add -a
     systemctl restart crowdsec
+
+    apt -y install crowdsec-firewall-bouncer-nftables
+    apt -y install crowdsec-cloudflare-bouncer
 }
 
 stk_install() {
