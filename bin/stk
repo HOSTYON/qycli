@@ -199,7 +199,7 @@ stk_crowdsec_install() {
     yq '.db_config += {"port": 3306}' -i /etc/crowdsec/config.yaml
     yq 'del(.common.pid_dir)' -i /etc/crowdsec/config.yaml
 
-    yq '.exclude_scenarios_containing[0] = "ssh"' -i /etc/crowdsec/bouncers/crowdsec-cloudflare-bouncer.yaml
+    yq '.include_scenarios_containing[0] = "http" | .include_scenarios_containing[0] style="double"' -i /etc/crowdsec/bouncers/crowdsec-cloudflare-bouncer.yaml
 
     systemctl reload crowdsec
     cscli machines add -a
