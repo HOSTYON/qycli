@@ -749,7 +749,7 @@ clone_site() {
     echo "Making new site..."
     mk_site
     echo "Copying files..."
-    rsync -ar --exclude 'nginx-conf' /var/www/"$clonefrom"/ /var/www/"$cloneto"/
+    rsync -ar --exclude 'nginx-conf/server-names.conf' /var/www/"$clonefrom"/ /var/www/"$cloneto"/
 
     echo "Copying the database..."
 
