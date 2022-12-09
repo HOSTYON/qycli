@@ -165,6 +165,8 @@ upd_php() {
             ln -s "$bin" /usr/bin/"$(basename "$bin")"
         done
 
+        ln -s /etc/qyc/php/fpm/php.ini /var/qyc/bin/php"$php_version_short"/lib/php.ini
+
         upd_php_service_file
 
         systemctl restart php-fpm
