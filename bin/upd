@@ -160,6 +160,10 @@ upd_php() {
         eval "wget" -O- "$php_source" |
             tar xJ --strip-components=4 -C /var/qyc/bin/
 
+        for bin in /var/qyc/bin/php"$php_version_short"/bin/*; do
+            ln -s "$bin" /usr/bin/"$(basename "$bin")"
+        done
+
         upd_php_service_file
 
         systemctl restart php-fpm
