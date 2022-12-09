@@ -123,12 +123,6 @@ stk_php_install() {
 
     upd_php
     upd_php_conf
-
-    php_version=$(yq .php_version /var/qyc/cnf.yaml) # Reading the qycli.cnf file
-    php_version_short=$(echo "$php_version" | tr -d ".")
-    for bin in /var/qyc/bin/php"$php_version_short"/bin/*; do
-        ln -s "$bin" /usr/bin/"$(basename "$bin")"
-    done
 }
 
 stk_redis_install() {

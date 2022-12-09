@@ -161,7 +161,7 @@ upd_php() {
             tar xJ --strip-components=4 -C /var/qyc/bin/
 
         for bin in /var/qyc/bin/php"$php_version_short"/bin/*; do
-            rm /usr/bin/"$(basename "$bin")"
+            [[ -f /usr/bin/"$(basename "$bin")" ]] && rm /usr/bin/"$(basename "$bin")"
             ln -s "$bin" /usr/bin/"$(basename "$bin")"
         done
 
