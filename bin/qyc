@@ -31,6 +31,7 @@ elif [[ "$1" == "del" || "$1" == "delete" ]]; then
 elif [[ "$1" == "upd" || "$1" == "update" ]]; then
     upd_fn
 elif [[ "$1" == "cnf" || "$1" == "conf" || "$1" == "configure" ]]; then
+    shift
     fn_cnf "$@"
 elif [[ "$1" == "info" ]]; then
     shift
