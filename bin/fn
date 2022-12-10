@@ -764,9 +764,9 @@ Cloning of $clonefrom to $cloneto is done.
 
 EOF
 
-    wpadmin=$(yq .[].User /var/qyc/sites/"$clonefrom".yaml)
-    wpemail=$(yq .[].Email /var/qyc/sites/"$clonefrom".yaml)
-    wppw=$(yq .[].Password /var/qyc/sites/"$clonefrom".yaml)
+    wpadmin=$(yq .[].user /var/qyc/sites/"$clonefrom".yaml)
+    wpemail=$(yq .[].email /var/qyc/sites/"$clonefrom".yaml)
+    wppw=$(yq .[].password /var/qyc/sites/"$clonefrom".yaml)
 
     dns_and_infos
 }
