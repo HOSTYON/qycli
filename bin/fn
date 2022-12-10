@@ -315,18 +315,9 @@ mk_wp() {
     template=wp-template.conf
     mk_site
 
-    echo "Linking phpMyAdmin..."
-    mkdir /var/www/"$domain"/htdocs/qyc
-    ln -s /var/www/pma /var/www/"$domain"/htdocs/qyc
-
-    echo "Installing Tiny File Manager..."
-    mkdir -p /var/www/"$domain"/htdocs/qyc/tfm
-    cp /var/www/tfm/tinyfilemanager.php /var/www/"$domain"/htdocs/qyc/tfm/index.php
-    cp /var/qyc/qycli/cnf/tfm/config.php /var/www/"$domain"/htdocs/qyc/tfm/config.php
     # shellcheck disable=2027,2086
     hashed_pw=$(php -r "\$pw=password_hash(\""$dbpassword"\", PASSWORD_DEFAULT); echo(\$pw);")
-    sed -i "/'admin' => .*/a '$dbnaming' => '$hashed_pw'," /var/www/"$domain"/htdocs/qyc/tfm/config.php
-    chown -R qycli:qycli /var/www/"$domain"/htdocs/qyc
+    sed -i "/'admin' => .*/a '$dbnaming' => '$hashed_pw'," /var/www/tfm/config.php
 
     echo "Installing WordPress..."
     systemctl reload php-fpm
@@ -341,6 +332,7 @@ mk_wp() {
     #ln -s /var/qyc/qycli-plugin/qycli-plugin /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli-plugin
 
     cp /var/www/"$domain"/htdocs/wp-config-sample.php /var/www/"$domain"/wp-config.php
+    ln -rs /var/www/"$domain"/wp-config.php /var/www/"$domain"/edit-config.php
     chown qycli:qycli -R /var/www/"$domain"/*
     wp --path=/var/www/"$domain"/htdocs config set DB_NAME "${dbnaming}"
     wp --path=/var/www/"$domain"/htdocs config set DB_USER "${dbnaming}"
