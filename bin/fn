@@ -401,7 +401,7 @@ mk_wp() {
 }
 
 del_site() {
-    if [[ ! $(yq .result.value /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json) == "" ]]; then
+    if [[ -f /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json && $(yq .result.value /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json) != "" ]]; then
         del_dns_entries
     fi
     if [[ $dns_entries_deleted == "true" ]]; then
