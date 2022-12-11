@@ -302,9 +302,6 @@ upd_phpmyadmin() {
 upd_tinyfilemanager() {
     git -C /var/www/tfm reset --hard HEAD
     git -C /var/www/tfm pull
-    for site in /var/www/*.*; do
-        cp /var/www/tfm/tinyfilemanager.php "$site"/htdocs/qyc/tfm/index.php
-    done
     systemctl restart php-fpm
 }
 
