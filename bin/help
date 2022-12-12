@@ -118,7 +118,6 @@ Available options:
     └─ cf|cloudflare  values: on|off      Turn Cloudflare caching on or off
     └─ o|object       values: on|off      Turn Redis object caching on or off
     └─ f|fcgi         values: on|off      Turn FastCGI page caching on or off
-    └─ op|opcache     values: on|off      Turn Zend OPCache on or off
   alias|domain|name
     └─ add            values: <domain>    Ads domain to site's nginx server block
     └─ del|delete     values: <domain>    Removes domain from site's nginx server block
@@ -145,11 +144,13 @@ Available options:
   php                       values: 8.1|8.0|7.4       Change the php-fpm version for all sites
   cft|cloudflaretoken       value: <CloudflareToken>  Change the Cloudflare Token to be used
   aupd|autoupd|autoupdate   values: on|yes|off|no     Turn automatic updates for the server and qycli on or off
+  opc | opcache             values: on|off            Turn Zend OPCache for PHP on or off
 
 Examples:
   qyc cnf php 8.1
   qyc cnf cft sdflsnef843nkfs8hdfsknslfijei9
   qyc cnf aupd on
+  qyc cnf opcache off
 
 EOF
 }

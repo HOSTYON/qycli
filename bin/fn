@@ -548,24 +548,6 @@ set_cache_cloudflare() {
     fi
 }
 
-set_cache_opcache() {
-    if [[ "$1" == "off" ]]; then
-        grep -q "opcache.enable = 0" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing..." && exit
-        sed "s+opcache.enable = 1+opcache.enable = 0+" -i /etc/qyc/php/fpm/php.ini
-        sed "s+opcache.enable_cli = 1+opcache.enable_cli = 0+" -i /etc/qyc/php/fpm/php.ini
-        systemctl reload php-fpm
-    elif [[ "$1" == "on" ]]; then
-        grep -q "opcache.enable = 1" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing..." && exit
-        sed "s+opcache.enable = 0+opcache.enable = 1+" -i /etc/qyc/php/fpm/php.ini
-        sed "s+opcache.enable_cli = 0+opcache.enable_cli = 1+" -i /etc/qyc/php/fpm/php.ini
-        systemctl reload php-fpm
-    else
-        echo 'Missing "on" or "off"'
-        print_help_set
-        exit
-    fi
-}
-
 set_cache_parser() {
     if [[ "$1" == "object" || "$1" == "o" ]]; then
         shift
@@ -576,9 +558,6 @@ set_cache_parser() {
     elif [[ "$1" == "fcgi" || "$1" == "f" ]]; then
         shift
         set_cache_fcgi "$@"
-    elif [[ "$1" == "opcache" || "$1" == "op" ]]; then
-        shift
-        set_cache_opcache "$@"
     else
         echo "Invalid option: $1"
         print_help_set
@@ -849,6 +828,24 @@ EOF
     fi
 }
 
+cnf_opcache() {
+    if [[ "$1" == "off" ]]; then
+        grep -q "opcache.enable = 0" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing..." && exit
+        sed "s+opcache.enable = 1+opcache.enable = 0+" -i /etc/qyc/php/fpm/php.ini
+        sed "s+opcache.enable_cli = 1+opcache.enable_cli = 0+" -i /etc/qyc/php/fpm/php.ini
+        systemctl reload php-fpm
+    elif [[ "$1" == "on" ]]; then
+        grep -q "opcache.enable = 1" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing..." && exit
+        sed "s+opcache.enable = 0+opcache.enable = 1+" -i /etc/qyc/php/fpm/php.ini
+        sed "s+opcache.enable_cli = 0+opcache.enable_cli = 1+" -i /etc/qyc/php/fpm/php.ini
+        systemctl reload php-fpm
+    else
+        echo 'Missing "on" or "off"'
+        print_help_set
+        exit
+    fi
+}
+
 fn_cnf() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
@@ -865,6 +862,10 @@ fn_cnf() {
             shift
             auto_update=$1
             cnf_auto_update "$@"
+            ;;
+        opc | opcache)
+            shift
+            cnf_opcache "$@"
             ;;
         *)
             echo "Invalid option: $1"
