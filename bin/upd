@@ -330,8 +330,8 @@ upd_fn() {
     upd_system_resources_qycli_cnf
     upd_get_new_cf_ips
     upd_mariadb_conf
-    upd_nginx_conf
     upd_nginx
+    upd_nginx_conf
     upd_php
     upd_php_conf
     upd_redis_conf
