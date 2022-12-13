@@ -776,7 +776,7 @@ EOF
 }
 
 cnf_php_version() {
-    if [[ "$1" =~ (8.[0-1]|7.4) ]]; then
+    if [[ "$1" =~ (8.[0-2]|7.4) ]]; then
         new_ver=$1
         export new_ver
     else

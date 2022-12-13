@@ -95,7 +95,7 @@ while [[ "$#" -gt 0 ]]; do
         shift
         ;;
     php | phpv | php-version)
-        if [[ "$2" =~ ^(7.4|8.0|8.1)$ ]]; then
+        if [[ "$2" =~ ^(7.4|8.0|8.1|8.2)$ ]]; then
             php_version=$2
         else
             echo 'Not supported PHP version, try again with "7.4", "8.0" or "8.1". Exiting.'
