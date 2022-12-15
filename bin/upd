@@ -302,6 +302,10 @@ upd_phpmyadmin() {
 upd_tinyfilemanager() {
     git -C /var/www/tfm reset --hard HEAD
     git -C /var/www/tfm pull
+
+    sed 's+//editor.setTheme(.*+editor.setTheme("ace/theme/monokai");+' -i /var/www/tfm/tinyfilemanager.php
+    sed 's+,"theme":"light"+,"theme":"dark"+' -i /var/www/tfm/tinyfilemanager.php
+
     systemctl restart php-fpm
 }
 
@@ -311,7 +315,7 @@ upd_yq() {
     yq_new_release_tag="$(curl -si https://github.com/mikefarah/yq/releases/latest | tac | tac | grep "location:" | sed -z "s+.*/++" | tr -d '\r')"
     yq_new_source=https://github.com/mikefarah/yq/releases/download/"$yq_new_release_tag"/yq_linux_"$cpuarch".tar.gz
 
-    if [[ ! -f /var/qyc/cache/yq_old_source || $yq_new_source != $(cat /var/qyc/cache/yq_old_source) ]]; then
+    if [[ ! -f /var/qyc/cache/yq_old_source || $yq_new_source != $(cat /var/qyc/cache/yq_old_source) || ! -f /usr/bin/yq ]]; then
         wget -qO - "$yq_new_source" |
             tar xz && mv yq_linux_"$cpuarch" /usr/bin/yq
         sh install-man-page.sh

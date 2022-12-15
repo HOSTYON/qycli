@@ -34,7 +34,7 @@ $use_highlightjs = true;
 
 // highlight.js style
 // for dark theme use 'ir-black'
-$highlightjs_style = 'vs';
+$highlightjs_style = 'monokai-sublime';
 
 // Enable ace.js (https://ace.c9.io/) on view's page
 $edit_files = true;
@@ -96,7 +96,7 @@ $sticky_navbar = true;
 
 
 // max upload file size
-$max_upload_size_bytes = 5000;
+$max_upload_size_bytes = 100000000;
 
 // Possible rules are 'OFF', 'AND' or 'OR'
 // OFF => Don't check connection IP, defaults to OFF
