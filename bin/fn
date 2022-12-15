@@ -759,6 +759,7 @@ clone_site() {
 
     cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
     if [[ $cf_token != "" ]]; then
+        domain_parser "$cloneto"
         wp_create_cf_api_token_wp_cf_page_cache
         wp_cf_page_cache_plugin_setup
     fi
