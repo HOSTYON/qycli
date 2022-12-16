@@ -765,6 +765,8 @@ clone_site() {
         wp_cf_page_cache_plugin_setup
     fi
 
+    qyc set "$cloneto" cache o on
+
     nginx -s reload
     systemctl reload php-fpm
 
