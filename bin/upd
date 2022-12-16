@@ -94,8 +94,8 @@ upd_nginx() {
 }
 
 upd_mariadb_conf_ram_based() {
-    local innodb_buffer_pool_size=$(($(upd_get_ram_mb) * 80 / 100)) # 80% of all memory in MB
-    local innodb_log_file_size=$(($(upd_get_ram_mb) * 20 / 100))    # 20% of all memory in MB
+    local innodb_buffer_pool_size=$(($(upd_get_ram_mb) * 20 / 100)) # 20% of all memory in MB
+    local innodb_log_file_size=$(($(upd_get_ram_mb) * 10 / 100))    # 10% of all memory in MB
     local tmp_table_size=$(($(upd_get_ram_mb) * 64 / 1000))         # Per GB RAM 64MB
     sed -e "s/.*innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${innodb_buffer_pool_size}M/" \
         -e "s/.*innodb_log_file_size.*/innodb_log_file_size = ${innodb_log_file_size}M/" \
@@ -129,12 +129,12 @@ upd_php_conf() {
     cp -rf /var/qyc/qycli/cnf/php/* /etc/qyc/php/
     chown -R qycli:qycli /etc/qyc/php
 
-    local opmem=$(($(upd_get_ram_mb) * 15 / 100)) # 15% of all memory in MB
+    local opmem=$(($(upd_get_ram_mb) * 10 / 100)) # 10% of all memory in MB
     cp /var/qyc/qycli/cnf/php/fpm/php.ini /etc/qyc/php/fpm/php.ini
     sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
         -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/qyc/php/fpm/php.ini
 
-    local maxchil=$(($(upd_get_ram_mb) * 70 / 80 / 100)) # pm.max_children = 70% Total Memory / 80MB
+    local maxchil=$(($(upd_get_ram_mb) * 60 / 160 / 100)) # pm.max_children = 60% Total Memory / 160MB
     cp /var/qyc/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/qyc/php/fpm/pool.d/qycli.conf
     sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" -i /etc/qyc/php/fpm/pool.d/qycli.conf
 
