@@ -281,6 +281,7 @@ wp_cf_page_cache_plugin_setup() {
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
+        wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken_domain "$domain"
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_auth_mode 1
     else
         echo "You are going to need to set up Cloudflare Super Page Cache manually."
