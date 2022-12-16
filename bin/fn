@@ -214,13 +214,15 @@ $domain is ready.
 Login here: https://$domain/wp-login.php
 
 EOF
-        tee -a /var/qyc/sites/"$domain".yaml <<EOF
+        if [[ -n $wpadmin ]]; then
+            tee -a /var/qyc/sites/"$domain".yaml <<EOF
 wp-login:
     user:     $wpadmin
     email:    $wpemail
     password: $wppw
 
 EOF
+        fi
     fi
 }
 
@@ -768,11 +770,6 @@ clone_site() {
 Cloning of $clonefrom to $cloneto is done.
 
 EOF
-
-    wpadmin=$(yq .[].user /var/qyc/sites/"$clonefrom".yaml)
-    wpemail=$(yq .[].email /var/qyc/sites/"$clonefrom".yaml)
-    wppw=$(yq .[].password /var/qyc/sites/"$clonefrom".yaml)
-
     dns_and_infos
 }
 
