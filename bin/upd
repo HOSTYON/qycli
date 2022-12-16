@@ -305,6 +305,7 @@ upd_tinyfilemanager() {
 
     sed 's+//editor.setTheme(.*+editor.setTheme("ace/theme/monokai");+' -i /var/www/tfm/tinyfilemanager.php
     sed 's+,"theme":"light"+,"theme":"dark"+' -i /var/www/tfm/tinyfilemanager.php
+    cp /var/qyc/qycli/cnf/tfm/config.php /var/www/tfm/config.php
 
     systemctl restart php-fpm
 }
