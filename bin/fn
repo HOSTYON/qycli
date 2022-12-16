@@ -95,7 +95,7 @@ mk_site_cnf_crowdsec_cloudflare_bouncer() {
     old_cf_crowdsec_tokens_sorted=$(yq .cloudflare_config.accounts.[].token /etc/crowdsec/bouncers/crowdsec-cloudflare-bouncer.yaml | sort)
 
     if ! test "$new_cf_crowdsec_tokens_sorted" = "$old_cf_crowdsec_tokens_sorted"; then
-        crowdsec-cloudflare-bouncer -d
+        crowdsec-cloudflare-bouncer -d >/dev/null
         crowdsec-cloudflare-bouncer -g "$cf_crowdsec_tokens" -o /etc/crowdsec/bouncers/crowdsec-cloudflare-bouncer.yaml
         crowdsec-cloudflare-bouncer -s
         systemctl restart crowdsec-cloudflare-bouncer
