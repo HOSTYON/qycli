@@ -761,17 +761,12 @@ clone_site() {
 
     cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
     if [[ $cf_token != "" ]]; then
-        echo "domain is $domain"
-        echo "root domain is $root_domain"
-        echo "root domain zone id is $root_domain_zone_id"
-
-        root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
-
-        echo "root domain zone id is after setting it $root_domain_zone_id"
-
         wp_create_cf_api_token_wp_cf_page_cache
         wp_cf_page_cache_plugin_setup
     fi
+
+    nginx -s reload
+    systemctl reload php-fpm
 
     cat <<EOF
 Cloning of $clonefrom to $cloneto is done.
