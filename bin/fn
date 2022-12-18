@@ -288,6 +288,14 @@ wp_cf_page_cache_plugin_setup() {
     fi
 }
 
+wp_cf_page_cache_token_and_plugin_options() {
+    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
+    if [[ $cf_token != "" ]]; then
+        wp_create_cf_api_token_wp_cf_page_cache
+        wp_cf_page_cache_plugin_setup
+    fi
+}
+
 mk_wp() {
     domain_parser "$@"
     if [[ $invalid_domain == "1" ]]; then
@@ -394,11 +402,7 @@ mk_wp() {
     #sed -i '/include common\/wpcommon.conf;/a     include /var/www/'"$domain"'/htdocs/wp-content/wp-cloudflare-super-page-cache/'"$domain"'/nginx.conf;' /etc/qyc/nginx/sites-available/"$domain"
     nginx -s reload
 
-    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
-    if [[ $cf_token != "" ]]; then
-        wp_create_cf_api_token_wp_cf_page_cache
-        wp_cf_page_cache_plugin_setup
-    fi
+    wp_cf_page_cache_token_and_plugin_options
 
     dns_and_infos
 }
@@ -760,11 +764,7 @@ clone_site() {
         qyc set "$clonefrom" cache o on
     fi
 
-    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
-    if [[ $cf_token != "" ]]; then
-        wp_create_cf_api_token_wp_cf_page_cache
-        wp_cf_page_cache_plugin_setup
-    fi
+    wp_cf_page_cache_token_and_plugin_options
 
     qyc set "$cloneto" cache o on
 
