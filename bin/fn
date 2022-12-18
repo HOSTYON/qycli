@@ -759,14 +759,13 @@ clone_site() {
     wp --path=/var/www/"$cloneto"/htdocs config set DB_PASSWORD "${dbpassword}"
     wp --path=/var/www/"$cloneto"/htdocs config set WP_CACHE_KEY_SALT "qyc_$cloneto"
 
+    wp_cf_page_cache_token_and_plugin_options
+
     if [[ $reenable_clonefrom_object_cache == 1 ]]; then
         echo "Reenabling object cache for $clonefrom"
         qyc set "$clonefrom" cache o on
+        qyc set "$cloneto" cache o on
     fi
-
-    wp_cf_page_cache_token_and_plugin_options
-
-    qyc set "$cloneto" cache o on
 
     nginx -s reload
     systemctl reload php-fpm
