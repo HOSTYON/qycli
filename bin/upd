@@ -304,6 +304,8 @@ upd_tinyfilemanager() {
     git -C /var/www/tfm pull
 
     sed 's+//editor.setTheme(.*+editor.setTheme("ace/theme/monokai");+' -i /var/www/tfm/tinyfilemanager.php
+    "/'admin' => .*/a '$dbnaming' => '$hashed_pw',"
+    sed '/editor.setTheme("ace\/theme\/monokai");/a editor.setOptions({fontSize: "14px"});' -i /var/www/tfm/tinyfilemanager.php
     sed 's+,"theme":"light"+,"theme":"dark"+' -i /var/www/tfm/tinyfilemanager.php
 
     systemctl restart php-fpm
