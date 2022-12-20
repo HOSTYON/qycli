@@ -338,8 +338,7 @@ mk_wp() {
     template=wp-template.conf
     mk_site
 
-    # shellcheck disable=2027,2086
-    hashed_pw=$(php -r "\$pw=password_hash(\""$dbpassword"\", PASSWORD_DEFAULT); echo(\$pw);")
+    hashed_pw=$(php -r "\$pw=password_hash(\"""$dbpassword""\", PASSWORD_DEFAULT); echo(\$pw);")
     sed -i "/'admin' => .*/a '$dbnaming' => '$hashed_pw'," /var/www/tfm/config.php
 
     echo "Installing WordPress..."
@@ -374,7 +373,7 @@ mk_wp() {
         wppw=$(openssl rand -base64 18)
     fi
     [[ "$wpemail" == "" ]] && wpemail=info@$domain
-    wp --path=/var/www/"$domain"/htdocs core install --url=https://"$domain" --title="$wptitle" --admin_user=$wpadmin --admin_password="$wppw" --admin_email="$wpemail"
+    wp --path=/var/www/"$domain"/htdocs core install --url=https://"$domain" --title="$wptitle" --admin_user="$wpadmin" --admin_password="$wppw" --admin_email="$wpemail"
 
     wp --path=/var/www/"$domain"/htdocs rewrite structure /%postname%/
     wp --path=/var/www/"$domain"/htdocs plugin uninstall hello akismet
@@ -749,8 +748,7 @@ clone_site() {
     mysql "$dbnaming" </var/www/"$cloneto"/db.sql
     rm /var/www/"$cloneto"/db.sql
 
-    # shellcheck disable=2027,2086
-    hashed_pw=$(php -r "\$pw=password_hash(\""$dbpassword"\", PASSWORD_DEFAULT); echo(\$pw);")
+    hashed_pw=$(php -r "\$pw=password_hash(\"""$dbpassword""\", PASSWORD_DEFAULT); echo(\$pw);")
     sed -i "/'admin' => .*/a '$dbnaming' => '$hashed_pw'," /var/www/tfm/config.php
 
     echo "Updating the WP config..."
@@ -854,6 +852,40 @@ cnf_opcache() {
     fi
 }
 
+cnf_admin_users() {
+    if [[ $1 == "add" && ! $2 == "" && ! $(yq '.admin_users.[].user | select(. == "'"$2"'")' /var/qyc/cnf.yaml) ]]; then
+        admin_user="$2"
+        admin_password=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
+        runuser -u mysql -- mysql --user=mysql <<EOF
+CREATE USER '${admin_user}'@'localhost' IDENTIFIED BY '${admin_password}';
+GRANT ALL PRIVILEGES ON *.* TO '${admin_user}'@'localhost';
+FLUSH PRIVILEGES;
+EOF
+        hashed_pw=$(php -r "\$pw=password_hash(\"""$admin_password""\", PASSWORD_DEFAULT); echo(\$pw);")
+        sed -i "/'admin' => .*/a '$admin_user' => '$hashed_pw'," /var/www/tfm/config.php
+
+        yq '.admin_users += [{"user": "'"$admin_user"'", "password": "'"$admin_password"'"}]' -i /var/qyc/cnf.yaml
+
+        echo "Admin user $admin_user added."
+        echo "All currently active admin users having database and file managing access:"
+        yq '.admin_users' /var/qyc/cnf.yaml
+    elif [[ $1 =~ (rm|remove) && ! $2 == "" && $(yq '.admin_users.[].user | select(. == "'"$2"'")' /var/qyc/cnf.yaml) ]]; then
+        admin_user="$2"
+        mysql <<EOF
+DROP USER ${admin_user}@localhost;
+EOF
+        sed -i "/$admin_user/d" /var/www/tfm/config.php
+
+        yq 'del(.admin_users.[] | select(.user == "'"$admin_user"'"))' -i /var/qyc/cnf.yaml
+
+        echo "Admin user $admin_user deleted."
+        echo "All currently active admin users having database and file managing access:"
+        yq '.admin_users' /var/qyc/cnf.yaml
+    else
+        echo "You have to specify qyc cnf admin add <user> or qyc cnf admin remove <user>. Something wasn't right."
+    fi
+}
+
 fn_cnf() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
@@ -874,6 +906,10 @@ fn_cnf() {
         opc | opcache)
             shift
             cnf_opcache "$@"
+            ;;
+        a | admin)
+            shift
+            cnf_admin_users "$@"
             ;;
         *)
             echo "Invalid option: $1"
