@@ -1,0 +1,12 @@
+/var/log/php/*.log {
+        rotate 12
+        weekly
+        size 15M
+        missingok
+        notifempty
+        compress
+        delaycompress
+        postrotate
+                kill -USR1 $(cat /run/php-fpm.pid) >/dev/null
+        endscript
+}

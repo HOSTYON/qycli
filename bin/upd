@@ -82,13 +82,14 @@ upd_nginx() {
 
         cp /var/qyc/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
         systemctl daemon-reload
+        cp /var/qyc/qycli/cnf/nginx/qyc-nginx-logrotate /etc/logrotate.d/qyc-nginx-logrotate
 
         eval "wget" -O- "$nginx_source" |
             tar xJ --strip-components=4 -C /var/qyc/bin/
 
         cp -r /var/qyc/bin/nginx/etc/* /etc/qyc/nginx
 
-        systemctl restart nginx
+        systemctl reload nginx
         systemctl reenable nginx
     fi
 }
@@ -141,11 +142,9 @@ upd_php_conf() {
     php_version=$(yq .php_version /var/qyc/cnf.yaml) # Reading the qycli.cnf file
     php_version_short=$(echo "$php_version" | tr -d ".")
 
-    [[ -f /lib/systemd/system/php-fpm.service ]] && upd_php_service_file
-
     [[ ! -d /run/qycli ]] && mkdir /run/qycli
 
-    systemctl restart php-fpm
+    systemctl reload php-fpm
 }
 
 upd_php() {
@@ -168,8 +167,9 @@ upd_php() {
         ln -s /etc/qyc/php/fpm/php.ini /var/qyc/bin/php"$php_version_short"/lib/php.ini
 
         upd_php_service_file
+        cp /var/qyc/qycli/cnf/php/qyc-php-logrotate /etc/logrotate.d/qyc-php-logrotate
 
-        systemctl restart php-fpm
+        systemctl reload php-fpm
         systemctl reenable php-fpm
     fi
 }
