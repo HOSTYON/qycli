@@ -8,18 +8,6 @@ get_public_ips() {
     ipv6=$(ip -6 a show dev "$ipv6_dev" scope global | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80 | grep -v ^fd00)
 }
 
-#  qycli update functions
-upd_qycli() {
-    git -C /var/qyc/qycli reset --hard HEAD
-    git -C /var/qyc/qycli pull
-    git -C /var/qyc/qycli-plugin reset --hard HEAD
-    git -C /var/qyc/qycli-plugin pull
-    cp /var/qyc/qycli/bin/qyc /usr/bin/qyc
-    chmod 755 /usr/bin/qyc
-    chmod 755 /var/qyc/qycli/kernel
-    chmod 755 /var/qyc/qycli/sec_firewall
-}
-
 upd_apt() {
     if dir /etc/apt/sources.list.d/ | grep -q old; then
         rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
@@ -70,6 +58,8 @@ upd_nginx_conf() {
     sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/qyc/nginx/nginx.conf
     sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/qyc/nginx/nginx.conf
 
+    cp /var/qyc/qycli/cnf/nginx/qyc-nginx-logrotate /etc/logrotate.d/qyc-nginx-logrotate
+
     systemctl reload nginx
 }
 
@@ -82,7 +72,6 @@ upd_nginx() {
 
         cp /var/qyc/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
         systemctl daemon-reload
-        cp /var/qyc/qycli/cnf/nginx/qyc-nginx-logrotate /etc/logrotate.d/qyc-nginx-logrotate
 
         eval "wget" -O- "$nginx_source" |
             tar xJ --strip-components=4 -C /var/qyc/bin/
@@ -144,6 +133,8 @@ upd_php_conf() {
 
     [[ ! -d /run/qycli ]] && mkdir /run/qycli
 
+    cp /var/qyc/qycli/cnf/php/qyc-php-logrotate /etc/logrotate.d/qyc-php-logrotate
+
     systemctl reload php-fpm
 }
 
@@ -164,10 +155,9 @@ upd_php() {
             ln -s "$bin" /usr/bin/"$(basename "$bin")"
         done
 
-        ln -s /etc/qyc/php/fpm/php.ini /var/qyc/bin/php"$php_version_short"/lib/php.ini
+        [[ ! -f /var/qyc/bin/php"$php_version_short"/lib/php.ini ]] && ln -s /etc/qyc/php/fpm/php.ini /var/qyc/bin/php"$php_version_short"/lib/php.ini
 
         upd_php_service_file
-        cp /var/qyc/qycli/cnf/php/qyc-php-logrotate /etc/logrotate.d/qyc-php-logrotate
 
         systemctl reload php-fpm
         systemctl reenable php-fpm
@@ -340,7 +330,6 @@ upd_psl() {
 }
 
 upd_fn() {
-    upd_qycli
     upd_apt
     upd_system_resources_qycli_cnf
     upd_get_new_cf_ips

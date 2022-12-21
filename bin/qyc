@@ -10,9 +10,18 @@ source /var/qyc/qycli/bin/help
 # shellcheck disable=1091
 source /var/qyc/qycli/bin/stk
 # shellcheck disable=1091
-source /var/qyc/qycli/bin/upd
-# shellcheck disable=1091
 source /var/qyc/qycli/bin/fn
+
+upd_qycli() {
+    git -C /var/qyc/qycli reset --hard HEAD
+    git -C /var/qyc/qycli pull
+    git -C /var/qyc/qycli-plugin reset --hard HEAD
+    git -C /var/qyc/qycli-plugin pull
+    cp /var/qyc/qycli/bin/qyc /usr/bin/qyc
+    chmod 755 /usr/bin/qyc
+    chmod 755 /var/qyc/qycli/kernel
+    chmod 755 /var/qyc/qycli/sec_firewall
+}
 
 if [[ "$1" == "mk" || "$1" == "make" ]]; then
     shift
@@ -29,6 +38,9 @@ elif [[ "$1" == "del" || "$1" == "delete" ]]; then
     shift
     fn_del "$@"
 elif [[ "$1" == "upd" || "$1" == "update" ]]; then
+    upd_qycli
+    # shellcheck disable=1091
+    source /var/qyc/qycli/bin/upd
     upd_fn
 elif [[ "$1" == "cnf" || "$1" == "conf" || "$1" == "configure" ]]; then
     shift
