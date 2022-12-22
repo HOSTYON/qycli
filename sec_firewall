@@ -7,7 +7,7 @@
 # Check if there is SSH
 [[ ! $(systemctl status ssh) ]] && echo "No SSH service found, aborting..." && exit
 # Check if there is netplan
-[[ ! $(command -v netplan) || ! $(ls /etc/netplan | sort -r | head -1) ]] && echo "Netplan not found, aborting..." && exit
+[[ ! $(command -v netplan) || ! $(find /etc/netplan -type f -printf "%f\n" | sort -r | head -n1) ]] && echo "Netplan not found, aborting..." && exit
 
 [[ $(command -v ufw) ]] && echo "Found UFW, purging it." && apt -y purge ufw
 [[ $(command -v firewall-cmd) ]] && echo "Found firewalld, purging it." && apt -y purge firewalld
@@ -62,6 +62,7 @@ while IFS= read -r cfip; do
 done </var/qyc/cache/cloudflare_ipv4_ips_new
 
 nft -f /etc/nftables.conf
+systemctl restart crowdsec-firewall-bouncer-nftables
 
 # Use Cloudflare for time sync
 sed '0,/.*NTP.*/s++NTP=time.cloudflare.com+' -i /etc/systemd/timesyncd.conf

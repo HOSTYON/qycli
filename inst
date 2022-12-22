@@ -37,7 +37,7 @@ EOF
     source /var/qyc/qycli/bin/help
     # shellcheck disable=1091
     source /var/qyc/qycli/bin/upd
-    printf "\nqycli ($branch_name) was installed.\n\n"
+    printf "\nqycli (%s) was installed.\n\n" "$branch_name"
 
     printf "\nInstalling the qycli stack now.\n\n"
     stk_install
