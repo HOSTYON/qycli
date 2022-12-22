@@ -37,21 +37,21 @@ EOF
     source /var/qyc/qycli/bin/help
     # shellcheck disable=1091
     source /var/qyc/qycli/bin/upd
-    echo "qycli ($branch_name) was installed."
-    if [[ "$kernel_tweaks" == "yes" ]]; then
-        printf "Optimizing kernel configurations. You should restart after the full installation has finished.\n\n"
-        # shellcheck disable=1091
-        source /var/qyc/qycli/kernel
-    fi
-    if [[ "$sec_install" == "yes" ]]; then
-        printf "Securing the network. Only SSH and Cloudflare connections will be allowed.\n\n"
-        # shellcheck disable=1091
-        source /var/qyc/qycli/sec_firewall
-    fi
+    printf "\nqycli ($branch_name) was installed.\n\n"
 
     printf "\nInstalling the qycli stack now.\n\n"
     stk_install
 
+    if [[ "$kernel_tweaks" == "yes" ]]; then
+        printf "\nOptimizing kernel configurations. You should restart after the full installation has finished.\n\n"
+        # shellcheck disable=1091
+        source /var/qyc/qycli/kernel
+    fi
+    if [[ "$sec_install" == "yes" ]]; then
+        printf "\nSecuring the network. Only SSH and Cloudflare connections will be allowed.\n\n"
+        # shellcheck disable=1091
+        source /var/qyc/qycli/sec_firewall
+    fi
     if [[ $cloudflare_token != "" ]]; then
         printf "\nGetting Cloudflare data.\n\n"
         upd_get_cf_token_accounts_and_zones
