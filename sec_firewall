@@ -6,6 +6,7 @@
 [[ $(whoami) != "root" ]] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 # Check if there is SSH
 [[ ! $(systemctl status ssh) ]] && echo "No SSH service found, aborting..." && exit
+[[ $(systemctl is-failed ssh) == "failed" ]] && echo "SSH service has failed, aborting..." && exit
 # Check if there is netplan
 [[ ! $(command -v netplan) || ! $(find /etc/netplan -type f -printf "%f\n" | sort -r | head -n1) ]] && echo "Netplan not found, aborting..." && exit
 
