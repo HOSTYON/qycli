@@ -960,7 +960,7 @@ You will be able to access the complete database not just the site's.
 user: admin
 password: $admindbpass
 
-https://$firstdomain/qyc-pma/
+https://$firstdomain/qyc/pma/
 
 EOF
     fi
@@ -968,10 +968,15 @@ EOF
 
 fn_info() {
     if [[ -z $1 ]]; then
-        cat /var/qyc/cnf.yaml
+        yq /var/qyc/cnf.yaml
     elif [[ $1 =~ (db|database|dbadmin) ]]; then
         fn_info_db
     else
         print_help_info
     fi
+}
+
+fn_sec() {
+    source /var/qyc/qycli/sec_firewall
+    yq '.sec_install = "yes"' -i /var/qyc/cnf.yaml
 }

@@ -23,31 +23,33 @@ upd_qycli() {
     chmod 755 /var/qyc/qycli/sec_firewall
 }
 
-if [[ "$1" == "mk" || "$1" == "make" ]]; then
+if [[ $1 =~ (mk|make) ]]; then
     shift
     fn_mk "$@"
-elif [[ "$1" == "ls" || "$1" == "list" ]]; then
+elif [[ $1 =~ (ls|list) ]]; then
     fn_ls
-elif [[ "$1" == "set" ]]; then
+elif [[ $1 == "set" ]]; then
     shift
     fn_set "$@"
-elif [[ "$1" == "cl" || "$1" == "clone" ]]; then
+elif [[ $1 =~ (cl|clone) ]]; then
     shift
     fn_clone "$@"
-elif [[ "$1" == "del" || "$1" == "delete" ]]; then
+elif [[ $1 =~ (del|delete) ]]; then
     shift
     fn_del "$@"
-elif [[ "$1" == "upd" || "$1" == "update" ]]; then
+elif [[ $1 =~ (upd|update) ]]; then
     upd_qycli
     # shellcheck disable=1091
     source /var/qyc/qycli/bin/upd
     upd_fn
-elif [[ "$1" == "cnf" || "$1" == "conf" || "$1" == "configure" ]]; then
+elif [[ $1 =~ (cnf|conf|configure) ]]; then
     shift
     fn_cnf "$@"
-elif [[ "$1" == "info" ]]; then
+elif [[ $1 == "info" ]]; then
     shift
     fn_info "$@"
+elif [[ $1 =~ (sec|security|firewall) ]]; then
+    fn_sec
 else
     print_help_qyc
 fi
