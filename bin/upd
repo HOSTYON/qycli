@@ -95,8 +95,8 @@ upd_mariadb_conf_ram_based() {
 }
 
 upd_mariadb_conf_cpu_based() {
-    local max_connections=$(($(upd_get_cpus) * 512)) # 512 times CPU cores
-    local query_cache_size=$(($(upd_get_cpus) * 64)) # 64 times CPU cores
+    local max_connections=$(($(upd_get_cpus) * 512))   # 512 times CPU cores
+    local query_cache_size=$(($(upd_get_cpus) * 1024)) # 1024 times CPU cores
     sed -e "s/.*max_connections.*/max_connections = ${max_connections}/" \
         -e "s/.*query_cache_size.*/query_cache_size = ${query_cache_size}M/" -i /etc/mysql/mariadb.conf.d/99-qyc.cnf
 }
