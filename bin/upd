@@ -78,7 +78,7 @@ upd_nginx() {
 
         cp -r /var/qyc/bin/nginx/etc/* /etc/qyc/nginx
 
-        systemctl reload nginx
+        systemctl start nginx
         systemctl reenable nginx
     fi
 }
