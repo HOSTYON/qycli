@@ -269,7 +269,7 @@ mk_common() {
     echo "Creating database..."
     mk_common_db
 
-    echo "Creating folders..."
+    echo "Creating site..."
     mk_common_site
 
     hashed_pw=$(php -r "\$pw=password_hash(\"""$dbpassword""\", PASSWORD_DEFAULT); echo(\$pw);")
