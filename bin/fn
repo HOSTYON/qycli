@@ -126,7 +126,7 @@ EOF
 
     ln -s /etc/qyc/nginx/sites-available/"$domain" /etc/qyc/nginx/sites-enabled/
     chown qycli:qycli -R /var/www/"$domain"/*
-    nginx -s reload
+    systemctl reload nginx
 
     cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
     if [[ $cf_token != "" ]]; then

@@ -189,7 +189,7 @@ stk_crowdsec_install() {
 
     # shellcheck disable=2034
     domain=crowdsec
-    mk_db
+    mk_common_db
     yq '.db_config.type = "mysql"' -i /etc/crowdsec/config.yaml
     # shellcheck disable=2154
     yq '.db_config += {"user": "'"$dbnaming"'"}' -i /etc/crowdsec/config.yaml
