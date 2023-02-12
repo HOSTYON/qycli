@@ -33,6 +33,18 @@ domain_parser() {
     fi
 }
 
+enable_site() {
+    ln -s /etc/qyc/nginx/sites-available/"$domain" /etc/qyc/nginx/sites-enabled/
+    yq '.enabled = "yes"' -i /var/qyc/sites/"$domain".yaml
+    systemctl reload nginx
+}
+
+disable_site() {
+    rm /etc/qyc/nginx/sites-enabled/"$domain"
+    yq '.enabled = "no"' -i /var/qyc/sites/"$domain".yaml
+    systemctl reload nginx
+}
+
 mk_common_db() {
     dbpassword=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24)
     #local qycpw=$(grep "MariaDB qyc" /etc/qycli/qycli.cnf | sed 's/^.*: //') # Reading the qycli.cnf file
@@ -104,8 +116,9 @@ mk_common_site_cnf_crowdsec_cloudflare_bouncer() {
 }
 
 mk_common_site() {
+    echo "domain: $domain" >/var/qyc/sites/"$domain".yaml
     type=$(grep -Po "^.*(?=-template)" <<<"$template" | tr -d ".")
-    echo "site-type: $type" >/var/qyc/sites/"$domain".yaml
+    echo "site-type: $type" >>/var/qyc/sites/"$domain".yaml
 
     mkdir -p /var/www/"$domain"/{htdocs,nginx-conf}
     [[ ! -d /var/qyc/cloudflare/"$root_domain" ]] && mkdir /var/qyc/cloudflare/"$root_domain"
@@ -125,7 +138,8 @@ $domainlist
 ;
 EOF
 
-    ln -s /etc/qyc/nginx/sites-available/"$domain" /etc/qyc/nginx/sites-enabled/
+    enable_site
+
     chown qycli:qycli -R /var/www/"$domain"/*
     systemctl reload nginx
 
@@ -218,9 +232,9 @@ EOF
         if [[ -n $wpadmin ]]; then
             tee -a /var/qyc/sites/"$domain".yaml <<EOF
 wp-login:
-    user:     $wpadmin
-    email:    $wpemail
-    password: $wppw
+  user:     $wpadmin
+  email:    $wpemail
+  password: $wppw
 
 EOF
         fi
@@ -405,7 +419,7 @@ mk_wp() {
     # WP Cloudflare Super Page Cache Setup
     wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache
 
-    nginx -s reload
+    systemctl reload nginx
 
     wp_cf_page_cache_token_and_plugin_options
 
@@ -413,7 +427,7 @@ mk_wp() {
 }
 
 mk_site() {
-    template=site-template.conf
+    template="site-template.conf"
     mk_common "$@"
     shift
 }
@@ -448,14 +462,19 @@ del_site() {
     # Must not delete when root_domain still in use
     if [[ $(qyc list | grep "$root_domain") == "" ]]; then
         cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
-        root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
         for id in $(yq .result.id /var/qyc/cloudflare/"$root_domain"/*.json); do
             curl -X DELETE "https://api.cloudflare.com/client/v4/user/tokens/$id" \
                 -H "Authorization: Bearer $cf_token"
         done
         rm -r /var/qyc/cloudflare/"$root_domain"
-        rm /var/qyc/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json
         echo "Cloudflare tokens deleted."
+    fi
+
+    if [[ $(qyc list | grep "$root_domain") == "" ]]; then
+        root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
+        curl -X DELETE "https://api.cloudflare.com/client/v4/user/tokens/$id" \
+            -H "Authorization: Bearer $cf_token"
+        rm /var/qyc/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json
     fi
 
     local snakedomain=${domain//[^0-9A-Za-z]/_}
@@ -645,11 +664,10 @@ set_alias() {
 }
 
 fn_ls() {
-    printf "\nAll sites available:\n"
-    dir -1 /etc/qyc/nginx/sites-available/
-    printf "\nAll sites enabled:\n"
-    dir -1 /etc/qyc/nginx/sites-enabled/
-    printf "\n"
+    for site in /var/qyc/sites/*; do
+        yq "$site"
+        echo
+    done
 }
 
 set_firewall() {
@@ -671,6 +689,22 @@ set_firewall() {
         fi
     else
         print_help_set
+    fi
+}
+
+set_enable() {
+    if ls /etc/qyc/nginx/sites-enabled/*"$domain"* >/dev/null 2>/dev/null; then
+        echo "Site $domain is already enabled."
+    else
+        enable_site
+    fi
+}
+
+set_disable() {
+    if ls /etc/qyc/nginx/sites-enabled/*"$domain"* >/dev/null 2>/dev/null; then
+        disable_site
+    else
+        echo "Site $domain is already disabled."
     fi
 }
 
@@ -697,6 +731,16 @@ fn_set() {
         firewall | waf)
             shift
             set_firewall "$@"
+            set_success=1
+            ;;
+        enable)
+            shift
+            set_enable
+            set_success=1
+            ;;
+        disable)
+            shift
+            set_disable
             set_success=1
             ;;
         esac

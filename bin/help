@@ -123,6 +123,8 @@ Available options:
     └─ del|delete     values: <domain>    Removes domain from site's nginx server block
     └─ ls|list        values: none        Lists all domain names of the site
   waf|firewall        values: on|off      Enables or disables 7g firewall for WordPress
+  enable              values: none        Enables a site in the nginx configuration
+  disable             values: none        Disables a site in the nginx configuration
 
 Examples:
   qyc set domain.com cache f on
