@@ -69,13 +69,14 @@ mk_common_site_create_cf_api_token_dns() {
 mk_common_site_create_cf_api_token_crowdsec() {
     now=$(date -u +"%Y-%m-%dT%H.%M.%SZ")
     root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
+    account_name=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.name' /var/qyc/cloudflare/cfzones.json)
     if [[ $root_domain_account_id != "" ]]; then
         if [[ ! -f /var/qyc/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json ]]; then
             # Create CrowdSec and DNS Token
             curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
                 -H "Authorization: Bearer $cf_token" \
                 -H "Content-Type: application/json" \
-                --data '{"name":"qycli CrowdSec Account-ID:'"$root_domain_account_id"' '"$now"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.'"$root_domain_account_id"'":"*"},"permission_groups":[{"id":"2edbf20661fd4661b0fe10e9e12f485c","name":"Account Rule Lists Write"},{"id":"a416acf9ef5a4af19fb11ed3b96b1fe6","name":"Account Firewall Access Rules Write"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"},{"id": "fb6778dc191143babbfaa57993f1d275","name": "Zone WAF Write"},{"id": "43137f8d07884d3198dc0ee77ca6e79b","name": "Firewall Services Write"}]}]}' >/var/qyc/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json
+                --data '{"name":"qycli CrowdSec Account: '"$account_name"' Account-ID: '"$root_domain_account_id"' '"$now"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.'"$root_domain_account_id"'":"*"},"permission_groups":[{"id":"2edbf20661fd4661b0fe10e9e12f485c","name":"Account Rule Lists Write"},{"id":"a416acf9ef5a4af19fb11ed3b96b1fe6","name":"Account Firewall Access Rules Write"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"},{"id": "fb6778dc191143babbfaa57993f1d275","name": "Zone WAF Write"},{"id": "43137f8d07884d3198dc0ee77ca6e79b","name": "Firewall Services Write"}]}]}' >/var/qyc/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json
         fi
     else
         echo "Account ID for the root domain $root_domain cannot be found in /var/qyc/cloudflare/cfzones.json,"
@@ -447,11 +448,13 @@ del_site() {
     # Must not delete when root_domain still in use
     if [[ $(qyc list | grep "$root_domain") == "" ]]; then
         cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
+        root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
         for id in $(yq .result.id /var/qyc/cloudflare/"$root_domain"/*.json); do
             curl -X DELETE "https://api.cloudflare.com/client/v4/user/tokens/$id" \
                 -H "Authorization: Bearer $cf_token"
         done
         rm -r /var/qyc/cloudflare/"$root_domain"
+        rm /var/qyc/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json
         echo "Cloudflare tokens deleted."
     fi
 
