@@ -310,6 +310,8 @@ upd_tinyfilemanager() {
     sed '/editor.setTheme("ace\/theme\/monokai");/a editor.setOptions({fontSize: "14px"});' -i /var/qyc/cache/tinyfilemanager.php
     sed 's+,"theme":"light"+,"theme":"dark"+' -i /var/qyc/cache/tinyfilemanager.php
 
+    sed "/\$show_hidden_files = isset(/a \$show_hidden_files = true" -i /var/qyc/cache/tinyfilemanager.phps
+
     sed "s+.fm-login-page .brand{ width:121px;overflow:hidden;margin:0 auto;position:relative;z-index:1}+.fm-login-page .brand{ width:85%;overflow:hidden;margin:15px auto;position:relative;z-index:1}+" -i /var/qyc/cache/tinyfilemanager.php
     sed '/.fm-login-page .brand img.*/a .card.fat.text-white.bg-dark {background: #004550!important;}' -i /var/qyc/cache/tinyfilemanager.php
     sed '/.fm-login-page .brand img.*/a body.fm-login-page.theme-dark {background-color: #031f23!important;}' -i /var/qyc/cache/tinyfilemanager.php
@@ -321,11 +323,11 @@ upd_tinyfilemanager() {
     sed -E '/<div class="footer text-center">/,/\/div>/d' -i /var/qyc/cache/tinyfilemanager.php
 
     for site in /etc/qyc/nginx/sites-available/*; do
-        site=$(basename $site)
+        site=$(basename "$site")
         [[ ! -d /var/www/"$site"/tfm ]] && mkdir /var/www/"$site"/tfm
         cp /var/qyc/cache/tinyfilemanager.php /var/www/"$site"/tfm/index.php
         tfmuser=$(yq .db-login.user /var/qyc/sites/"$site".yaml)
-        tfmpassword=$(yq .db-login.password /var/qyc/sites/"$site".yaml)
+        tfmpassword=$(php -r "\$pw=password_hash(\"""$(yq .db-login.password /var/qyc/sites/"$site".yaml)""\", PASSWORD_DEFAULT); echo(\$pw);")
         sed -i "s/'admin' => .*/ '$tfmuser' => '$tfmpassword',/" /var/www/"$site"/tfm/index.php
     done
 
