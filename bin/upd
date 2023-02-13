@@ -310,7 +310,7 @@ upd_tinyfilemanager() {
     sed '/editor.setTheme("ace\/theme\/monokai");/a editor.setOptions({fontSize: "14px"});' -i /var/qyc/cache/tinyfilemanager.php
     sed 's+,"theme":"light"+,"theme":"dark"+' -i /var/qyc/cache/tinyfilemanager.php
 
-    sed "/\$show_hidden_files = isset(/a \$show_hidden_files = true" -i /var/qyc/cache/tinyfilemanager.phps
+    sed "/\$show_hidden_files = isset(/a \$show_hidden_files = true" -i /var/qyc/cache/tinyfilemanager.php
 
     sed "s+.fm-login-page .brand{ width:121px;overflow:hidden;margin:0 auto;position:relative;z-index:1}+.fm-login-page .brand{ width:85%;overflow:hidden;margin:15px auto;position:relative;z-index:1}+" -i /var/qyc/cache/tinyfilemanager.php
     sed '/.fm-login-page .brand img.*/a .card.fat.text-white.bg-dark {background: #004550!important;}' -i /var/qyc/cache/tinyfilemanager.php
