@@ -178,9 +178,6 @@ EOF
 }
 
 stk_tinyfilemanager_install() {
-    mkdir -p /var/www/tfm
-    git -C /var/www/tfm clone https://github.com/prasathmani/tinyfilemanager.git .
-    cp /var/qyc/qycli/cnf/tfm/config.php /var/www/tfm/config.php
     upd_tinyfilemanager
 }
 

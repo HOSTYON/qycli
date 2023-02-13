@@ -57,6 +57,12 @@ CREATE DATABASE ${dbnaming};
 GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
 FLUSH PRIVILEGES;
 EOF
+
+    tee -a /var/qyc/sites/"$domain".yaml <<EOF
+db-login:
+  user:     $dbnaming
+  password: $dbpassword
+EOF
 }
 
 mk_common_site_create_cf_api_token_dns() {
@@ -120,7 +126,7 @@ mk_common_site() {
     type=$(grep -Po "^.*(?=-template)" <<<"$template" | tr -d ".")
     echo "site-type: $type" >>/var/qyc/sites/"$domain".yaml
 
-    mkdir -p /var/www/"$domain"/{htdocs,nginx-conf}
+    mkdir -p /var/www/"$domain"/{htdocs,nginx-conf,tfm}
     [[ ! -d /var/qyc/cloudflare/"$root_domain" ]] && mkdir /var/qyc/cloudflare/"$root_domain"
 
     cp /etc/qyc/nginx/"$template" /etc/qyc/nginx/sites-available/"$domain"

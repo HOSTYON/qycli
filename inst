@@ -9,7 +9,7 @@
 
 inst_qycli() {
     [[ -f /usr/local/bin/qyc ]] && echo "qycli is already installed, stopping the process. Just type qyc to get the help message or go to qycli.org to learn." && exit
-    [[ ! -d /var/qyc ]] && mkdir -p /var/qyc/{qycli,cloudflare/{dns,crowdsec},sites,cache,bin}
+    [[ ! -d /var/qyc ]] && mkdir -p /var/qyc/{qycli,cloudflare/{dns,crowdsec},sites,cache/git,bin}
     tee /var/qyc/cnf.yaml <<EOF
 branch_name: $branch_name
 sec_install: $sec_install
@@ -84,7 +84,7 @@ while [[ "$#" -gt 0 ]]; do
         ;;
     s | sec | security)
         if [[ "$2" =~ ^(n|no)$ ]]; then
-            sec_install=no
+            sec_install=yes
         fi
         shift
         ;;
