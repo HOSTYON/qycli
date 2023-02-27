@@ -1,0 +1,14 @@
+{
+  "port": 8881,
+  "noAuth": false,
+  "baseURL": "/qyc/fb/",
+  "address": "127.0.0.1",
+  "database": "/var/qyc/lib/filebrowser/filebrowser.db",
+  "log": "stdout",
+  "plugin": "",
+  "scope": "/var/www",
+  "allowCommands": true,
+  "allowEdit": true,
+  "allowNew": true,
+  "commands": ["ls", "df"]
+}

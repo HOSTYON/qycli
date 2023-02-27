@@ -1,0 +1,12 @@
+[Unit]
+Description=Filebrowser
+After=network-online.target
+
+[Service]
+User=qycli
+Group=qycli
+
+ExecStart=/usr/local/bin/filebrowser -c /var/qyc/lib/filebrowser/filebrowser.json -r /
+
+[Install]
+WantedBy=multi-user.target

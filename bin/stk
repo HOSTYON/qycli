@@ -177,10 +177,6 @@ EOF
     systemctl restart php-fpm
 }
 
-stk_tinyfilemanager_install() {
-    upd_tinyfilemanager
-}
-
 stk_crowdsec_install() {
     apt -y install crowdsec
 
@@ -208,7 +204,9 @@ stk_crowdsec_install() {
 }
 
 stk_filebrowser_install() {
-    curl -fsSL https://raw.githubusercontent.com/michacassola/get/patch-1/get.sh | bash
+    mkdir -p /var/qyc/lib/filebrowser
+    upd_filebrowser
+    chown -R qycli:qycli /var/qyc/lib/filebrowser
 }
 
 stk_install() {
@@ -222,7 +220,6 @@ stk_install() {
     stk_wpcli_install
     stk_composer_install
     stk_pma_install
-    stk_tinyfilemanager_install
     stk_crowdsec_install
     stk_filebrowser_install
     printf "\nqycli stack was installed.\n\n"
