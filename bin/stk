@@ -41,6 +41,9 @@ stk_utility_and_repos() {
     echo "Installing yq"
     upd_yq
 
+    # admin user password
+    echo "admin_password: $(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)" >>/var/qyc/cnf.yaml
+
     # shellcheck disable=SC2154
     if [[ $auto_update == "yes" || $auto_update == "on" ]]; then
         tee /etc/cron.d/qycli-upd <<EOF
@@ -99,13 +102,12 @@ stk_nginx_install() {
 }
 
 stk_mariadb_admin_user() {
-    admin_password=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
+    admin_password=$(yq .admin_password /var/qyc/cnf.yaml)
     runuser -u mysql -- mysql --user=mysql <<EOF
 CREATE USER 'admin'@'localhost' IDENTIFIED BY '${admin_password}';
 GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost';
 FLUSH PRIVILEGES;
 EOF
-    echo "db_admin_password: $admin_password" >>/var/qyc/cnf.yaml
 }
 
 stk_mariadb_install() {

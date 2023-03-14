@@ -6,7 +6,7 @@ After=network-online.target
 User=qycli
 Group=qycli
 
-ExecStart=/usr/local/bin/filebrowser -c /var/qyc/lib/filebrowser/filebrowser.json -r /
+ExecStart=/bin/bash -ac 'FB_PASSWORD="$(filebrowser hash $(yq .admin_password /var/qyc/cnf.yaml))"; /usr/local/bin/filebrowser -c /var/qyc/lib/filebrowser/filebrowser.json -r /'
 
 [Install]
 WantedBy=multi-user.target
