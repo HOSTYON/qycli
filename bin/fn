@@ -59,10 +59,14 @@ FLUSH PRIVILEGES;
 EOF
 
     tee -a /var/qyc/sites/"$domain".yaml <<EOF
-db-login:
+fb-db-login:
   user:     $dbnaming
   password: $dbpassword
 EOF
+
+    systemctl stop filebrowser
+    filebrowser users add "$dbnaming" "$dbpassword" -d /var/qyc/lib/filebrowser/filebrowser.db --scope /var/www/"$domain"/
+    systemctl start filebrowser
 }
 
 mk_common_site_create_cf_api_token_dns() {
