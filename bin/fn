@@ -245,7 +245,6 @@ wp-login:
   user:     $wpadmin
   email:    $wpemail
   password: $wppw
-
 EOF
         fi
     fi
