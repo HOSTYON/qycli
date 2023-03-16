@@ -130,7 +130,7 @@ mk_common_site() {
     type=$(grep -Po "^.*(?=-template)" <<<"$template" | tr -d ".")
     echo "site-type: $type" >>/var/qyc/sites/"$domain".yaml
 
-    mkdir -p /var/www/"$domain"/{htdocs,nginx-conf,tfm}
+    mkdir -p /var/www/"$domain"/{htdocs,nginx-conf}
     [[ ! -d /var/qyc/cloudflare/"$root_domain" ]] && mkdir /var/qyc/cloudflare/"$root_domain"
 
     cp /etc/qyc/nginx/"$template" /etc/qyc/nginx/sites-available/"$domain"
@@ -296,9 +296,6 @@ mk_common() {
 
     echo "Creating site..."
     mk_common_site
-
-    hashed_pw=$(php -r "\$pw=password_hash(\"""$dbpassword""\", PASSWORD_DEFAULT); echo(\$pw);")
-    sed -i "/'admin' => .*/a '$dbnaming' => '$hashed_pw'," /var/www/tfm/config.php
 }
 
 wp_create_cf_api_token_wp_cf_page_cache() {
@@ -490,7 +487,9 @@ del_site() {
     local snakedomain=${domain//[^0-9A-Za-z]/_}
     local dbnaming="qyc_$snakedomain"
 
-    sed -i "/$dbnaming/d" /var/www/tfm/config.php
+    systemctl stop filebrowser
+    filebrowser users rm "$dbnaming" -d /var/qyc/lib/filebrowser/filebrowser.db
+    systemctl start filebrowser
 
     mysql <<EOF
 DROP USER ${dbnaming}@localhost;    
@@ -819,8 +818,9 @@ clone_site() {
     mysql "$dbnaming" </var/www/"$cloneto"/db.sql
     rm /var/www/"$cloneto"/db.sql
 
-    hashed_pw=$(php -r "\$pw=password_hash(\"""$dbpassword""\", PASSWORD_DEFAULT); echo(\$pw);")
-    sed -i "/'admin' => .*/a '$dbnaming' => '$hashed_pw'," /var/www/tfm/config.php
+    systemctl stop filebrowser
+    filebrowser users add "$dbnaming" "$dbpassword" -d /var/qyc/lib/filebrowser/filebrowser.db --scope /var/www/"$domain"/
+    systemctl start filebrowser
 
     echo "Updating the WP config..."
     wp --path=/var/www/"$cloneto"/htdocs config set DB_NAME "${dbnaming}"
@@ -932,8 +932,10 @@ CREATE USER '${admin_user}'@'localhost' IDENTIFIED BY '${admin_password}';
 GRANT ALL PRIVILEGES ON *.* TO '${admin_user}'@'localhost';
 FLUSH PRIVILEGES;
 EOF
-        hashed_pw=$(php -r "\$pw=password_hash(\"""$admin_password""\", PASSWORD_DEFAULT); echo(\$pw);")
-        sed -i "/'admin' => .*/a '$admin_user' => '$hashed_pw'," /var/www/tfm/config.php
+
+        systemctl stop filebrowser
+        filebrowser users add "$admin_user" "$admin_password" -d /var/qyc/lib/filebrowser/filebrowser.db --scope /var/www/
+        systemctl start filebrowser
 
         yq '.admin_users += [{"user": "'"$admin_user"'", "password": "'"$admin_password"'"}]' -i /var/qyc/cnf.yaml
 
@@ -945,7 +947,9 @@ EOF
         mysql <<EOF
 DROP USER ${admin_user}@localhost;
 EOF
-        sed -i "/$admin_user/d" /var/www/tfm/config.php
+        systemctl stop filebrowser
+        filebrowser users rm "$admin_user" -d /var/qyc/lib/filebrowser/filebrowser.db
+        systemctl start filebrowser
 
         yq 'del(.admin_users.[] | select(.user == "'"$admin_user"'"))' -i /var/qyc/cnf.yaml
 

@@ -6,7 +6,7 @@ After=network-online.target
 User=qycli
 Group=qycli
 
-ExecStart=/bin/bash -ac 'fb_pass="$(filebrowser hash $(yq .admin_password /var/qyc/cnf.yaml))"; /usr/local/bin/filebrowser -c /var/qyc/lib/filebrowser/filebrowser.json -r / --password "$fb_pass"'
+ExecStart=/bin/bash -ac 'fb_pass="$(filebrowser hash $(yq .admin_password /var/qyc/cnf.yaml))"; /usr/local/bin/filebrowser -c /var/qyc/lib/filebrowser/filebrowser.json -r /var/www --password "$fb_pass"'
 
 [Install]
 WantedBy=multi-user.target
