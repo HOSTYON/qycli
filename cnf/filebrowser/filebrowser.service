@@ -3,8 +3,8 @@ Description=Filebrowser
 After=network-online.target
 
 [Service]
-User=root
-Group=root
+User=qycli
+Group=qycli
 
 ExecStart=/bin/bash -ac 'fb_pass="$(filebrowser hash $(yq .admin_password /var/qyc/cnf.yaml))"; /usr/local/bin/filebrowser -c /var/qyc/lib/filebrowser/filebrowser.json -r / --password "$fb_pass"'
 
