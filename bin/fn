@@ -65,7 +65,7 @@ fb-db-login:
 EOF
 
     systemctl stop filebrowser
-    filebrowser users add "$dbnaming" "$dbpassword" -d /var/qyc/lib/filebrowser/filebrowser.db --scope /var/www/"$domain"/
+    filebrowser users add "$dbnaming" "$dbpassword" -d /var/qyc/lib/filebrowser/filebrowser.db --scope "$domain"
     systemctl start filebrowser
 }
 
@@ -818,7 +818,7 @@ clone_site() {
     rm /var/www/"$cloneto"/db.sql
 
     systemctl stop filebrowser
-    filebrowser users add "$dbnaming" "$dbpassword" -d /var/qyc/lib/filebrowser/filebrowser.db --scope /var/www/"$domain"/
+    filebrowser users add "$dbnaming" "$dbpassword" -d /var/qyc/lib/filebrowser/filebrowser.db --scope "$domain"
     systemctl start filebrowser
 
     echo "Updating the WP config..."
@@ -933,7 +933,7 @@ FLUSH PRIVILEGES;
 EOF
 
         systemctl stop filebrowser
-        filebrowser users add "$admin_user" "$admin_password" -d /var/qyc/lib/filebrowser/filebrowser.db --scope /var/www/
+        filebrowser users add "$admin_user" "$admin_password" -d /var/qyc/lib/filebrowser/filebrowser.db --perm.admin true
         systemctl start filebrowser
 
         yq '.admin_users += [{"user": "'"$admin_user"'", "password": "'"$admin_password"'"}]' -i /var/qyc/cnf.yaml
