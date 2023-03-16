@@ -246,6 +246,7 @@ wp-login:
   email:    $wpemail
   password: $wppw
 EOF
+            echo ""
         fi
     fi
 }
@@ -760,38 +761,6 @@ fn_set() {
     fi
 }
 
-fn_clone() {
-    domain_parser "$@"
-    [[ $invalid_domain == "1" ]] && print_help_clone && exit
-    clonefrom=$domain
-    shift
-
-    if [[ "$1" == "to" ]]; then
-        shift
-    else
-        print_help_clone
-    fi
-
-    domain_parser "$@"
-    [[ $invalid_domain == "1" ]] && print_help_clone && exit
-    cloneto=$domain
-    shift
-
-    if [[ -d /var/www/$cloneto ]]; then
-        echo -n "Do you want to overwrite $cloneto from $clonefrom? [y/Y/yes]: "
-        read -r consent
-        if [[ "$consent" == "yes" || "$consent" == "y" || "$consent" == "Y" ]]; then
-            qyc del "$cloneto" -y
-            clone_site
-        else
-            echo "Not cloning site."
-            exit
-        fi
-    else
-        clone_site
-    fi
-}
-
 clone_site() {
     domain=$cloneto
     template=wp-template.conf
@@ -838,11 +807,47 @@ clone_site() {
     nginx -s reload
     systemctl reload php-fpm
 
+    wpadmin=$(yq .wp-login.user /var/qyc/sites/"$clonefrom")
+    wpemail=$(yq .wp-login.email /var/qyc/sites/"$clonefrom")
+    wppw=$(yq .wp-login.password /var/qyc/sites/"$clonefrom")
+
     cat <<EOF
 Cloning of $clonefrom to $cloneto is done.
 
 EOF
     dns_and_infos
+}
+
+fn_clone() {
+    domain_parser "$@"
+    [[ $invalid_domain == "1" ]] && print_help_clone && exit
+    clonefrom=$domain
+    shift
+
+    if [[ "$1" == "to" ]]; then
+        shift
+    else
+        print_help_clone
+    fi
+
+    domain_parser "$@"
+    [[ $invalid_domain == "1" ]] && print_help_clone && exit
+    cloneto=$domain
+    shift
+
+    if [[ -d /var/www/$cloneto ]]; then
+        echo -n "Do you want to overwrite $cloneto from $clonefrom? [y/Y/yes]: "
+        read -r consent
+        if [[ "$consent" == "yes" || "$consent" == "y" || "$consent" == "Y" ]]; then
+            qyc del "$cloneto" -y
+            clone_site
+        else
+            echo "Not cloning site."
+            exit
+        fi
+    else
+        clone_site
+    fi
 }
 
 cnf_php_version() {
