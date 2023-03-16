@@ -310,7 +310,13 @@ upd_psl() {
 }
 
 upd_filebrowser() {
-    curl -fsSL https://raw.githubusercontent.com/michacassola/get/patch-1/get.sh | bash
+    filebrowser_latest_ver=$(curl -si https://github.com/filebrowser/filebrowser/releases/latest | tac | tac | grep -m 1 "ocation:" | sed -z "s+.*/++" | tr -d '\r')
+    filebrowser_installed_ver=$(filebrowser version | grep -oP "v.*(?=/)")
+
+    if [[ $filebrowser_latest_ver != "$filebrowser_installed_ver" ]]; then
+        curl -fsSL https://raw.githubusercontent.com/michacassola/get/patch-1/get.sh | bash
+    fi
+
     if ! cmp -s /var/qyc/qycli/cnf/filebrowser/filebrowser.service /lib/systemd/system/filebrowser.service; then
         cp /var/qyc/qycli/cnf/filebrowser/filebrowser.service /lib/systemd/system/filebrowser.service
         cp /var/qyc/qycli/cnf/filebrowser/filebrowser.json /var/qyc/lib/filebrowser/filebrowser.json
