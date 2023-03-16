@@ -290,11 +290,11 @@ mk_common() {
 
     [[ -d /var/www/$domain ]] && printf "\nSite already exists.\n" && exit
 
-    echo "Creating database..."
-    mk_common_db
-
     echo "Creating site..."
     mk_common_site
+
+    echo "Creating database..."
+    mk_common_db
 }
 
 wp_create_cf_api_token_wp_cf_page_cache() {
