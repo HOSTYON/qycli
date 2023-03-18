@@ -318,6 +318,7 @@ upd_filebrowser() {
     fi
 
     if ! cmp -s /var/qyc/qycli/cnf/filebrowser/filebrowser.service /lib/systemd/system/filebrowser.service; then
+        [[ ! -d /var/qyc/lib/filebrowser ]] && mkdir -p /var/qyc/lib/filebrowser
         cp /var/qyc/qycli/cnf/filebrowser/filebrowser.service /lib/systemd/system/filebrowser.service
         cp /var/qyc/qycli/cnf/filebrowser/filebrowser.json /var/qyc/lib/filebrowser/filebrowser.json
         systemctl daemon-reload
