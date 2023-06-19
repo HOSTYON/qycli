@@ -71,10 +71,10 @@ EOF
 
 mk_common_site_create_cf_api_token_dns() {
     now=$(date -u +"%Y-%m-%dT%H.%M.%SZ")
-    root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
+    root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
     if [[ $root_domain_zone_id != "" ]]; then
         if [[ ! -f /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json ]]; then
-            root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
+            root_domain_account_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
             # Create CrowdSec and DNS Token
             curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
                 -H "Authorization: Bearer $cf_token" \
@@ -90,8 +90,8 @@ mk_common_site_create_cf_api_token_dns() {
 
 mk_common_site_create_cf_api_token_crowdsec() {
     now=$(date -u +"%Y-%m-%dT%H.%M.%SZ")
-    root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
-    account_name=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.name' /var/qyc/cloudflare/cfzones.json)
+    root_domain_account_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
+    account_name=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").account.name' /var/qyc/cloudflare/cfzones.json)
     if [[ $root_domain_account_id != "" ]]; then
         if [[ ! -f /var/qyc/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json ]]; then
             # Create CrowdSec and DNS Token
@@ -110,7 +110,7 @@ mk_common_site_create_cf_api_token_crowdsec() {
 mk_common_site_cnf_crowdsec_cloudflare_bouncer() {
     separator=''
     cf_crowdsec_tokens=$(for json in /var/qyc/cloudflare/crowdsec/cf_token_crowdsec_*.json; do
-        echo -n "$separator""$(yq .result.value "$json")"
+        echo -n "$separator""$(yq -py -oy .result.value "$json")"
         separator=','
     done)
 
@@ -162,15 +162,15 @@ EOF
 }
 
 del_dns_entries() {
-    cf_token_dns=$(yq .result.value /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json)
-    root_domain_zone_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
+    cf_token_dns=$(yq -py -oy .result.value /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json)
+    root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
     if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
 
         # List DNS records for a Zone
         existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
             -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" | tee -a /var/qyc/cache/old_dns_entries.json |
-            yq '.result[].id')
+            yq -py -oy '.result[].id')
 
         # Delete DNS records for a Zone if they exist
         if [[ $existing_dns_records != "" ]]; then
@@ -302,7 +302,7 @@ wp_create_cf_api_token_wp_cf_page_cache() {
     now=$(date -u +"%Y-%m-%dT%H.%M.%SZ")
     if [[ $root_domain_zone_id != "" ]]; then
         if [[ ! -f /var/qyc/cloudflare/$root_domain/cf_token_wp_cf_page_cache.json ]]; then
-            root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
+            root_domain_account_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
             # Create WP Cloudflare Super Page Cache Token
             curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
                 -H "Authorization: Bearer $cf_token" \
@@ -318,7 +318,7 @@ wp_create_cf_api_token_wp_cf_page_cache() {
 
 wp_cf_page_cache_plugin_setup() {
     if [[ $root_domain_zone_id != "" ]]; then
-        cf_token_wp_cf_page_cache=$(yq .result.value /var/qyc/cloudflare/"$root_domain"/cf_token_wp_cf_page_cache.json)
+        cf_token_wp_cf_page_cache=$(yq -py -oy .result.value /var/qyc/cloudflare/"$root_domain"/cf_token_wp_cf_page_cache.json)
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
@@ -452,7 +452,7 @@ fn_mk() {
 }
 
 del_site() {
-    if [[ -f /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json && $(yq .result.value /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json) != "" ]]; then
+    if [[ -f /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json && $(yq -py -oy .result.value /var/qyc/cloudflare/"$root_domain"/cf_token_dns.json) != "" ]]; then
         del_dns_entries
     fi
     if [[ $dns_entries_deleted == "true" ]]; then
@@ -469,7 +469,7 @@ del_site() {
     # Must not delete when root_domain still in use
     if [[ $(qyc list | grep "$root_domain") == "" ]]; then
         cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
-        for id in $(yq .result.id /var/qyc/cloudflare/"$root_domain"/*.json); do
+        for id in $(yq -py -oy .result.id /var/qyc/cloudflare/"$root_domain"/*.json); do
             curl -X DELETE "https://api.cloudflare.com/client/v4/user/tokens/$id" \
                 -H "Authorization: Bearer $cf_token"
         done
@@ -478,7 +478,7 @@ del_site() {
     fi
 
     if [[ $(qyc list | grep "$root_domain") == "" ]]; then
-        root_domain_account_id=$(yq '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
+        root_domain_account_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
         curl -X DELETE "https://api.cloudflare.com/client/v4/user/tokens/$id" \
             -H "Authorization: Bearer $cf_token"
         rm /var/qyc/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json

@@ -233,7 +233,7 @@ upd_get_cf_token_accounts_and_zones() {
 }
 
 upd_get_cf_accounts_and_zones() {
-    cf_token_accounts_zones=$(yq .result.value </var/qyc/cloudflare/cf_token_accounts_zones.json)
+    cf_token_accounts_zones=$(yq -py -oy .result.value </var/qyc/cloudflare/cf_token_accounts_zones.json)
 
     # Get all accounts
     curl -s -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=1000" \
