@@ -156,7 +156,7 @@ stk_composer_install() {
 
 stk_pma_install() {
     composer -d/var/www create-project phpmyadmin/phpmyadmin --no-dev /var/www/pma
-    pma_version=$(yq .version /var/www/pma/package.json)
+    pma_version=$(yq -py -oy .version /var/www/pma/package.json)
     composer -d/var/www/pma config version "$pma_version"
     composer -d/var/www/pma update
 
