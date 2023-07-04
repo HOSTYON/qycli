@@ -1008,7 +1008,7 @@ fn_del() {
 }
 
 fn_info_db() {
-    admindbpass=$(yq .db_admin_password /var/qyc/cnf.yaml)
+    admindbpass=$(yq .admin_password /var/qyc/cnf.yaml)
     if [[ -z "$(ls -A /etc/qyc/nginx/sites-available)" ]]; then
         cat <<EOF
 
