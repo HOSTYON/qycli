@@ -938,7 +938,7 @@ FLUSH PRIVILEGES;
 EOF
 
         systemctl stop filebrowser
-        filebrowser users add "$admin_user" "$admin_password" -d /var/qyc/lib/filebrowser/filebrowser.db --perm.admin true
+        filebrowser users add "$admin_user" "$admin_password" -d /var/qyc/lib/filebrowser/filebrowser.db --perm.admin
         systemctl start filebrowser
 
         yq '.admin_users += [{"user": "'"$admin_user"'", "password": "'"$admin_password"'"}]' -i /var/qyc/cnf.yaml
