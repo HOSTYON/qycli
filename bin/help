@@ -175,3 +175,23 @@ Examples:
 
 EOF
 }
+
+print_help_ls() {
+  cat <<EOF
+
+Description:
+  List local sites and their info or Cloudflare domains.
+
+Usage:
+  qyc ls [option]
+
+Available options:
+  sites       List all local sites and their info.
+  domains     List all domains available with the currently setup Cloudflare accounts.
+
+Examples:
+  qyc ls
+  qyc list domains
+
+EOF
+}
