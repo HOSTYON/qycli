@@ -984,7 +984,7 @@ cnf_qycli_version() {
 }
 
 fn_cnf() {
-    while [[ "$#" -ge 0 ]]; do
+    while [[ "$#" -gt 0 ]]; do
         case "$1" in
         php)
             shift
@@ -1019,6 +1019,10 @@ fn_cnf() {
         esac
         shift
     done
+
+    if [[ $1 == "" ]]; then
+        print_help_cnf
+    fi
 }
 
 fn_del() {
