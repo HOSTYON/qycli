@@ -672,15 +672,19 @@ set_alias() {
     fi
 }
 
+fn_ls_sites() {
+    for site in /var/qyc/sites/*; do
+        yq "$site"
+        echo
+    done
+}
+
 fn_ls() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        "" | sites)
+        sites)
             shift
-            for site in /var/qyc/sites/*; do
-                yq "$site"
-                echo
-            done
+            fn_ls_sites
             ;;
         domains)
             yq -oy .result[].name /var/qyc/cloudflare/cfzones.json
@@ -692,6 +696,10 @@ fn_ls() {
         esac
         shift
     done
+
+    if [[ $1 == "" ]]; then
+        fn_ls_sites
+    fi
 }
 
 set_firewall() {
