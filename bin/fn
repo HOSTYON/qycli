@@ -682,11 +682,16 @@ fn_ls_sites() {
 fn_ls() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
+        "")
+            shift
+            fn_ls_sites
+            ;;
         sites)
             shift
             fn_ls_sites
             ;;
         domains)
+            shift
             yq -oy .result[].name /var/qyc/cloudflare/cfzones.json
             ;;
         *)
@@ -696,10 +701,6 @@ fn_ls() {
         esac
         shift
     done
-
-    if [[ $1 == "" ]]; then
-        fn_ls_sites
-    fi
 }
 
 set_firewall() {
