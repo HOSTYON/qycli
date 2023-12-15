@@ -673,9 +673,24 @@ set_alias() {
 }
 
 fn_ls() {
-    for site in /var/qyc/sites/*; do
-        yq "$site"
-        echo
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+        "" | sites)
+            shift
+            for site in /var/qyc/sites/*; do
+                yq "$site"
+                echo
+            done
+            ;;
+        domains)
+            yq -oy .result[].name /var/qyc/cloudflare/cfzones.json
+            ;;
+        *)
+            echo "Invalid option: $1"
+            print_help_ls
+            ;;
+        esac
+        shift
     done
 }
 
@@ -869,7 +884,7 @@ cnf_php_parser() {
             shift
             cnf_php_version "$@"
             ;;
-        8.1 | 8.0 | 7.4)
+        8.1 | 8.0 | 7.4 | 8.2)
             cnf_php_version "$@"
             ;;
         *)

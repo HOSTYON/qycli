@@ -16,7 +16,7 @@ if [[ $1 =~ (mk|make) ]]; then
     shift
     fn_mk "$@"
 elif [[ $1 =~ (ls|list) ]]; then
-    fn_ls
+    fn_ls "$@"
 elif [[ $1 == "set" ]]; then
     shift
     fn_set "$@"
