@@ -680,6 +680,7 @@ fn_ls_sites() {
 }
 
 fn_ls() {
+    shift
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         "")
