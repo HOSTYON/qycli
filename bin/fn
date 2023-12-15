@@ -683,10 +683,7 @@ fn_ls() {
     shift
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        "")
-            fn_ls_sites
-            ;;
-        sites)
+        sites | "")
             shift
             fn_ls_sites
             ;;
