@@ -230,7 +230,7 @@ upd_get_cf_accounts_and_zones() {
         for id in $(yq '.result[].id' </var/qyc/cloudflare/cfaccounts.json); do
             curl -X GET "https://api.cloudflare.com/client/v4/zones?status=active&account.id=$id&page=1&per_page=500" \
                 -H "Authorization: Bearer $cf_token_accounts_zones" \
-                -H "Content-Type: application/json" | yq ea -i /var/qyc/cloudflare/cfzones.json -
+                -H "Content-Type: application/json" | yq -oj ea -i /var/qyc/cloudflare/cfzones.json -
         done
     else
         echo "Cloudflare token for getting accounts and zones is missing. Doing nothing."
