@@ -215,39 +215,49 @@ upd_get_new_cf_ips() {
     fi
 }
 
-upd_get_cf_token_accounts_and_zones() {
-    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
-    hostname=$(cat /etc/hostname)
-    get_public_ips
-    if [[ $ipv6 != "" ]]; then
-        pub_ip="$ipv6"
-    elif [[ $ipv4 != "" ]]; then
-        pub_ip="$ipv4"
-    fi
-
-    # Create Accounts Zones and DNS Token
-    curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
-        -H "Authorization: Bearer $cf_token" \
-        -H "Content-Type: application/json" \
-        --data '{"name":"qycli - Read Account Settings and Zones - '"$hostname"' - '"$pub_ip"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.*":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"}]}]}' >/var/qyc/cloudflare/cf_token_accounts_zones.json
-}
-
 upd_get_cf_accounts_and_zones() {
     cf_token_accounts_zones=$(yq -py -oy .result.value </var/qyc/cloudflare/cf_token_accounts_zones.json)
 
-    # Get all accounts
-    curl -s -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=1000" \
-        -H "Authorization: Bearer $cf_token_accounts_zones" \
-        -H "Content-Type: application/json" >/var/qyc/cloudflare/cfaccounts.json
-
-    # Get all zones of all accounts
-    [[ -f /var/qyc/cloudflare/cfzones.json ]] && rm /var/qyc/cloudflare/cfzones.json
-    touch /var/qyc/cloudflare/cfzones.json
-    for id in $(yq '.result[].id' </var/qyc/cloudflare/cfaccounts.json); do
-        curl -X GET "https://api.cloudflare.com/client/v4/zones?status=active&account.id=$id&page=1&per_page=500" \
+    if [[ $cf_token_accounts_zones != "" ]]; then
+        # Get all accounts
+        curl -s -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=1000" \
             -H "Authorization: Bearer $cf_token_accounts_zones" \
-            -H "Content-Type: application/json" | yq ea -i /var/qyc/cloudflare/cfzones.json -
-    done
+            -H "Content-Type: application/json" >/var/qyc/cloudflare/cfaccounts.json
+
+        # Get all zones of all accounts
+        [[ -f /var/qyc/cloudflare/cfzones.json ]] && rm /var/qyc/cloudflare/cfzones.json
+        touch /var/qyc/cloudflare/cfzones.json
+        for id in $(yq '.result[].id' </var/qyc/cloudflare/cfaccounts.json); do
+            curl -X GET "https://api.cloudflare.com/client/v4/zones?status=active&account.id=$id&page=1&per_page=500" \
+                -H "Authorization: Bearer $cf_token_accounts_zones" \
+                -H "Content-Type: application/json" | yq ea -i /var/qyc/cloudflare/cfzones.json -
+        done
+    else
+        echo "Cloudflare token for getting accounts and zones is missing. Doing nothing."
+    fi
+}
+
+upd_get_cf_token_accounts_and_zones() {
+    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
+
+    if [[ $cf_token != "" && ! -f /var/qyc/cloudflare/cf_token_accounts_zones.json ]]; then
+
+        hostname=$(cat /etc/hostname)
+        get_public_ips
+        if [[ $ipv6 != "" ]]; then
+            pub_ip="$ipv6"
+        elif [[ $ipv4 != "" ]]; then
+            pub_ip="$ipv4"
+        fi
+
+        # Create Accounts Zones and DNS Token
+        curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
+            -H "Authorization: Bearer $cf_token" \
+            -H "Content-Type: application/json" \
+            --data '{"name":"qycli - Read Account Settings and Zones - '"$hostname"' - '"$pub_ip"'","policies":[{"effect":"allow","resources":{"com.cloudflare.api.account.*":"*"},"permission_groups":[{"id":"c1fde68c7bcc44588cbb6ddbc16d6480","name":"Account Settings Read"}]},{"effect":"allow","resources":{"com.cloudflare.api.account.zone.*":"*"},"permission_groups":[{"id":"c8fed203ed3043cba015a93ad1616f1f","name":"Zone Read"}]}]}' >/var/qyc/cloudflare/cf_token_accounts_zones.json
+
+        upd_get_cf_accounts_and_zones
+    fi
 }
 
 upd_dns_entry() {
@@ -343,4 +353,24 @@ upd_fn() {
     upd_yq
     upd_psl
     upd_filebrowser
+}
+
+upd_parser() {
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+        "")
+            shift
+            upd_fn
+            ;;
+        cf | cloudflareinfo)
+            shift
+            upd_get_cf_accounts_and_zones
+            ;;
+        *)
+            echo "Invalid option: $1"
+            print_help_upd
+            ;;
+        esac
+        shift
+    done
 }

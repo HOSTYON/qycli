@@ -156,3 +156,22 @@ Examples:
 
 EOF
 }
+
+print_help_upd() {
+  cat <<EOF
+
+Description:
+  Update qycli and server or update Cloudflare info.
+
+Usage:
+  qyc upd [option]
+
+Available options:
+  cf|cloudflareinfo       Update Cloudflare accounts and zones files.
+
+Examples:
+  qyc upd
+  qyc upd cf
+
+EOF
+}

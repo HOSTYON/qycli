@@ -55,7 +55,7 @@ EOF
     if [[ $cloudflare_token != "" ]]; then
         printf "\nGetting Cloudflare data.\n\n"
         upd_get_cf_token_accounts_and_zones
-        upd_get_cf_accounts_and_zones
+        upd_get_cf_accounts_and_zones # Remove when this dev becomes stable 15.12.2023
     fi
 
     upd_system_resources_qycli_cnf
@@ -98,7 +98,7 @@ while [[ "$#" -gt 0 ]]; do
         if [[ "$2" =~ ^(7.4|8.0|8.1|8.2)$ ]]; then
             php_version=$2
         else
-            echo 'Not supported PHP version, try again with "7.4", "8.0" or "8.1". Exiting.'
+            echo 'Not supported PHP version, try again with "7.4", "8.0", "8.1" or "8.2". Exiting.'
             exit
         fi
         shift

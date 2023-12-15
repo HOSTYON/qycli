@@ -38,10 +38,11 @@ elif [[ $1 =~ (del|delete) ]]; then
     shift
     fn_del "$@"
 elif [[ $1 =~ (upd|update) ]]; then
+    shift
     upd_qycli
     # shellcheck disable=1091
     source /var/qyc/qycli/bin/upd
-    upd_fn
+    upd_parser "$@"
 elif [[ $1 =~ (cnf|conf|configure) ]]; then
     shift
     fn_cnf "$@"
