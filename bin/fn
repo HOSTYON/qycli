@@ -965,8 +965,26 @@ EOF
     fi
 }
 
+cnf_qycli_version() {
+    current_branch="$(yq .branch_name /var/qyc/cnf.yaml)"
+
+    if [[ "$1" == "$current_branch" ]]; then
+        echo "qycli is already in the $current_branch branch."
+        exit
+    fi
+
+    if [[ $1 =~ (stable|beta|dev) ]]; then
+        yq '.branch_name = "'"$1"'"' -i /var/qyc/cnf.yaml
+        upd_qycli
+    else
+        echo 'Possible qycli verions are: "stable", "beta" and "dev"'
+        print_help_cnf
+        exit
+    fi
+}
+
 fn_cnf() {
-    while [[ "$#" -gt 0 ]]; do
+    while [[ "$#" -ge 0 ]]; do
         case "$1" in
         php)
             shift
@@ -989,6 +1007,10 @@ fn_cnf() {
         a | admin)
             shift
             cnf_admin_users "$@"
+            ;;
+        qycv | qycliversion)
+            shift
+            cnf_qycli_version "$@"
             ;;
         *)
             echo "Invalid option: $1"

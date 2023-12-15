@@ -337,6 +337,19 @@ upd_filebrowser() {
     fi
 }
 
+upd_qycli() {
+    qycli_branch="$(yq .branch_name /var/qyc/cnf.yaml)"
+    git -C /var/qyc/qycli checkout "$qycli_branch"
+    git -C /var/qyc/qycli reset --hard HEAD
+    git -C /var/qyc/qycli pull
+    git -C /var/qyc/qycli-plugin reset --hard HEAD
+    git -C /var/qyc/qycli-plugin pull
+    cp /var/qyc/qycli/bin/qyc /usr/bin/qyc
+    chmod 755 /usr/bin/qyc
+    chmod 755 /var/qyc/qycli/kernel
+    chmod 755 /var/qyc/qycli/sec_firewall
+}
+
 upd_fn() {
     upd_apt
     upd_system_resources_qycli_cnf
