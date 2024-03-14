@@ -369,7 +369,7 @@ upd_fn() {
 upd_parser() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        "")
+        sys | system | stk | stack)
             shift
             upd_fn
             ;;
