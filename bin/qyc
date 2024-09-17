@@ -1,15 +1,13 @@
 #!/bin/bash
+# shellcheck disable=1091
 
 # Reference script to run all others, placed in /usr/bin/
 # example: qyc mk wp domain.com
 
 [[ $(whoami) != "root" ]] && echo "qycli has to be run as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 
-# shellcheck disable=1091
 source /var/qyc/qycli/bin/help
-# shellcheck disable=1091
 source /var/qyc/qycli/bin/stk
-# shellcheck disable=1091
 source /var/qyc/qycli/bin/fn
 
 if [[ $1 =~ (mk|make) ]]; then
@@ -28,10 +26,8 @@ elif [[ $1 =~ (del|delete) ]]; then
     fn_del "$@"
 elif [[ $1 =~ (upd|update) ]]; then
     shift
-    # shellcheck disable=1091
     source /var/qyc/qycli/bin/upd
     upd_qycli
-    # shellcheck disable=1091
     source /var/qyc/qycli/bin/upd
     upd_parser "$@"
 elif [[ $1 =~ (cnf|conf|configure) ]]; then
