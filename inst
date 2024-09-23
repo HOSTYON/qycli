@@ -17,21 +17,35 @@ sec_install: $sec_install
 php_version: $php_version
 cloudflare_token: $cloudflare_token
 auto_update: $auto_update
-nginx_source: $nginx_source
-php_source: $php_source
 EOF
 
-    apt update && apt -y install git
-    git config --global submodule.recurse true
+    if command -v wget >/dev/null; then
+        echo "Installing unypkg - https://unypkg.org"
+        wget -qO- uny.nu/pkg
+    else
+        echo "wget not found, aborting."
+        exit
+    fi
+
+    if [[ $cloudflare_token == "" ]]; then
+        echo "You need to supply a Clouflare API token with the permission template 'Create Additional Tokens'."
+        echo "Then you supply it to the qycli installation like this: wget -qO- qyc.li/inst | bash -s cft YOURTOKENHERE"
+    else
+        printf "\nGetting Cloudflare data.\n\n"
+        upd_get_cf_tokens
+        upd_get_cf_accounts_and_zones
+    fi
+
+    if ! command -v git >/dev/null; then
+        unyp install git
+        unyp system-install git
+    fi
 
     git -C /var/qyc/qycli clone -b "$branch_name" https://github.com/HOSTYON/qycli .
     git -C /var/qyc clone -b "$branch_name" https://github.com/HOSTYON/qycli-plugin
 
-    #git -C /var/qyc/qycli-plugin submodule update --init --recursive
-    cp /var/qyc/qycli/bin/qyc /usr/bin/qyc
-    chmod 755 /usr/bin/qyc
-    #chmod 755 /var/qyc/qycli/kernel
-    #chmod 755 /var/qyc/qycli/sec_firewall
+    ln -sfv /var/qyc/qycli/bin/qyc /bin/qyc
+    chmod 755 /bin/qyc
 
     source /var/qyc/qycli/bin/stk
     source /var/qyc/qycli/bin/help
@@ -49,11 +63,6 @@ EOF
         printf "\nSecuring the network. Only SSH and Cloudflare connections will be allowed.\n\n"
         source /var/qyc/qycli/sec_firewall
     fi
-    if [[ $cloudflare_token != "" ]]; then
-        printf "\nGetting Cloudflare data.\n\n"
-        upd_get_cf_token_accounts_and_zones
-        upd_get_cf_accounts_and_zones # Remove when this dev becomes stable 15.12.2023
-    fi
 
     upd_system_resources_qycli_cnf
     printf "\nqycli was installed.\n\n"
@@ -64,8 +73,6 @@ sec_install=no
 kernel_tweaks=yes
 php_version=8.1
 auto_update=no
-nginx_source='"https://github.com/HOSTYON/qycli-nginx/releases/download/\"$nginx_release_tag\"/qycli-nginx.tar.xz"'
-php_source='"https://github.com/HOSTYON/qycli-php\"$php_version_short\"/releases/download/\"$php_release_tag\"/qycli-php\"$php_version_short\".tar.xz"'
 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -74,6 +81,9 @@ while [[ "$#" -gt 0 ]]; do
             branch_name=beta
         elif [[ "$2" == "dev" ]]; then
             branch_name=dev
+        else
+            echo "$2 is not a valid qycli version. Aborting."
+            exit
         fi
         shift
         ;;
@@ -90,10 +100,10 @@ while [[ "$#" -gt 0 ]]; do
         shift
         ;;
     php | phpv | php-version)
-        if [[ "$2" =~ ^(7.4|8.0|8.1|8.2)$ ]]; then
+        if [[ "$2" =~ ^(7.4|8.1|8.2|8.3)$ ]]; then
             php_version=$2
         else
-            echo 'Not supported PHP version, try again with "7.4", "8.0", "8.1" or "8.2". Exiting.'
+            echo 'Not supported PHP version, try again with "7.4", "8.1", "8.2" or "8.3". Exiting.'
             exit
         fi
         shift
