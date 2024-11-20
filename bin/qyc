@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=1091
 
 # Reference script to run all others, placed in /usr/bin/

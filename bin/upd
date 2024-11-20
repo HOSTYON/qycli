@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #get_public_ips() {
 #    ipv4_dev=$(ip r | awk '/default via/ {print $5}' | head -n1)

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ## Kernel tweaks for qycli with "wget -qO- qyc.li/kernel | bash"
 
