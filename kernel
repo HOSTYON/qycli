@@ -6,10 +6,48 @@
 
 # Sysctl tweaks for security and performance
 tee /etc/sysctl.conf >/dev/null <<'EOF'
-# Based on Michiel Klaver's https://klaver.it/linux/sysctl.conf (v1.14)
+# Kernel sysctl configuration file for Linux
+#
+# Version 1.14 - 2019-04-05
+# Michiel Klaver - IT Professional
+# http://klaver.it/linux/ for the latest version - http://klaver.it/bsd/ for a BSD variant
+#
+# This file should be saved as /etc/sysctl.conf and can be activated using the command:
+# sysctl -e -p /etc/sysctl.conf
+#
+# For binary values, 0 is disabled, 1 is enabled.  See sysctl(8) and sysctl.conf(5) for more details.
+#
+# Tested with: Ubuntu 14.04 LTS kernel version 3.13
+#              Debian 7 kernel version 3.2
+#              CentOS 7 kernel version 3.10
+
+#
+# Intended use for dedicated server systems at high-speed networks with loads of RAM and bandwidth available
+# Optimised and tuned for high-performance web/ftp/mail/dns servers with high connection-rates
+# DO NOT USE at busy networks or xDSL/Cable connections where packetloss can be expected
+# ----------
+
+# Credits:
+# http://www.enigma.id.au/linux_tuning.txt
+# http://www.securityfocus.com/infocus/1729
+# http://fasterdata.es.net/TCP-tuning/linux.html
+# http://fedorahosted.org/ktune/browser/sysctl.ktune
+# http://www.cymru.com/Documents/ip-stack-tuning.html
+# http://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt
+# http://www.frozentux.net/ipsysctl-tutorial/chunkyhtml/index.html
+# http://knol.google.com/k/linux-performance-tuning-and-measurement
+# http://www.cyberciti.biz/faq/linux-kernel-tuning-virtual-memory-subsystem/
+# http://www.redbooks.ibm.com/abstracts/REDP4285.html
+# http://www.speedguide.net/read_articles.php?id=121
+# http://lartc.org/howto/lartc.kernel.obscure.html
+# http://en.wikipedia.org/wiki/Sysctl
+# https://blog.cloudflare.com/http-2-prioritization-with-nginx/
 
 
-### GENERAL SYSTEM SECURITY OPTIONS
+
+###
+### GENERAL SYSTEM SECURITY OPTIONS ###
+###
 
 # Controls the System Request debugging functionality of the kernel
 kernel.sysrq = 0
@@ -18,15 +56,15 @@ kernel.sysrq = 0
 # Useful for debugging multi-threaded applications.
 kernel.core_uses_pid = 1
 
-# Allow for more PIDs
+#Allow for more PIDs
 kernel.pid_max = 65535
 
 # The contents of /proc/<pid>/maps and smaps files are only visible to
 # readers that are allowed to ptrace() the process
-kernel.maps_protect = 1
+#kernel.maps_protect = 1
 
-# Enable ExecShield protection
-kernel.exec-shield = 1
+#Enable ExecShield protection
+#kernel.exec-shield = 1
 kernel.randomize_va_space = 2
 
 # Controls the maximum size of a message, in bytes
@@ -42,19 +80,18 @@ fs.suid_dumpable = 0
 kernel.kptr_restrict = 1
 
 
-### IMPROVE SYSTEM MEMORY MANAGEMENT
+
+###
+### IMPROVE SYSTEM MEMORY MANAGEMENT ###
+###
 
 # Increase size of file handles and inode cache
-fs.file-max = 147433
-vm.max_map_count = 262144
+fs.file-max = 209708
 
 # Do less swapping
-vm.swappiness = 20
-vm.dirty_ratio = 20
+vm.swappiness = 30
+vm.dirty_ratio = 30
 vm.dirty_background_ratio = 5
-
-# Less Cache Pressure
-vm.vfs_cache_pressure = 50
 
 # specifies the minimum virtual address that a process is allowed to mmap
 vm.mmap_min_addr = 4096
@@ -71,7 +108,9 @@ kernel.shmall = 268435456
 vm.min_free_kbytes = 65535
 
 
-### GENERAL NETWORK SECURITY OPTIONS
+###
+### GENERAL NETWORK SECURITY OPTIONS ###
+###
 
 #Prevent SYN attack, enable SYNcookies (they will kick-in when the max_syn_backlog reached)
 net.ipv4.tcp_syncookies = 1
@@ -99,13 +138,17 @@ net.ipv4.conf.default.secure_redirects = 0
 net.ipv6.conf.all.accept_redirects = 0
 net.ipv6.conf.default.accept_redirects = 0
 
+# Enable Log Spoofed Packets, Source Routed Packets, Redirect Packets
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.conf.default.log_martians = 1
+
 # Decrease the time default value for tcp_fin_timeout connection
-net.ipv4.tcp_fin_timeout = 15
+net.ipv4.tcp_fin_timeout = 7
 
 # Decrease the time default value for connections to keep alive
-net.ipv4.tcp_keepalive_time = 900
-net.ipv4.tcp_keepalive_probes = 15
-net.ipv4.tcp_keepalive_intvl = 90
+net.ipv4.tcp_keepalive_time = 300
+net.ipv4.tcp_keepalive_probes = 5
+net.ipv4.tcp_keepalive_intvl = 15
 
 # Don't relay bootp
 net.ipv4.conf.all.bootp_relay = 0
@@ -126,20 +169,22 @@ net.ipv4.icmp_echo_ignore_broadcasts = 1
 net.ipv4.icmp_ignore_bogus_error_responses = 1
 
 # Allowed local port range
-net.ipv4.ip_local_port_range = 1024 65535
+net.ipv4.ip_local_port_range = 16384 65535
 
 # Enable a fix for RFC1337 - time-wait assassination hazards in TCP
 net.ipv4.tcp_rfc1337 = 1
 
-
-### TUNING NETWORK PERFORMANCE
+###
+### TUNING NETWORK PERFORMANCE ###
+###
 
 # Use BBR TCP congestion control and set tcp_notsent_lowat to 16384 to ensure HTTP/2 prioritization works optimally
 # Do a 'modprobe tcp_bbr' first (kernel > 4.9)
 # Fall-back to htcp if bbr is unavailable (older kernels)
+net.ipv4.tcp_congestion_control = htcp
 net.ipv4.tcp_congestion_control = bbr
 net.ipv4.tcp_notsent_lowat = 16384
-
+    
 # For servers with tcp-heavy workloads, enable 'fq' queue management scheduler (kernel > 3.12)
 net.core.default_qdisc = fq
 
@@ -166,10 +211,7 @@ net.core.netdev_max_backlog = 182757
 net.core.dev_weight = 64
 
 # Increase the maximum amount of option memory buffers
-net.core.optmem_max = 2048000
-
-# When mem allocated by TCP exceeds “pressure”, kernel will put pressure on TCP memory
-net.ipv4.tcp_mem=8388608 8388608 8388608
+net.core.optmem_max = 65535
 
 # Increase the tcp-time-wait buckets pool size to prevent simple DOS attacks
 net.ipv4.tcp_max_tw_buckets = 1440000
@@ -179,7 +221,7 @@ net.ipv4.tcp_max_tw_buckets = 1440000
 net.ipv4.tcp_tw_reuse = 1
 
 # Limit number of orphans, each orphan can eat up to 16M (max wmem) of unswappable memory
-net.ipv4.tcp_max_orphans = 262144
+net.ipv4.tcp_max_orphans = 16384
 net.ipv4.tcp_orphan_retries = 0
 
 # Limit the maximum memory used to reassemble IP fragments (CVE-2018-5391)
@@ -189,7 +231,7 @@ net.ipv4.ipfrag_high_thresh = 262144
 net.ipv6.ip6frag_high_thresh = 262144
 
 # don't cache ssthresh from previous connection
-net.ipv4.tcp_no_metrics_save = 0
+net.ipv4.tcp_no_metrics_save = 1
 net.ipv4.tcp_moderate_rcvbuf = 1
 
 # Increase size of RPC datagram queue length
@@ -241,7 +283,7 @@ net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_base_mss = 1024
 net.ipv4.tcp_challenge_ack_limit = 999999999
 
-net.core.bpf_jit_limit = 204800000
+net.core.bpf_jit_limit = 1000000000
 
 fs.inotify.max_queued_events = 1048576
 fs.inotify.max_user_instances = 1048576
