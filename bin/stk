@@ -7,28 +7,10 @@ source /var/qyc/qycli/bin/upd
 source /var/qyc/qycli/bin/fn
 
 stk_utility_and_repos() {
-    if [[ -f /etc/needrestart/needrestart.conf ]]; then
-        export NEEDRESTART_MODE=a
-        sed "s+#\$nrconf{restart} = '.*';+\$nrconf{restart} = 'a';+" -i /etc/needrestart/needrestart.conf
-    fi
-
-    # CrowdSec
-    curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash
-
-    upd_apt
     # Utilities
-    apt -y install ubuntu-standard ubuntu-server zip unzip snap gnupg2 ca-certificates libpwquality-tools apt-transport-https rsync #lsb-release
+    unyp si zip unzip rsync #gnupg2 libpwquality-tools
 
-    # redis repo
-    curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
-    echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
-    # old: add-apt-repository -y ppa:redislabs/redis
-
-    # MariaDB repo
-    curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | bash -s -- --skip-maxscale
-
-    # For GeoIP
-    add-apt-repository -y ppa:maxmind/ppa
+    # For GeoIP maxmind still necessary?
 
     # Get the Public Suffix List
     upd_psl
@@ -54,51 +36,41 @@ EOF
 }
 
 stk_postfix_install() {
-    DEBIAN_FRONTEND=noninteractive apt -y install postfix
+    unyp si postfix
+    #DEBIAN_FRONTEND=noninteractive apt -y install postfix
+
     ## Following will store all outgoing mail in /home/qycli/mail/new
-    echo "home_mailbox = mail/" >>/etc/postfix/main.cf
-    echo "virtual_alias_maps = static:qycli" >>/etc/postfix/main.cf
-    systemctl restart postfix
+    echo "home_mailbox = mail/" >>/etc/uny/postfix/main.cf
+    echo "virtual_alias_maps = static:qycli" >>/etc/uny/postfix/main.cf
+    systemctl restart uny-postfix
 }
 
-stk_nginx_cert() {
-    ## Alternatives
-
-    #openssl genpkey -algorithm Ed25519 -out /etc/ssl/qycli.key
-    #openssl req -new -x509 -key /etc/ssl/qycli.key -out /etc/ssl/qycli.crt -days 7300 -subj "/C=AQ/ST=qycli/L=qycli/O=HOSTYON/OU=SysOps/CN=HOSTYON"
-
-    # openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 7300 -nodes -subj "/C=AQ/ST=qycli/L=qycli/O=HOSTYON/OU=SysOps/CN=HOSTYON"
+stk_tls_cert() {
     openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -x509 -nodes -days 7300 -out /etc/ssl/qycli.crt -keyout /etc/ssl/qycli.key -subj "/C=AQ/ST=qycli/L=qycli/O=HOSTYON/OU=SysOps/CN=HOSTYON"
-    chown qycli:qycli -R /etc/ssl/*
+    chown qycli:qycli /etc/ssl/qycli.crt /etc/ssl/qycli.key
 }
 
-stk_nginx_install() {
-    if [[ -d /etc/nginx && -d /usr/lib/nginx/modules ]]; then
-        printf "\nNGINX is already installed, start on a fresh system please.\n"
-        exit
-    fi
+stk_openresty_install() {
+    unyp si openresty
 
-    mkdir /var/log/nginx
-    touch /var/log/nginx/error.log
-    chown -R qycli:qycli /var/log/nginx/
+    mkdir /var/log/openresty
+    touch /var/log/openresty/error.log
+    chown -R qycli:qycli /var/log/openresty/
 
-    mkdir -p /etc/qyc/nginx/sites-enabled
-    mkdir /etc/qyc/nginx/sites-available
+    mkdir -p /etc/uny/openresty/sites-enabled /etc/uny/openresty/sites-available
 
-    mkdir -p /var/lib/nginx/proxy
-    chown -R qycli:qycli /var/lib/nginx
+    #mkdir -p /var/lib/openresty/proxy
+    #chown -R qycli:qycli /var/lib/openresty
 
-    stk_nginx_cert
+    stk_tls_cert
 
     mkdir /var/www
     chown qycli:qycli /var/www
 
-    upd_nginx
-    upd_nginx_conf
+    upd_openresty
+    upd_openresty_conf
 
     upd_get_new_cf_ips
-
-    ln -s /var/qyc/bin/nginx/sbin/nginx /usr/bin/nginx
 }
 
 stk_mariadb_admin_user() {
@@ -215,7 +187,7 @@ stk_install() {
     stk_utility_and_repos
     upd_system_resources_qycli_cnf
     stk_postfix_install
-    stk_nginx_install
+    stk_openresty_install
     stk_php_install
     stk_mariadb_install
     stk_redis_install

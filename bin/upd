@@ -8,13 +8,6 @@
 #    ipv6=$(ip -6 a show dev "$ipv6_dev" scope global | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80 | grep -v ^fd00)
 #}
 
-upd_apt() {
-    if dir /etc/apt/sources.list.d/ | grep -q old; then
-        rm /etc/apt/sources.list.d/*.old* # Remove old mariadb.list
-    fi
-    apt update && apt upgrade -y && apt -y dist-upgrade && apt -y autoremove
-}
-
 upd_get_cpus() {
     yq .cpus /var/qyc/cnf.yaml
 }
@@ -273,33 +266,6 @@ upd_dns_entry() {
     fi
 }
 
-upd_composer() {
-    EXPECTED_CHECKSUM="$(php -r 'copy("https://composer.github.io/installer.sig", "php://stdout");')"
-    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-    ACTUAL_CHECKSUM="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
-
-    if [[ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]]; then
-        echo >&2 'ERROR: Invalid installer checksum'
-        rm composer-setup.php
-        exit 1
-    fi
-
-    php composer-setup.php --quiet --filename=composer --install-dir=/var/qyc/bin/
-    RESULT=$?
-    rm composer-setup.php
-    echo $RESULT
-
-    tee /usr/local/bin/composer >/dev/null <<'EOF'
-runuser -u qycli -- /var/qyc/bin/composer $@
-EOF
-    chmod +x /usr/local/bin/composer
-}
-
-upd_phpmyadmin() {
-    composer -d/var/www/pma --with-all-dependencies update
-    chown -R qycli:qycli /var/www/pma
-}
-
 upd_yq() {
     # Install/update yq
     cpuarch=amd64
@@ -344,14 +310,15 @@ upd_qycli() {
     git -C /var/qyc/qycli pull
     git -C /var/qyc/qycli-plugin reset --hard HEAD
     git -C /var/qyc/qycli-plugin pull
-    cp /var/qyc/qycli/bin/qyc /usr/bin/qyc
-    chmod 755 /usr/bin/qyc
+
+    ln -sf /var/qyc/qycli/bin/qyc /bin/qyc
+
+    chmod 755 /bin/qyc
     chmod 755 /var/qyc/qycli/kernel
     chmod 755 /var/qyc/qycli/sec_firewall
 }
 
 upd_fn() {
-    upd_apt
     upd_system_resources_qycli_cnf
     upd_get_new_cf_ips
     upd_mariadb_conf
@@ -361,8 +328,6 @@ upd_fn() {
     upd_php_conf
     upd_redis_conf
     upd_redis_service
-    upd_composer
-    upd_phpmyadmin
     upd_yq
     upd_psl
     upd_filebrowser
