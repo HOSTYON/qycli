@@ -8,7 +8,7 @@ source /var/qyc/qycli/bin/fn
 
 stk_utility_and_repos() {
     # Utilities
-    unyp si zip unzip rsync #gnupg2 libpwquality-tools
+    unyp si zip unzip rsync yq #gnupg2 libpwquality-tools
 
     # For GeoIP maxmind still necessary?
 
@@ -16,12 +16,9 @@ stk_utility_and_repos() {
     upd_psl
 
     # qycli user
-    addgroup qycli
-    adduser --disabled-password --gecos "" --ingroup qycli qycli
-
-    # Install yq
-    echo "Installing yq"
-    upd_yq
+    groupadd qycli
+    useradd -c "qycli Stack User" -d /var/www -g qycli \
+        -s /bin/false qycli
 
     # admin user password
     echo "admin_password: $(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)" >>/var/qyc/cnf.yaml
@@ -46,29 +43,27 @@ stk_postfix_install() {
 }
 
 stk_tls_cert() {
-    openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -x509 -nodes -days 7300 -out /etc/ssl/qycli.crt -keyout /etc/ssl/qycli.key -subj "/C=AQ/ST=qycli/L=qycli/O=HOSTYON/OU=SysOps/CN=HOSTYON"
+    if ! command -v openssl >/dev/null 2>/dev/null; then
+        unyp si openssl
+    fi
+    openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -x509 -nodes -days 7300 \
+        -out /etc/ssl/qycli.crt \
+        -keyout /etc/ssl/qycli.key \
+        -subj "/C=AQ/ST=qycli/L=qycli/O=HOSTYON/OU=SysOps/CN=HOSTYON"
     chown qycli:qycli /etc/ssl/qycli.crt /etc/ssl/qycli.key
 }
 
 stk_openresty_install() {
-    unyp si openresty
+    upd_openresty
+    upd_openresty_conf
 
-    mkdir /var/log/openresty
-    touch /var/log/openresty/error.log
-    chown -R qycli:qycli /var/log/openresty/
-
-    mkdir -p /etc/uny/openresty/sites-enabled /etc/uny/openresty/sites-available
+    chown -vR qycli:qycli /var/log/openresty/ /var/www
+    chown qycli:qycli /var/www
 
     #mkdir -p /var/lib/openresty/proxy
     #chown -R qycli:qycli /var/lib/openresty
 
     stk_tls_cert
-
-    mkdir /var/www
-    chown qycli:qycli /var/www
-
-    upd_openresty
-    upd_openresty_conf
 
     upd_get_new_cf_ips
 }
@@ -83,7 +78,7 @@ EOF
 }
 
 stk_mariadb_install() {
-    apt -y install mariadb-server
+    unyp si mariadb
     upd_mariadb_conf
     stk_mariadb_admin_user
 
@@ -92,7 +87,7 @@ stk_mariadb_install() {
 }
 
 stk_php_install() {
-    apt -y install imagemagick ghostscript
+    unyp si imagemagick ghostscript
 
     mkdir /var/log/php/
     touch /var/log/php/php-fpm-error.log
@@ -105,7 +100,7 @@ stk_php_install() {
 }
 
 stk_redis_install() {
-    apt -y install redis
+    unyp si redis
     usermod -g qycli redis
 
     upd_redis_conf
@@ -115,15 +110,10 @@ stk_redis_install() {
 stk_wpcli_install() {
     wget -qO /var/qyc/bin/wp-cli https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
     chmod +x /var/qyc/bin/wp-cli
-    tee /usr/local/bin/wp >/dev/null <<'EOF'
+    tee /bin/wp >/dev/null <<'EOF'
 runuser -u qycli -- /var/qyc/bin/wp-cli $@
 EOF
-    chmod +x /usr/local/bin/wp
-    #wp package install aaemnnosttv/wp-cli-login-command
-}
-
-stk_composer_install() {
-    upd_composer
+    chmod +x /bin/wp
 }
 
 stk_pma_install() {
@@ -192,7 +182,6 @@ stk_install() {
     stk_mariadb_install
     stk_redis_install
     stk_wpcli_install
-    stk_composer_install
     stk_pma_install
     stk_crowdsec_install
     stk_filebrowser_install

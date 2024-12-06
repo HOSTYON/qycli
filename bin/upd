@@ -42,7 +42,7 @@ upd_nginx_conf_renew_cf_ips() {
     systemctl reload nginx
 }
 
-upd_nginx_conf() {
+upd_openresty_conf() {
     cp -rf /var/qyc/qycli/cnf/nginx/* /etc/qyc/nginx/
     [[ -f /lib/systemd/system/nginx.service ]] && cp /var/qyc/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service && systemctl daemon-reload
 
@@ -56,24 +56,12 @@ upd_nginx_conf() {
     systemctl reload nginx
 }
 
-upd_nginx() {
-    nginx_release_tag=$(curl -sI https://github.com/HOSTYON/qycli-nginx/releases/latest | tac | tac | grep "location:" | sed -z "s+.*/++" | tr -d '\r')
-    nginx_source=$(eval echo "$(yq .nginx_source /var/qyc/cnf.yaml)")
+upd_openresty() {
+    unyp install openresty
+    unyp si openresty
 
-    if [[ ! -f /var/qyc/cache/nginx_release_tag_old || $nginx_release_tag != $(cat /var/qyc/cache/nginx_release_tag_old) ]]; then
-        echo "$nginx_release_tag" >/var/qyc/cache/nginx_release_tag_old
-
-        cp /var/qyc/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service
-        systemctl daemon-reload
-
-        eval "wget" -O- "$nginx_source" |
-            tar xJ --strip-components=4 -C /var/qyc/bin/
-
-        cp -r /var/qyc/bin/nginx/etc/* /etc/qyc/nginx
-
-        systemctl restart nginx
-        systemctl reenable nginx
-    fi
+    systemctl reenable uny-openresty
+    systemctl restart uny-openresty
 }
 
 upd_mariadb_conf_ram_based() {
@@ -263,21 +251,6 @@ upd_dns_entry() {
             -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" \
             --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' >"$domain"_cf_dns.json
-    fi
-}
-
-upd_yq() {
-    # Install/update yq
-    cpuarch=amd64
-    yq_new_release_tag="$(curl -si https://github.com/mikefarah/yq/releases/latest | tac | tac | grep "location:" | sed -z "s+.*/++" | tr -d '\r')"
-    yq_new_source=https://github.com/mikefarah/yq/releases/download/"$yq_new_release_tag"/yq_linux_"$cpuarch".tar.gz
-
-    if [[ ! -f /var/qyc/cache/yq_old_source || $yq_new_source != $(cat /var/qyc/cache/yq_old_source) || ! -f /usr/bin/yq ]]; then
-        wget -qO - "$yq_new_source" |
-            tar xz && mv yq_linux_"$cpuarch" /usr/bin/yq
-        sh install-man-page.sh
-        rm install-man-page.sh && rm yq.1
-        echo "$yq_new_source" >/var/qyc/cache/yq_old_source
     fi
 }
 
