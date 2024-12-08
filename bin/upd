@@ -43,17 +43,16 @@ upd_nginx_conf_renew_cf_ips() {
 }
 
 upd_openresty_conf() {
-    cp -rf /var/qyc/qycli/cnf/nginx/* /etc/qyc/nginx/
-    [[ -f /lib/systemd/system/nginx.service ]] && cp /var/qyc/qycli/cnf/nginx/nginx.service /lib/systemd/system/nginx.service && systemctl daemon-reload
+    cp -rf /var/qyc/qycli/cnf/nginx/* /etc/uny/openresty/
 
     worker_processes=$(upd_get_cpus)                # 1 worker per CPU
     worker_connections=$(($(upd_get_cpus) * 10000)) # 10000 per CPU
-    sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/qyc/nginx/nginx.conf
-    sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/qyc/nginx/nginx.conf
+    sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/uny/openresty/nginx.conf
+    sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/uny/openresty/nginx.conf
 
     cp /var/qyc/qycli/cnf/nginx/qyc-nginx-logrotate /etc/logrotate.d/qyc-nginx-logrotate
 
-    systemctl reload nginx
+    systemctl reload uny-openresty
 }
 
 upd_openresty() {
@@ -295,13 +294,12 @@ upd_fn() {
     upd_system_resources_qycli_cnf
     upd_get_new_cf_ips
     upd_mariadb_conf
-    upd_nginx
-    upd_nginx_conf
+    upd_openresty
+    upd_openresty_conf
     upd_php
     upd_php_conf
     upd_redis_conf
     upd_redis_service
-    upd_yq
     upd_psl
     upd_filebrowser
 }
