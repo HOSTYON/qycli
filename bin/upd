@@ -24,22 +24,33 @@ upd_get_ram_mb() {
 #fi
 #}
 
-upd_nginx_conf_renew_cf_ips() {
-    if [[ -f /etc/qyc/nginx/conf.d/cloudflare.conf ]]; then
-        rm /etc/qyc/nginx/conf.d/cloudflare.conf
+upd_openlitespeed_conf() {
+    echo "Nothing to see here :D"
+}
+
+upd_openlitespeed() {
+    unyp install openlitespeed
+    unyp si openlitespeed
+}
+
+upd_openresty_conf_renew_cf_ips() {
+    if [[ -f /etc/uny/openresty/conf.d/cloudflare.conf ]]; then
+        rm /etc/uny/openresty/conf.d/cloudflare.conf
     fi
+
     # shellcheck disable=SC2013
     for cfip in $(
         cat /var/qyc/cache/cloudflare_ipv6_ips
         echo ""
         cat /var/qyc/cache/cloudflare_ipv4_ips
     ); do
-        echo "set_real_ip_from $cfip;" | tee -a /etc/qyc/nginx/conf.d/cloudflare.conf >/dev/null
+        echo "set_real_ip_from $cfip;" | tee -a /etc/uny/openresty/conf.d/cloudflare.conf >/dev/null
     done
-    echo 'real_ip_header CF-Connecting-IP;' | tee -a /etc/qyc/nginx/conf.d/cloudflare.conf >/dev/null
-    echo 'real_ip_recursive on;' | tee -a /etc/qyc/nginx/conf.d/cloudflare.conf >/dev/null
 
-    systemctl reload nginx
+    echo 'real_ip_header CF-Connecting-IP;' | tee -a /etc/uny/openresty/conf.d/cloudflare.conf >/dev/null
+    echo 'real_ip_recursive on;' | tee -a /etc/uny/openresty/conf.d/cloudflare.conf >/dev/null
+
+    systemctl reload uny-openresty
 }
 
 upd_openresty_conf() {
@@ -70,7 +81,7 @@ upd_mariadb_conf_ram_based() {
     sed -e "s/.*innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${innodb_buffer_pool_size}M/" \
         -e "s/.*innodb_log_file_size.*/innodb_log_file_size = ${innodb_log_file_size}M/" \
         -e "s/.*tmp_table_size.*/tmp_table_size = ${tmp_table_size}M/" \
-        -e "s/.*max_heap_table_size.*/max_heap_table_size = ${tmp_table_size}M/" -i /etc/mysql/mariadb.conf.d/99-qyc.cnf
+        -e "s/.*max_heap_table_size.*/max_heap_table_size = ${tmp_table_size}M/" -i /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
 
 }
 
@@ -78,14 +89,19 @@ upd_mariadb_conf_cpu_based() {
     local max_connections=$(($(upd_get_cpus) * 512))   # 512 times CPU cores
     local query_cache_size=$(($(upd_get_cpus) * 1024)) # 1024 times CPU cores
     sed -e "s/.*max_connections.*/max_connections = ${max_connections}/" \
-        -e "s/.*query_cache_size.*/query_cache_size = ${query_cache_size}M/" -i /etc/mysql/mariadb.conf.d/99-qyc.cnf
+        -e "s/.*query_cache_size.*/query_cache_size = ${query_cache_size}M/" -i /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
 }
 
 upd_mariadb_conf() {
-    cp /var/qyc/qycli/cnf/mysql/mariadb.conf.d/99-qyc.cnf /etc/mysql/mariadb.conf.d/99-qyc.cnf
+    cp /var/qyc/qycli/cnf/mariadb/my.cnf.d/99-qyc.cnf /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
     upd_mariadb_conf_ram_based
     upd_mariadb_conf_cpu_based
-    systemctl restart mariadb
+    systemctl restart uny-mariadb
+}
+
+upd_mariadb() {
+    unyp install mariadb
+    unyp si mariadb
 }
 
 upd_php_service_file() {
@@ -160,11 +176,6 @@ upd_redis_service() {
     fi
 }
 
-upd_pma_conf() {
-    cp /var/qyc/qycli/cnf/redis/redis-server.service /lib/systemd/system/redis-server.service
-    cp /var/www/pma/config.sample.inc.php /var/www/pma/config.inc.php
-}
-
 upd_system_resources_qycli_cnf() {
     cpus=$(grep -c processor /proc/cpuinfo)
     ram_in_mb=$(($(grep MemTotal /proc/meminfo | tr -d 'MemTotal: kB') / 1000))
@@ -191,7 +202,7 @@ upd_get_new_cf_ips() {
         cp /var/qyc/cache/cloudflare_ipv4_ips_new /var/qyc/cache/cloudflare_ipv4_ips
         cp /var/qyc/cache/cloudflare_ipv6_ips_new /var/qyc/cache/cloudflare_ipv6_ips
         #upd_firewall
-        upd_nginx_conf_renew_cf_ips
+        upd_openresty_conf_renew_cf_ips
     fi
 }
 
@@ -293,9 +304,12 @@ upd_qycli() {
 upd_fn() {
     upd_system_resources_qycli_cnf
     upd_get_new_cf_ips
+    upd_mariadb
     upd_mariadb_conf
     upd_openresty
     upd_openresty_conf
+    upd_openlitespeed
+    upd_openlitespeed_conf
     upd_php
     upd_php_conf
     upd_redis_conf
@@ -307,7 +321,7 @@ upd_fn() {
 upd_parser() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-        sys | system | stk | stack)
+        stk | stack)
             shift
             upd_fn
             ;;
