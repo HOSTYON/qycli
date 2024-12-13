@@ -7,6 +7,6 @@
         compress
         delaycompress
         postrotate
-                kill -USR1 $(cat /run/php-fpm.pid) >/dev/null
+        kill -USR1 $(cat /run/php-fpm.pid) >/dev/null
         endscript
 }

@@ -104,60 +104,28 @@ upd_mariadb() {
     unyp si mariadb
 }
 
-upd_php_service_file() {
-    cp /var/qyc/qycli/cnf/php/php-fpm.service /lib/systemd/system/php-fpm.service
-    sed "s/PHPVER/$php_version_short/" -i /lib/systemd/system/php-fpm.service
-    systemctl daemon-reload
-}
-
 upd_php_conf() {
-    [[ ! -d /etc/qyc/php/fpm ]] && mkdir -p /etc/qyc/php/fpm
-    cp -rf /var/qyc/qycli/cnf/php/* /etc/qyc/php/
-    chown -R qycli:qycli /etc/qyc/php
+    for phpver in /uny/pkg/php/*; do
+        small_phpver="$(basename "$phpver" | cut -d. -f1,2)"
 
-    local opmem=$(($(upd_get_ram_mb) * 10 / 100)) # 10% of all memory in MB
-    cp /var/qyc/qycli/cnf/php/fpm/php.ini /etc/qyc/php/fpm/php.ini
-    sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
-        -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/qyc/php/fpm/php.ini
+        cp /var/qyc/qycli/cnf/php/php.ini /etc/uny/php/"$small_phpver"/php.ini
+        chown -R qycli:qycli /etc/uny/php/"$small_phpver"
 
-    local maxchil=$(($(upd_get_ram_mb) * 60 / 160 / 100)) # pm.max_children = 60% Total Memory / 160MB
-    cp /var/qyc/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/qyc/php/fpm/pool.d/qycli.conf
-    sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" -i /etc/qyc/php/fpm/pool.d/qycli.conf
+        local opmem=$(($(upd_get_ram_mb) * 10 / 100)) # 10% of all memory in MB
+        sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
+            -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/uny/php/"$small_phpver"/php.ini
 
-    php_version=$(yq .php_version /var/qyc/cnf.yaml) # Reading the qycli.cnf file
-    php_version_short=$(echo "$php_version" | tr -d ".")
-
-    [[ ! -d /run/qycli ]] && mkdir /run/qycli
-
+        #local maxchil=$(($(upd_get_ram_mb) * 60 / 160 / 100)) # pm.max_children = 60% Total Memory / 160MB
+        #cp /var/qyc/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/qyc/php/fpm/pool.d/qycli.conf
+        #sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" -i /etc/qyc/php/fpm/pool.d/qycli.conf
+    done
     cp /var/qyc/qycli/cnf/php/qyc-php-logrotate /etc/logrotate.d/qyc-php-logrotate
-
-    systemctl reload php-fpm
 }
 
 upd_php() {
     php_version=$(yq .php_version /var/qyc/cnf.yaml) # Reading the qycli.cnf file
-    php_version_short=$(echo "$php_version" | tr -d ".")
-    php_release_tag=$(curl -si https://github.com/HOSTYON/qycli-php"$php_version_short"/releases/latest | tac | tac | grep "location:" | sed -z "s+.*/++" | tr -d '\r')
-    php_source=$(eval echo "$(yq .php_source /var/qyc/cnf.yaml)")
-
-    if [[ ! -f /var/qyc/cache/php_release_tag_old || $php_release_tag != $(cat /var/qyc/cache/php_release_tag_old) ]]; then
-        echo "$php_release_tag" >/var/qyc/cache/php_release_tag_old
-
-        eval "wget" -O- "$php_source" |
-            tar xJ --strip-components=4 -C /var/qyc/bin/
-
-        for bin in /var/qyc/bin/php"$php_version_short"/bin/*; do
-            [[ -f /usr/bin/"$(basename "$bin")" ]] && rm /usr/bin/"$(basename "$bin")"
-            ln -s "$bin" /usr/bin/"$(basename "$bin")"
-        done
-
-        [[ ! -f /var/qyc/bin/php"$php_version_short"/lib/php.ini ]] && ln -s /etc/qyc/php/fpm/php.ini /var/qyc/bin/php"$php_version_short"/lib/php.ini
-
-        upd_php_service_file
-
-        systemctl reload php-fpm
-        systemctl reenable php-fpm
-    fi
+    unyp install php/"$php_version"
+    unyp si php/"$php_version"
 }
 
 upd_redis_conf() {
