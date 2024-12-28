@@ -134,11 +134,11 @@ upd_redis_conf() {
 }
 
 upd_redis_service() {
-    if ! cmp -s /var/qyc/qycli/cnf/redis/redis-server.service /lib/systemd/system/redis-server.service; then
-        cp /var/qyc/qycli/cnf/redis/redis-server.service /lib/systemd/system/redis-server.service
-        systemctl daemon-reload
-        systemctl enable redis-server
-        systemctl restart redis-server
+    if [ -s /etc/systemd/system/uny-redis-server.service ]; then
+        systemctl enable uny-redis-server
+        systemctl restart uny-redis-server
+    else
+        echo "Redis server service unit file does not exist."
     fi
 }
 

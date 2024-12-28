@@ -105,8 +105,8 @@ stk_redis_install() {
     unyp si redis
     usermod -g qycli redis
 
-    upd_redis_conf
     upd_redis_service
+    upd_redis_conf
 }
 
 stk_wpcli_install() {
