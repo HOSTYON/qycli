@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # shellcheck disable=1091,2016
 
-## Install qycli and stack with "wget -qO- qyc.li/inst | bash" or the dev version with "wget qyc.li/inst && bash inst v dev"
+## Install qycli dev version and stack with "wget -qO- qyc.li/inst | bash -s v dev" or the dev version with "wget qyc.li/inst && bash inst v dev"
 ## or "bash <(wget -qO- qyc.li/inst) v dev k no phpv 7.4"
 
 ## Optimize the host if you are not in a container with "wget -qO- qyc.li/kernel | bash"
