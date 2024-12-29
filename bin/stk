@@ -116,7 +116,8 @@ EOF
 }
 
 stk_crowdsec_install() {
-    apt -y install crowdsec
+    unyp si crowdsec
+    systemctl enable uny-crowdsec
 
     # shellcheck disable=2034
     domain=crowdsec
@@ -133,9 +134,9 @@ stk_crowdsec_install() {
 
     yq '.include_scenarios_containing[0] = "http" | .include_scenarios_containing[0] style="double"' -i /etc/crowdsec/bouncers/crowdsec-cloudflare-bouncer.yaml
 
-    systemctl reload crowdsec
+    systemctl reload uny-crowdsec
     cscli machines add -a
-    systemctl restart crowdsec
+    systemctl restart uny-crowdsec
 
     apt -y install crowdsec-firewall-bouncer-nftables
     apt -y install crowdsec-cloudflare-bouncer
