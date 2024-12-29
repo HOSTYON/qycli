@@ -100,6 +100,8 @@ upd_mariadb_conf() {
 upd_mariadb() {
     unyp install mariadb
     unyp si mariadb
+    systemctl enable uny-mariadb
+    systemctl restart uny-mariadb
 }
 
 upd_php_conf() {
@@ -127,10 +129,10 @@ upd_php() {
 }
 
 upd_redis_conf() {
-    cp /var/qyc/qycli/cnf/redis/redis.conf /etc/redis/redis.conf
+    cp /var/qyc/qycli/cnf/redis/redis.conf /etc/uny/redis/redis.conf
     local redismem=$(($(upd_get_ram_mb) * 20 / 100)) # 20% of all memory in MB
-    sed -i "s+maxmemory[[:space:]].*+maxmemory ${redismem}mb+g" /etc/redis/redis.conf
-    systemctl restart redis-server
+    sed -i "s+maxmemory[[:space:]].*+maxmemory ${redismem}mb+g" /etc/uny/redis/redis.conf
+    systemctl restart uny-redis-server
 }
 
 upd_redis_service() {

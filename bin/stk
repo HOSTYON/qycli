@@ -92,10 +92,7 @@ stk_php_install() {
     unyp si imagemagick ghostscript
 
     mkdir /var/log/php/
-    touch /var/log/php/php-fpm-error.log
     chown -R qycli:qycli /var/log/php/
-
-    mkdir /run/qycli
 
     upd_php
     upd_php_conf
