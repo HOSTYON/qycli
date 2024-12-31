@@ -39,12 +39,13 @@ EOF
 
 stk_postfix_install() {
     unyp si postfix
+    systemctl enable uny-postfix
     #DEBIAN_FRONTEND=noninteractive apt -y install postfix
 
     ## Following will store all outgoing mail in /home/qycli/mail/new
     echo "home_mailbox = mail/" >>/etc/uny/postfix/main.cf
     echo "virtual_alias_maps = static:qycli" >>/etc/uny/postfix/main.cf
-    systemctl restart uny-postfix
+    systemctl start uny-postfix
 }
 
 stk_tls_cert() {
