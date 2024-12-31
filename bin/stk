@@ -142,11 +142,11 @@ stk_crowdsec_install() {
     apt -y install crowdsec-cloudflare-bouncer
 }
 
-stk_filebrowser_install() {
-    mkdir -p /var/qyc/lib/filebrowser
-    upd_filebrowser
-    chown -R qycli:qycli /var/qyc/lib/filebrowser
-}
+#stk_filebrowser_install() {
+#    mkdir -p /var/qyc/lib/filebrowser
+#    upd_filebrowser
+#    chown -R qycli:qycli /var/qyc/lib/filebrowser
+#}
 
 stk_install() {
     stk_utility_and_repos
@@ -160,6 +160,6 @@ stk_install() {
     stk_wpcli_install
     stk_pma_install
     stk_crowdsec_install
-    stk_filebrowser_install
+    #stk_filebrowser_install
     printf "\nqycli stack was installed.\n\n"
 }

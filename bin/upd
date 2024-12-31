@@ -236,23 +236,23 @@ upd_psl() {
     curl -s https://publicsuffix.org/list/public_suffix_list.dat | grep -vE "^//" | sed "s+\*\.++" | tr -s '\n' >/var/qyc/cache/psl
 }
 
-upd_filebrowser() {
-    filebrowser_latest_ver=$(curl -si https://github.com/filebrowser/filebrowser/releases/latest | tac | tac | grep -m 1 "ocation:" | sed -z "s+.*/++" | tr -d '\r')
-    filebrowser_installed_ver=$(filebrowser version | grep -oP "v.*(?=/)")
+# upd_filebrowser() {
+#     filebrowser_latest_ver=$(curl -si https://github.com/filebrowser/filebrowser/releases/latest | tac | tac | grep -m 1 "ocation:" | sed -z "s+.*/++" | tr -d '\r')
+#     filebrowser_installed_ver=$(filebrowser version | grep -oP "v.*(?=/)")
 
-    if [[ $filebrowser_latest_ver != "$filebrowser_installed_ver" ]]; then
-        curl -fsSL https://raw.githubusercontent.com/michacassola/get/patch-1/get.sh | bash
-    fi
+#     if [[ $filebrowser_latest_ver != "$filebrowser_installed_ver" ]]; then
+#         curl -fsSL https://raw.githubusercontent.com/michacassola/get/patch-1/get.sh | bash
+#     fi
 
-    if ! cmp -s /var/qyc/qycli/cnf/filebrowser/filebrowser.service /lib/systemd/system/filebrowser.service; then
-        [[ ! -d /var/qyc/lib/filebrowser ]] && mkdir -p /var/qyc/lib/filebrowser
-        cp /var/qyc/qycli/cnf/filebrowser/filebrowser.service /lib/systemd/system/filebrowser.service
-        cp /var/qyc/qycli/cnf/filebrowser/filebrowser.json /var/qyc/lib/filebrowser/filebrowser.json
-        systemctl daemon-reload
-        systemctl enable filebrowser
-        systemctl restart filebrowser
-    fi
-}
+#     if ! cmp -s /var/qyc/qycli/cnf/filebrowser/filebrowser.service /lib/systemd/system/filebrowser.service; then
+#         [[ ! -d /var/qyc/lib/filebrowser ]] && mkdir -p /var/qyc/lib/filebrowser
+#         cp /var/qyc/qycli/cnf/filebrowser/filebrowser.service /lib/systemd/system/filebrowser.service
+#         cp /var/qyc/qycli/cnf/filebrowser/filebrowser.json /var/qyc/lib/filebrowser/filebrowser.json
+#         systemctl daemon-reload
+#         systemctl enable filebrowser
+#         systemctl restart filebrowser
+#     fi
+# }
 
 upd_qycli() {
     qycli_branch="$(yq .branch_name /var/qyc/cnf.yaml)"
@@ -283,7 +283,7 @@ upd_fn() {
     upd_redis_conf
     upd_redis_service
     upd_psl
-    upd_filebrowser
+    #upd_filebrowser
 }
 
 upd_parser() {
