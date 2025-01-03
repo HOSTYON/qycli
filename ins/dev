@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+# shellcheck disable=1091,2016
+
+branch_name=dev
+
+# Parse options
+wget -q https://raw.githubusercontent.com/HOSTYON/qycli/refs/heads/"$branch_name"/ins/inst-parser
+. inst-parser
+rm -f inst-parser
+
+# Run installer with options
+wget -q https://raw.githubusercontent.com/HOSTYON/qycli/refs/heads/"$branch_name"/ins/inst
+. inst
+rm -f inst
