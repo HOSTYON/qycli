@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # shellcheck disable=1091,2016,2154
 
-## Install qycli dev version and stack with "wget -qO- qyc.li/i/stable | bash -s" or the dev version with "wget qyc.li/i/dev && bash inst"
+## Install qycli dev version and stack with "wget -qO- qyc.li/i/stable | bash -s cft YOURTOKENHERE" or the dev version with "wget -qO- qyc.li/i/dev | bash -s cft YOURTOKENHERE"
 ## or "bash <(wget -qO- qyc.li/inst) v dev k no phpv 7.4"
 
 [ -f /bin/qyc ] && echo "qycli is already installed, stopping. Just type qyc to get the help message or go to qycli.org to learn." && exit
@@ -9,9 +9,17 @@
 echo "Installing qycli."
 echo
 
+if [ "$cloudflare_token" = "" ]; then
+    echo "You need to supply a Clouflare API token with the permission template 'Create Additional Tokens'."
+    echo "Then you supply it to the qycli installation like this: wget -qO- qyc.li/i/stable | bash -s cft YOURTOKENHERE"
+    echo "qycli only works with Cloudflare. Aborting."
+    exit
+fi
+
 if [ ! -d /var/qyc ]; then
     mkdir -p /var/qyc/qycli /var/qyc/cloudflare/dns /var/qyc/cloudflare/crowdsec /var/qyc/sites /var/qyc/cache/git /var/qyc/bin
 fi
+
 tee /var/qyc/cnf.yaml <<EOF
 branch_name: $branch_name
 sec_install: $sec_install
@@ -19,6 +27,7 @@ php_version: $php_version
 cloudflare_token: $cloudflare_token
 auto_update: $auto_update
 EOF
+echo
 
 if command -v wget >/dev/null; then
     echo "Installing unypkg - https://unypkg.org"
@@ -27,17 +36,6 @@ if command -v wget >/dev/null; then
 else
     echo "wget not found, aborting."
     exit
-fi
-
-if [ "$cloudflare_token" = "" ]; then
-    echo "You need to supply a Clouflare API token with the permission template 'Create Additional Tokens'."
-    echo "Then you supply it to the qycli installation like this: wget -qO- qyc.li/inst | bash -s cft YOURTOKENHERE"
-    echo "qycli only works with Cloudflare. Aborting."
-    exit
-else
-    printf "\nGetting Cloudflare data.\n\n"
-    upd_get_cf_tokens
-    upd_get_cf_accounts_and_zones
 fi
 
 if ! command -v git >/dev/null; then
@@ -59,6 +57,10 @@ printf "\nqycli (%s) was installed.\n\n" "$branch_name"
 
 printf "\nInstalling the qycli stack now through unypkg.\n\n"
 stk_install
+
+printf "\nGetting Cloudflare data.\n\n"
+upd_get_cf_tokens
+upd_get_cf_accounts_and_zones
 
 if [ "$kernel_tweaks" = "yes" ]; then
     printf "\nOptimizing kernel configurations. You should restart after the full installation has finished.\n\n"
