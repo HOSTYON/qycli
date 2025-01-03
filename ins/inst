@@ -4,7 +4,11 @@
 ## Install qycli dev version and stack with "wget -qO- qyc.li/i/stable | bash -s" or the dev version with "wget qyc.li/i/dev && bash inst"
 ## or "bash <(wget -qO- qyc.li/inst) v dev k no phpv 7.4"
 
-[ -f /usr/local/bin/qyc ] && echo "qycli is already installed, stopping. Just type qyc to get the help message or go to qycli.org to learn." && exit
+[ -f /bin/qyc ] && echo "qycli is already installed, stopping. Just type qyc to get the help message or go to qycli.org to learn." && exit
+
+echo "Installing qycli."
+echo
+
 if [ ! -d /var/qyc ]; then
     mkdir -p /var/qyc/qycli /var/qyc/cloudflare/dns /var/qyc/cloudflare/crowdsec /var/qyc/sites /var/qyc/cache/git /var/qyc/bin
 fi
@@ -18,6 +22,7 @@ EOF
 
 if command -v wget >/dev/null; then
     echo "Installing unypkg - https://unypkg.org"
+    echo
     wget -qO- uny.nu/pkg | sh -s
 else
     echo "wget not found, aborting."
@@ -61,7 +66,7 @@ if [ "$kernel_tweaks" = "yes" ]; then
 fi
 if [ "$sec_install" = "yes" ]; then
     printf "\nSecuring the network. Only SSH and Cloudflare connections will be allowed.\n\n"
-    . /var/qyc/qycli/sec_firewall
+    . /var/qyc/qycli/ins/sec_firewall
 fi
 
 upd_system_re.s_qycli_cnf
