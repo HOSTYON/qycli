@@ -4,8 +4,6 @@
 ## Install qycli dev version and stack with "wget -qO- qyc.li/i/stable | bash -s" or the dev version with "wget qyc.li/i/dev && bash inst"
 ## or "bash <(wget -qO- qyc.li/inst) v dev k no phpv 7.4"
 
-## Optimize the host if you are not in a container with "wget -qO- qyc.li/kernel | bash"
-
 [ -f /usr/local/bin/qyc ] && echo "qycli is already installed, stopping. Just type qyc to get the help message or go to qycli.org to learn." && exit
 if [ ! -d /var/qyc ]; then
     mkdir -p /var/qyc/qycli /var/qyc/cloudflare/dns /var/qyc/cloudflare/crowdsec /var/qyc/sites /var/qyc/cache/git /var/qyc/bin
@@ -59,7 +57,7 @@ stk_install
 
 if [ "$kernel_tweaks" = "yes" ]; then
     printf "\nOptimizing kernel configurations. You should restart after the full installation has finished.\n\n"
-    . /var/qyc/qycli/kernel
+    . /var/qyc/qycli/ins/kernel
 fi
 if [ "$sec_install" = "yes" ]; then
     printf "\nSecuring the network. Only SSH and Cloudflare connections will be allowed.\n\n"
