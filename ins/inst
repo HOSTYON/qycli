@@ -71,5 +71,5 @@ if [ "$sec_install" = "yes" ]; then
     . /var/qyc/qycli/ins/sec_firewall
 fi
 
-upd_system_re.s_qycli_cnf
+upd_system_resources_qycli_cnf
 printf "\nqycli was installed.\n\n"
