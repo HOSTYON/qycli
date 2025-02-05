@@ -454,11 +454,11 @@ set_cache_object() {
         if [[ -f /var/www/$domain/htdocs/wp-content/object-cache.php ]]; then
             echo "Object cache is already enabled."
         else
-            usermod -aG redis qycli
+            usermod -aG valkey qycli
             wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-redis
             wp --path=/var/www/"$domain"/htdocs config set WP_CACHE_KEY_SALT "qyc_$domain"
             if ! grep -q "redis_server" /var/www/"$domain"/wp-config.php; then
-                sed -i "/That's all, stop editing/i\$redis_server = array( 'host' => '/run/redis/redis.sock','port' => null,'database' => 1, );" /var/www/"$domain"/wp-config.php
+                sed -i "/That's all, stop editing/i\$redis_server = array( 'host' => '/run/valkey/valkey.sock','port' => null,'database' => 1, );" /var/www/"$domain"/wp-config.php
             fi
             ln -s plugins/wp-redis/object-cache.php /var/www/"$domain"/htdocs/wp-content/object-cache.php
             wp --path=/var/www/"$domain"/htdocs transient delete-all

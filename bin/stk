@@ -99,12 +99,12 @@ stk_php_install() {
     upd_php_conf
 }
 
-stk_redis_install() {
-    unyp si redis
-    usermod -g qycli redis
+stk_valkey_install() {
+    unyp si valkey
+    usermod -g qycli valkey
 
-    upd_redis_service
-    upd_redis_conf
+    upd_valkey_service
+    upd_valkey_conf
 }
 
 stk_wpcli_install() {
@@ -157,7 +157,7 @@ stk_install() {
     stk_openresty_install
     stk_php_install
     stk_mariadb_install
-    stk_redis_install
+    stk_valkey_install
     stk_wpcli_install
     stk_pma_install
     stk_crowdsec_install

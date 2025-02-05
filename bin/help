@@ -116,7 +116,7 @@ Usage:
 Available options:
   cache
     └─ cf|cloudflare  values: on|off      Turn Cloudflare caching on or off
-    └─ o|object       values: on|off      Turn Redis object caching on or off
+    └─ o|object       values: on|off      Turn Valkey object caching on or off
     └─ f|fcgi         values: on|off      Turn FastCGI page caching on or off
   alias|domain|name
     └─ add            values: <domain>    Ads domain to site's nginx server block
