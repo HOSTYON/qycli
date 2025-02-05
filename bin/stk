@@ -8,7 +8,12 @@ source /var/qyc/qycli/bin/fn
 
 stk_utility_and_repos() {
     # Utilities
-    unyp si zip unzip rsync yq #gnupg2 libpwquality-tools
+    for bin in zip unzip rsync curl; do
+        if ! command -v "$bin" >/dev/null; then
+            unyp system-install "$bin"
+        fi
+    done
+    unyp si yq #gnupg2 libpwquality-tools
 
     # For GeoIP maxmind still necessary?
 
