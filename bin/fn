@@ -64,9 +64,6 @@ fb-db-login:
   password: $dbpassword
 EOF
 
-    systemctl stop filebrowser
-    filebrowser users add "$dbnaming" "$dbpassword" -d /var/qyc/lib/filebrowser/filebrowser.db --scope "$domain"
-    systemctl start filebrowser
 }
 
 mk_common_site() {
@@ -404,10 +401,6 @@ del_site() {
     local snakedomain=${domain//[^0-9A-Za-z]/_}
     local dbnaming="qyc_$snakedomain"
 
-    systemctl stop filebrowser
-    filebrowser users rm "$dbnaming" -d /var/qyc/lib/filebrowser/filebrowser.db
-    systemctl start filebrowser
-
     mariadb <<EOF
 DROP USER ${dbnaming}@localhost;    
 DROP DATABASE ${dbnaming};
@@ -723,10 +716,6 @@ clone_site() {
     mariadb "$dbnaming" </var/www/"$cloneto"/db.sql
     rm /var/www/"$cloneto"/db.sql
 
-    systemctl stop filebrowser
-    filebrowser users add "$dbnaming" "$dbpassword" -d /var/qyc/lib/filebrowser/filebrowser.db --scope "$domain"
-    systemctl start filebrowser
-
     echo "Updating the WP config..."
     wp --path=/var/www/"$cloneto"/htdocs config set DB_NAME "${dbnaming}"
     wp --path=/var/www/"$cloneto"/htdocs config set DB_USER "${dbnaming}"
@@ -874,10 +863,6 @@ GRANT ALL PRIVILEGES ON *.* TO '${admin_user}'@'localhost';
 FLUSH PRIVILEGES;
 EOF
 
-        systemctl stop filebrowser
-        filebrowser users add "$admin_user" "$admin_password" -d /var/qyc/lib/filebrowser/filebrowser.db --perm.admin
-        systemctl start filebrowser
-
         yq '.admin_users += [{"user": "'"$admin_user"'", "password": "'"$admin_password"'"}]' -i /var/qyc/cnf.yaml
 
         echo "Admin user $admin_user added."
@@ -888,9 +873,6 @@ EOF
         mariadb <<EOF
 DROP USER ${admin_user}@localhost;
 EOF
-        systemctl stop filebrowser
-        filebrowser users rm "$admin_user" -d /var/qyc/lib/filebrowser/filebrowser.db
-        systemctl start filebrowser
 
         yq 'del(.admin_users.[] | select(.user == "'"$admin_user"'"))' -i /var/qyc/cnf.yaml
 
