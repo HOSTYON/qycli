@@ -78,7 +78,7 @@ stk_openresty_install() {
 
 stk_mariadb_admin_user() {
     admin_password=$(yq .admin_password /var/qyc/cnf.yaml)
-    runuser -u mysql -- mysql --user=mysql <<EOF
+    runuser -u mysql -- mariadb --user=mysql <<EOF
 CREATE USER 'admin'@'localhost' IDENTIFIED BY '${admin_password}';
 GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost';
 FLUSH PRIVILEGES;

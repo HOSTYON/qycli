@@ -51,7 +51,7 @@ mk_common_db() {
     snakedomain=${domain//[^0-9A-Za-z]/_}
     dbnaming="qyc_$snakedomain"
 
-    runuser -u mysql -- mysql --user=mysql <<EOF
+    runuser -u mysql -- mariadb --user=mysql <<EOF
 CREATE USER ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
 CREATE DATABASE ${dbnaming};
 GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
@@ -408,7 +408,7 @@ del_site() {
     filebrowser users rm "$dbnaming" -d /var/qyc/lib/filebrowser/filebrowser.db
     systemctl start filebrowser
 
-    mysql <<EOF
+    mariadb <<EOF
 DROP USER ${dbnaming}@localhost;    
 DROP DATABASE ${dbnaming};
 EOF
@@ -717,10 +717,10 @@ clone_site() {
 
     local snakedomain=${clonefrom//[^0-9A-Za-z]/_}
     local dbfrom="qyc_$snakedomain"
-    mysqldump "$dbfrom" | tee /var/www/"$cloneto"/db.sql >/dev/null
+    mariadb-dump "$dbfrom" | tee /var/www/"$cloneto"/db.sql >/dev/null
     sed -i "s+${clonefrom}+${cloneto}+g" /var/www/"$cloneto"/db.sql
     mk_common_db
-    mysql "$dbnaming" </var/www/"$cloneto"/db.sql
+    mariadb "$dbnaming" </var/www/"$cloneto"/db.sql
     rm /var/www/"$cloneto"/db.sql
 
     systemctl stop filebrowser
@@ -868,7 +868,7 @@ cnf_admin_users() {
     if [[ $1 == "add" && ! $2 == "" && ! $(yq '.admin_users.[].user | select(. == "'"$2"'")' /var/qyc/cnf.yaml) ]]; then
         admin_user="$2"
         admin_password=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
-        runuser -u mysql -- mysql --user=mysql <<EOF
+        runuser -u mysql -- mariadb --user=mysql <<EOF
 CREATE USER '${admin_user}'@'localhost' IDENTIFIED BY '${admin_password}';
 GRANT ALL PRIVILEGES ON *.* TO '${admin_user}'@'localhost';
 FLUSH PRIVILEGES;
@@ -885,7 +885,7 @@ EOF
         yq '.admin_users' /var/qyc/cnf.yaml
     elif [[ $1 =~ (rm|remove) && ! $2 == "" && $(yq '.admin_users.[].user | select(. == "'"$2"'")' /var/qyc/cnf.yaml) ]]; then
         admin_user="$2"
-        mysql <<EOF
+        mariadb <<EOF
 DROP USER ${admin_user}@localhost;
 EOF
         systemctl stop filebrowser
