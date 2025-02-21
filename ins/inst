@@ -32,7 +32,10 @@ echo
 if command -v wget >/dev/null; then
     echo "Installing unypkg - https://unypkg.org"
     echo
-    wget -qO- uny.nu/pkg | sh -s
+    if ! wget -qO- uny.nu/pkg | sh -s; then
+        echo "unypkg installation didn't work. Aborting."
+        exit 1
+    fi
 else
     echo "wget not found, aborting."
     exit
