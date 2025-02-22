@@ -31,6 +31,8 @@ upd_openlitespeed_conf() {
 upd_openlitespeed() {
     unyp install openlitespeed
     unyp si openlitespeed
+    systemctl enable uny-ols
+    systemctl start uny-ols
 }
 
 upd_openresty_conf_renew_cf_ips() {
