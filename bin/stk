@@ -123,7 +123,6 @@ EOF
 
 stk_crowdsec_install() {
     unyp si crowdsec
-    systemctl enable uny-crowdsec
 
     # shellcheck disable=2034
     domain=crowdsec
@@ -144,8 +143,8 @@ stk_crowdsec_install() {
     cscli machines add -a
     systemctl restart uny-crowdsec
 
-    apt -y install crowdsec-firewall-bouncer-nftables
-    apt -y install crowdsec-cloudflare-bouncer
+    unyp install crowdsec-firewall-bouncer
+    unyp install crowdsec-cloudflare-bouncer
 }
 
 #stk_filebrowser_install() {
