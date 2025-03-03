@@ -139,8 +139,8 @@ stk_crowdsec_install() {
 
     yq '.include_scenarios_containing[0] = "http" | .include_scenarios_containing[0] style="double"' -i /etc/crowdsec/bouncers/crowdsec-cloudflare-bouncer.yaml
 
-    systemctl reload uny-crowdsec
-    cscli machines add -a
+    #systemctl reload uny-crowdsec
+    #cscli machines add -a
     systemctl restart uny-crowdsec
 
     unyp install crowdsec-firewall-bouncer
