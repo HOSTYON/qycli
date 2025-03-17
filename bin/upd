@@ -103,6 +103,7 @@ upd_mariadb_conf() {
 upd_mariadb() {
     unyp install mariadb
     unyp si mariadb
+
     systemctl enable uny-mariadb
     systemctl restart uny-mariadb
 }
