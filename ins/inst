@@ -29,14 +29,18 @@ auto_update: $auto_update
 EOF
 echo
 
-if command -v wget >/dev/null; then
-    echo "Installing unypkg - https://unypkg.org"
-    echo
-    wget -qO- uny.nu/pkg | sh -s
-else
-    echo "wget not found, aborting."
-    exit
-fi
+for preq in wget xz systemd-detect-virt systemctl; do
+    if command -v "$preq" >/dev/null; then
+        continue
+    else
+        echo "$preq not found, aborting."
+        exit 1
+    fi
+done
+
+echo "Installing unypkg - https://unypkg.org"
+echo
+wget -qO- uny.nu/pkg | sh -s
 
 if ! command -v unyp; then
     echo "unypkg installation didn't work. Aborting."
@@ -58,7 +62,7 @@ chmod 755 /bin/qyc
 . /var/qyc/qycli/bin/help
 . /var/qyc/qycli/bin/upd
 
-printf "\nqycli (%s) was installed.\n\n" "$branch_name"
+printf "\nqycli (%s) script was installed.\n\n" "$branch_name"
 
 printf "\nInstalling the qycli stack now through unypkg.\n\n"
 stk_install
@@ -67,10 +71,11 @@ printf "\nGetting Cloudflare data.\n\n"
 upd_get_cf_tokens
 upd_get_cf_accounts_and_zones
 
-if [ "$kernel_tweaks" = "yes" ]; then
+if ! systemd-detect-virt --container --quiet && [ "$kernel_tweaks" = "yes" ]; then
     printf "\nOptimizing kernel configurations. You should restart after the full installation has finished.\n\n"
     . /var/qyc/qycli/ins/kernel
 fi
+
 if [ "$sec_install" = "yes" ]; then
     printf "\nSecuring the network. Only SSH and Cloudflare connections will be allowed.\n\n"
     . /var/qyc/qycli/ins/sec_firewall
