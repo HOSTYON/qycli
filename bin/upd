@@ -136,13 +136,13 @@ upd_valkey_conf() {
     cp /var/qyc/qycli/cnf/valkey/valkey.conf /etc/uny/valkey/valkey.conf
     local valkeymem=$(($(upd_get_ram_mb) * 20 / 100)) # 20% of all memory in MB
     sed -i "s+maxmemory[[:space:]].*+maxmemory ${valkeymem}mb+g" /etc/uny/valkey/valkey.conf
-    systemctl restart uny-valkey-server
+    systemctl restart uny-valkey
 }
 
 upd_valkey_service() {
-    if [ -s /etc/systemd/system/uny-valkey-server.service ]; then
-        systemctl enable uny-valkey-server
-        systemctl restart uny-valkey-server
+    if [ -s /etc/systemd/system/uny-valkey.service ]; then
+        systemctl enable uny-valkey
+        systemctl restart uny-valkey
     else
         echo "Valkey server service unit file does not exist."
     fi
