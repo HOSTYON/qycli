@@ -25,20 +25,11 @@ stk_utility_and_repos() {
     useradd -c "qycli Stack User" -d /var/www -g qycli \
         -s /bin/false qycli
 
-    # Web folder setup
-    mkdir -pv /var/www
-    chown -vR qycli:qycli /var/log/openresty/ /var/www
-    chown qycli:qycli /var/www
-
     # admin user password
     echo "admin_password: $(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)" >>/var/qyc/cnf.yaml
 
-    # shellcheck disable=SC2154
-    if [[ $auto_update == "yes" || $auto_update == "on" ]]; then
-        tee /etc/cron.d/qycli-upd <<EOF
-SHELL=/bin/bash
-5 9 * * * root /usr/bin/qyc upd
-EOF
+    if ! command -v nft >/dev/null; then
+        unyp si nftables
     fi
 }
 

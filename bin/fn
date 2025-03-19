@@ -818,23 +818,6 @@ cnf_cloudflare_token() {
     fi
 }
 
-cnf_auto_update() {
-    if [[ $auto_update == "yes" || $auto_update == "on" ]]; then
-        yq '.auto_update = "yes"' -i /var/qyc/cnf.yaml
-        tee /etc/cron.d/qycli-upd <<EOF
-SHELL=/bin/bash
-0 4 * * * root /usr/bin/qyc upd
-EOF
-        echo "qycli auto updates have been turned on."
-    elif [[ $auto_update == "no" || $auto_update == "off" ]]; then
-        yq '.auto_update = "no"' -i /var/qyc/cnf.yaml
-        rm /etc/cron.d/qycli-upd
-        echo "qycli auto updates have been turned off."
-    else
-        echo "The options for auto updates can be 'on', 'off' or 'yes' and 'no', but you gave: $1"
-    fi
-}
-
 cnf_opcache() {
     if [[ "$1" == "off" ]]; then
         grep -q "opcache.enable = 0" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing..." && exit
@@ -913,11 +896,6 @@ fn_cnf() {
             shift
             cf_token=$1
             cnf_cloudflare_token
-            ;;
-        aupd | autoupd | autoupdate)
-            shift
-            auto_update=$1
-            cnf_auto_update "$@"
             ;;
         opc | opcache)
             shift
