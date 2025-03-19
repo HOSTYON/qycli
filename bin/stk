@@ -10,6 +10,7 @@ stk_utility_and_repos() {
     # Utilities
     for bin in zip unzip rsync curl gettext; do
         if ! command -v "$bin" >/dev/null; then
+            unyp install "$bin"
             unyp system-install "$bin"
         fi
     done
