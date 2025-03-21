@@ -36,13 +36,11 @@ stk_utility_and_repos() {
 
 stk_postfix_install() {
     unyp si postfix
-    systemctl enable uny-postfix
-    #DEBIAN_FRONTEND=noninteractive apt -y install postfix
 
     ## Following will store all outgoing mail in /home/qycli/mail/new
     echo "home_mailbox = mail/" >>/etc/uny/postfix/main.cf
     echo "virtual_alias_maps = static:qycli" >>/etc/uny/postfix/main.cf
-    systemctl start uny-postfix
+    systemctl restart uny-postfix
 }
 
 stk_tls_cert() {
@@ -97,11 +95,10 @@ stk_php_install() {
 }
 
 stk_valkey_install() {
-    unyp si valkey
-    usermod -g qycli valkey
-
-    upd_valkey_service
+    upd_valkey
     upd_valkey_conf
+
+    usermod -g qycli valkey
 }
 
 stk_wpcli_install() {
@@ -114,20 +111,21 @@ EOF
 }
 
 stk_crowdsec_install() {
+    unyp install crowdsec
     unyp si crowdsec
 
     # shellcheck disable=2034
     domain=crowdsec
     mk_common_db
-    yq '.db_config.type = "mysql"' -i /etc/crowdsec/config.yaml
+    yq '.db_config.type = "mysql"' -i /etc/uny/crowdsec/config.yaml
     # shellcheck disable=2154
-    yq '.db_config += {"user": "'"$dbnaming"'"}' -i /etc/crowdsec/config.yaml
-    yq '.db_config += {"db_name": "'"$dbnaming"'"}' -i /etc/crowdsec/config.yaml
+    yq '.db_config += {"user": "'"$dbnaming"'"}' -i /etc/uny/crowdsec/config.yaml
+    yq '.db_config += {"db_name": "'"$dbnaming"'"}' -i /etc/uny/crowdsec/config.yaml
     # shellcheck disable=2154
-    yq '.db_config += {"password": "'"$dbpassword"'"}' -i /etc/crowdsec/config.yaml
-    yq '.db_config += {"host": "127.0.0.1"}' -i /etc/crowdsec/config.yaml
-    yq '.db_config += {"port": 3306}' -i /etc/crowdsec/config.yaml
-    yq 'del(.common.pid_dir)' -i /etc/crowdsec/config.yaml
+    yq '.db_config += {"password": "'"$dbpassword"'"}' -i /etc/uny/crowdsec/config.yaml
+    yq '.db_config += {"host": "127.0.0.1"}' -i /etc/uny/crowdsec/config.yaml
+    yq '.db_config += {"port": 3306}' -i /etc/uny/crowdsec/config.yaml
+    yq 'del(.common.pid_dir)' -i /etc/uny/crowdsec/config.yaml
 
     yq '.include_scenarios_containing[0] = "http" | .include_scenarios_containing[0] style="double"' -i /etc/crowdsec/bouncers/crowdsec-openresty-bouncer.yaml
 
