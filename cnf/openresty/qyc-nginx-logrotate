@@ -8,6 +8,6 @@
         create 0640 qycli qycli
         sharedscripts
         postrotate
-                invoke-rc.d nginx rotate >/dev/null 2>&1
+        invoke-rc.d nginx rotate >/dev/null 2>&1
         endscript
 }

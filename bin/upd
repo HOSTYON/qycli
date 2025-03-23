@@ -54,7 +54,7 @@ upd_openresty_conf_renew_cf_ips() {
 }
 
 upd_openresty_conf() {
-    cp -rf /var/qyc/qycli/cnf/nginx/* /etc/uny/openresty/
+    cp -rf /var/qyc/qycli/cnf/openresty/* /etc/uny/openresty/
 
     worker_processes=$(upd_get_cpus)                # 1 worker per CPU
     worker_connections=$(($(upd_get_cpus) * 10000)) # 10000 per CPU
