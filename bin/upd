@@ -61,7 +61,7 @@ upd_openresty_conf() {
     sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/uny/openresty/nginx.conf
     sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/uny/openresty/nginx.conf
 
-    cp /var/qyc/qycli/cnf/nginx/qyc-nginx-logrotate /etc/logrotate.d/qyc-nginx-logrotate
+    cp /var/qyc/qycli/cnf/openresty/qyc-openresty-logrotate /etc/logrotate.d/qyc-openresty-logrotate
 
     systemctl restart uny-openresty
 }
