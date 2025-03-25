@@ -266,8 +266,8 @@ upd_qycli() {
     ln -sf /var/qyc/qycli/bin/qyc /bin/qyc
 
     chmod 755 /bin/qyc
-    chmod 755 /var/qyc/qycli/kernel
-    chmod 755 /var/qyc/qycli/sec_firewall
+    chmod 755 /var/qyc/qycli/ins/kernel
+    chmod 755 /var/qyc/qycli/ins/sec_firewall
 }
 
 upd_fn() {
