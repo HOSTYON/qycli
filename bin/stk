@@ -136,6 +136,8 @@ stk_crowdsec_install() {
     unyp install crowdsec-openresty-bouncer
 
     yq '.include_scenarios_containing[0] = "http" | .include_scenarios_containing[0] style="double"' -i /etc/uny/crowdsec/bouncers/crowdsec-openresty-bouncer.yaml
+
+    systemctl restart uny-crowdsec
 }
 
 #stk_filebrowser_install() {
