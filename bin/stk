@@ -127,14 +127,14 @@ stk_crowdsec_install() {
     yq '.db_config += {"port": 3306}' -i /etc/uny/crowdsec/config.yaml
     yq 'del(.common.pid_dir)' -i /etc/uny/crowdsec/config.yaml
 
-    yq '.include_scenarios_containing[0] = "http" | .include_scenarios_containing[0] style="double"' -i /etc/crowdsec/bouncers/crowdsec-openresty-bouncer.yaml
-
     #systemctl reload uny-crowdsec
     #cscli machines add -a
     systemctl restart uny-crowdsec
 
     unyp install crowdsec-firewall-bouncer
     unyp install crowdsec-openresty-bouncer
+
+    yq '.include_scenarios_containing[0] = "http" | .include_scenarios_containing[0] style="double"' -i /etc/uny/crowdsec/bouncers/crowdsec-openresty-bouncer.yaml
 }
 
 #stk_filebrowser_install() {

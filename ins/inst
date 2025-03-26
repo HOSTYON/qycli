@@ -17,7 +17,7 @@ if [ "$cloudflare_token" = "" ]; then
 fi
 
 if [ ! -d /var/qyc ]; then
-    mkdir -p /var/qyc/qycli /var/qyc/cloudflare/dns /var/qyc/cloudflare/crowdsec /var/qyc/sites /var/qyc/cache/git /var/qyc/bin
+    mkdir -p /var/qyc/qycli /var/qyc/cloudflare/dns /var/qyc/sites /var/qyc/cache/git /var/qyc/bin
 fi
 
 tee /var/qyc/cnf.yaml <<EOF
