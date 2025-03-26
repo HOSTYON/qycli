@@ -127,6 +127,7 @@ stk_crowdsec_install() {
     yq '.db_config += {"port": 3306}' -i /etc/uny/crowdsec/config.yaml
     yq 'del(.common.pid_dir)' -i /etc/uny/crowdsec/config.yaml
 
+    cscli machines add -a --force
     #systemctl reload uny-crowdsec
     #cscli machines add -a
     systemctl restart uny-crowdsec
