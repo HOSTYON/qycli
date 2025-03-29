@@ -900,43 +900,43 @@ cnf_qycli_version() {
 }
 
 fn_cnf() {
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        php)
+    if [[ "$#" -gt 0 ]]; then
+        while [[ "$#" -gt 0 ]]; do
+            case "$1" in
+            php)
+                shift
+                cnf_php_parser "$@"
+                ;;
+            cft | cloudflaretoken)
+                shift
+                cf_token=$1
+                cnf_cloudflare_token
+                ;;
+            opc | opcache)
+                shift
+                cnf_opcache "$@"
+                ;;
+            a | admin)
+                shift
+                cnf_admin_users "$@"
+                ;;
+            qycv | qycliversion)
+                shift
+                cnf_qycli_version "$@"
+                ;;
+            "")
+                print_help_cnf
+                ;;
+            *)
+                echo "Invalid option: $1"
+                print_help_cnf
+                ;;
+            esac
             shift
-            cnf_php_parser "$@"
-            ;;
-        cft | cloudflaretoken)
-            shift
-            cf_token=$1
-            cnf_cloudflare_token
-            ;;
-        opc | opcache)
-            shift
-            cnf_opcache "$@"
-            ;;
-        a | admin)
-            shift
-            cnf_admin_users "$@"
-            ;;
-        qycv | qycliversion)
-            shift
-            cnf_qycli_version "$@"
-            ;;
-        "")
-            print_help_cnf
-            ;;
-        *)
-            echo "Invalid option: $1"
-            print_help_cnf
-            ;;
-        esac
-        shift
-    done
-
-    #if [[ $1 == "" ]]; then
-    #    print_help_cnf
-    #fi
+        done
+    else
+        print_help_cnf
+    fi
 }
 
 fn_del() {
