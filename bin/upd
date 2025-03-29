@@ -201,12 +201,11 @@ upd_get_cf_tokens() {
     time="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
     if [[ $cf_token != "" ]]; then
-        if [[ ! -f /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ]]; then
-            # Create Accounts Zones and DNS Token
-            curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
-                -H "Authorization: Bearer $cf_token" \
-                -H "Content-Type: application/json" \
-                --data '{
+        # Create Accounts Zones and DNS Token
+        curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
+            -H "Authorization: Bearer $cf_token" \
+            -H "Content-Type: application/json" \
+            --data '{
   "name": "qycli main - '"$time"'",
   "policies": [
     {
@@ -243,14 +242,12 @@ upd_get_cf_tokens() {
     }
   ]
 }' >/var/qyc/cloudflare/cf_token_accounts_zones_dns.json
-        fi
 
-        if [[ ! -f /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json ]]; then
-            # Create WP Cloudflare Super Page Cache Token
-            curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
-                -H "Authorization: Bearer $cf_token" \
-                -H "Content-Type: application/json" \
-                --data '{
+        # Create WP Cloudflare Super Page Cache Token
+        curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
+            -H "Authorization: Bearer $cf_token" \
+            -H "Content-Type: application/json" \
+            --data '{
   "name": "qycli WPCSP-Cache - '"$time"'",
   "policies": [
     {
@@ -299,7 +296,6 @@ upd_get_cf_tokens() {
     }
   ]
 }' >/var/qyc/cloudflare/cf_token_wp_cf_page_cache.json
-        fi
     fi
 }
 
