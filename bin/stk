@@ -133,9 +133,9 @@ stk_crowdsec_install() {
     systemctl restart uny-crowdsec
 
     unyp install crowdsec-firewall-bouncer
-    unyp install crowdsec-openresty-bouncer
+    #yq '.include_scenarios_containing[0] = "http" | .include_scenarios_containing[0] style="double"' -i /etc/uny/crowdsec/bouncers/crowdsec-firewall-bouncer.yaml
 
-    yq '.include_scenarios_containing[0] = "http" | .include_scenarios_containing[0] style="double"' -i /etc/uny/crowdsec/bouncers/crowdsec-openresty-bouncer.yaml
+    unyp install crowdsec-openresty-bouncer
 
     systemctl restart uny-crowdsec
 }
