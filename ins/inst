@@ -19,7 +19,7 @@ fi
 if wget --method=get -O- -q \
     --header="Authorization: Bearer $cloudflare_token" \
     --header="Content-Type:application/json" \
-    https://api.cloudflare.com/client/v4/user/tokens/verify; then
+    https://api.cloudflare.com/client/v4/user/tokens/verify >/dev/null; then
 
     echo "Cloudflare User Token verified."
 else
