@@ -923,6 +923,9 @@ fn_cnf() {
             shift
             cnf_qycli_version "$@"
             ;;
+        "")
+            print_help_cnf
+            ;;
         *)
             echo "Invalid option: $1"
             print_help_cnf
