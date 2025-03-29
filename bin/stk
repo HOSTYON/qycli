@@ -156,7 +156,6 @@ stk_install() {
     stk_mariadb_install
     stk_valkey_install
     stk_wpcli_install
-    stk_pma_install
     stk_crowdsec_install
     #stk_filebrowser_install
     printf "\nqycli stack was installed.\n\n"
