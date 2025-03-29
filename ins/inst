@@ -10,10 +10,20 @@ echo "Installing qycli."
 echo
 
 if [ "$cloudflare_token" = "" ]; then
-    echo "You need to supply a Clouflare API token with the permission template 'Create Additional Tokens'."
+    echo "You need to supply a Clouflare User API token (Not an Account Token) with the permission template 'Create Additional Tokens'."
     echo "Then you supply it to the qycli installation like this: wget -qO- qyc.li/i/stable | bash -s cft YOURTOKENHERE"
     echo "qycli only works with Cloudflare. Aborting."
-    exit
+    exit 1
+fi
+
+if wget --method=get -O- -q \
+    --header="Authorization: Bearer $cloudflare_token" \
+    --header="Content-Type:application/json" \
+    https://api.cloudflare.com/client/v4/user/tokens/verify; then
+
+    echo "Cloudflare User Token verified."
+else
+    echo "Needs to be a Cloudflare User Token not an Account token. Aborting."
 fi
 
 if [ ! -d /var/qyc ]; then
@@ -22,7 +32,6 @@ fi
 
 tee /var/qyc/cnf.yaml <<EOF
 branch_name: $branch_name
-sec_install: $sec_install
 php_version: $php_version
 cloudflare_token: $cloudflare_token
 auto_update: $auto_update
@@ -74,11 +83,6 @@ upd_get_cf_accounts_and_zones
 if ! systemd-detect-virt --container --quiet && [ "$kernel_tweaks" = "yes" ]; then
     printf "\nOptimizing kernel configurations. You should restart after the full installation has finished.\n\n"
     . /var/qyc/qycli/ins/kernel
-fi
-
-if [ "$sec_install" = "yes" ]; then
-    printf "\nSecuring the network. Only SSH and Cloudflare connections will be allowed.\n\n"
-    . /var/qyc/qycli/ins/sec_firewall
 fi
 
 upd_system_resources_qycli_cnf
