@@ -931,9 +931,9 @@ fn_cnf() {
         shift
     done
 
-    if [[ $1 == "" ]]; then
-        print_help_cnf
-    fi
+    #if [[ $1 == "" ]]; then
+    #    print_help_cnf
+    #fi
 }
 
 fn_del() {
