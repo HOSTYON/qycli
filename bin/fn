@@ -807,11 +807,25 @@ cnf_php_parser() {
     done
 }
 
+verify_cloudflare_token() {
+    if wget --method=get -O- -q \
+        --header="Authorization: Bearer $cf_token" \
+        --header="Content-Type:application/json" \
+        https://api.cloudflare.com/client/v4/user/tokens/verify; then
+
+        echo "Cloudflare User Token verified."
+    else
+        echo "Needs to be a valid Cloudflare User Token (not an Account Token). Aborting."
+        exit 1
+    fi
+}
+
 cnf_cloudflare_token() {
     if [[ -z $cf_token ]]; then
         echo "No Cloudflare token was given."
         print_help_cnf
     else
+        verify_cloudflare_token
         sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/qyc/cnf.yaml
         upd_get_cf_tokens
         upd_get_cf_accounts_and_zones

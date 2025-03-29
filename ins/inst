@@ -23,7 +23,8 @@ if wget --method=get -O- -q \
 
     echo "Cloudflare User Token verified."
 else
-    echo "Needs to be a Cloudflare User Token not an Account token. Aborting."
+    echo "Needs to be a Cloudflare User Token not an Account Token. Aborting."
+    exit 1
 fi
 
 if [ ! -d /var/qyc ]; then
