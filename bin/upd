@@ -25,14 +25,14 @@ upd_get_ram_mb() {
 #}
 
 upd_openlitespeed_conf() {
-    systemctl restart uny-ols
+    systemctl restart uny-openlitespeed
 }
 
 upd_openlitespeed() {
     unyp install openlitespeed
     unyp si openlitespeed
 
-    systemctl reenable uny-ols
+    systemctl reenable uny-openlitespeed
 }
 
 upd_openresty_conf_renew_cf_ips() {
