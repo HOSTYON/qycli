@@ -25,6 +25,7 @@ upd_get_ram_mb() {
 #}
 
 upd_openlitespeed_conf() {
+    sed -zEn "/(address.*\*)/{s//\1/; :a s/\*/[::1]/;ta;p }" -i /etc/uny/openlitespeed/conf/httpd_config.conf
     systemctl restart uny-openlitespeed
 }
 
