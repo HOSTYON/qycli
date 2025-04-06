@@ -3,11 +3,11 @@
 # help library
 
 show_qycli_version() {
-  git -C /var/qyc/qycli branch --show-current
+    git -C /var/qyc/qycli branch --show-current
 }
 
 print_help_qyc() {
-  cat <<EOF
+    cat <<EOF
 
 Description:
   qycli command line client - Powerful hosting script
@@ -31,7 +31,7 @@ EOF
 }
 
 print_help_mk() {
-  cat <<EOF
+    cat <<EOF
 
 Description:
   Make a site with qycli
@@ -48,7 +48,7 @@ EOF
 }
 
 print_help_wp() {
-  cat <<EOF
+    cat <<EOF
 
 Description:
   Make a WordPress site with qycli
@@ -72,7 +72,7 @@ EOF
 }
 
 print_help_clone() {
-  cat <<EOF
+    cat <<EOF
 
 Description:
   Clone a site with qycli
@@ -86,7 +86,7 @@ EOF
 }
 
 print_help_del() {
-  cat <<EOF
+    cat <<EOF
 
 Description:
   Delete a site (and database) made with qycli
@@ -103,7 +103,7 @@ EOF
 }
 
 print_help_set() {
-  cat <<EOF
+    cat <<EOF
 
 Description:
   Change site settings.
@@ -117,7 +117,7 @@ Available options:
   cache
     └─ cf|cloudflare  values: on|off      Turn Cloudflare caching on or off
     └─ o|object       values: on|off      Turn Valkey object caching on or off
-    └─ f|fcgi         values: on|off      Turn FastCGI page caching on or off
+    └─ pm|proxy-micro values: on|off      Turn OpenResty NGINX Reverse Proxy Microcaching on or off
   alias|domain|name
     └─ add            values: <domain>    Ads domain to site's nginx server block
     └─ del|delete     values: <domain>    Removes domain from site's nginx server block
@@ -134,7 +134,7 @@ EOF
 }
 
 print_help_cnf() {
-  cat <<EOF
+    cat <<EOF
 
 Description:
   Change global qycli configuration.
@@ -158,7 +158,7 @@ EOF
 }
 
 print_help_upd() {
-  cat <<EOF
+    cat <<EOF
 
 Description:
   Update qycli and server or update Cloudflare info.
@@ -177,7 +177,7 @@ EOF
 }
 
 print_help_ls() {
-  cat <<EOF
+    cat <<EOF
 
 Description:
   List local sites and their info or Cloudflare domains.

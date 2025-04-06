@@ -34,15 +34,15 @@ domain_parser() {
 }
 
 enable_site() {
-    ln -s /etc/qyc/nginx/sites-available/"$domain" /etc/qyc/nginx/sites-enabled/
+    ln -s /etc/uny/openresty/sites-available/"$domain" /etc/uny/openresty/sites-enabled/
     yq '.enabled = "yes"' -i /var/qyc/sites/"$domain".yaml
-    systemctl reload nginx
+    systemctl reload uny-openresty
 }
 
 disable_site() {
-    rm /etc/qyc/nginx/sites-enabled/"$domain"
+    rm /etc/uny/openresty/sites-enabled/"$domain"
     yq '.enabled = "no"' -i /var/qyc/sites/"$domain".yaml
-    systemctl reload nginx
+    systemctl reload uny-openresty
 }
 
 mk_common_db() {
@@ -71,11 +71,11 @@ mk_common_site() {
     type=$(grep -Po "^.*(?=-template)" <<<"$template" | tr -d ".")
     echo "site-type: $type" >>/var/qyc/sites/"$domain".yaml
 
-    mkdir -p /var/www/"$domain"/{htdocs,nginx-conf}
+    mkdir -p /var/www/"$domain"/{htdocs,conf/{or,ols}}
     [[ ! -d /var/qyc/cloudflare/"$root_domain" ]] && mkdir /var/qyc/cloudflare/"$root_domain"
 
-    cp /etc/qyc/nginx/"$template" /etc/qyc/nginx/sites-available/"$domain"
-    sed -i "s/dmn.tld/$domain/g" /etc/qyc/nginx/sites-available/"$domain"
+    cp /var/qyc/qycli/cnf/openresty/"$template" /etc/uny/openresty/sites-available/"$domain"
+    sed -i "s/dmn.tld/$domain/g" /etc/uny/openresty/sites-available/"$domain"
     if [[ $subdomain == true ]]; then
         domainlist=$domain
     else
@@ -83,7 +83,7 @@ mk_common_site() {
         domainlist=$(echo "$domain
 www.$domain")
     fi
-    tee /var/www/"$domain"/nginx-conf/server-names.conf >/dev/null <<EOF
+    tee /var/www/"$domain"/conf/or/names.conf >/dev/null <<EOF
 server_name
 $domainlist
 ;
@@ -91,8 +91,8 @@ EOF
 
     enable_site
 
-    chown qycli:qycli -R /var/www/"$domain"/*
-    systemctl reload nginx
+    chown unyweb:unyweb -R /var/www/"$domain"/*
+    systemctl reload uny-openresty
 }
 
 del_dns_entries() {
@@ -296,7 +296,7 @@ mk_wp() {
 
     cp /var/www/"$domain"/htdocs/wp-config-sample.php /var/www/"$domain"/wp-config.php
     ln -rs /var/www/"$domain"/wp-config.php /var/www/"$domain"/edit-config.php
-    chown qycli:qycli -R /var/www/"$domain"/*
+    chown unyweb:unyweb -R /var/www/"$domain"/*
     wp --path=/var/www/"$domain"/htdocs config set DB_NAME "${dbnaming}"
     wp --path=/var/www/"$domain"/htdocs config set DB_USER "${dbnaming}"
     wp --path=/var/www/"$domain"/htdocs config set DB_PASSWORD "${dbpassword}"
@@ -340,7 +340,7 @@ mk_wp() {
     # WP Cloudflare Super Page Cache Setup
     wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache
 
-    systemctl reload nginx
+    systemctl reload uny-openresty
 
     wp_cf_page_cache_token_and_plugin_options
 
@@ -375,8 +375,8 @@ del_site() {
         echo "DNS entries could not automatically be removed."
     fi
 
-    rm /etc/qyc/nginx/sites-enabled/"$domain"
-    rm /etc/qyc/nginx/sites-available/"$domain"
+    rm /etc/uny/openresty/sites-enabled/"$domain"
+    rm /etc/uny/openresty/sites-available/"$domain"
     rm -r /var/www/"$domain"/*
     rmdir /var/www/"$domain"
     echo "Files deleted."
@@ -473,37 +473,13 @@ set_cache_object() {
     fi
 }
 
-set_cache_fcgi_nginx_helper_activate() {
-    wp --path=/var/www/"$domain"/htdocs plugin install --activate nginx-helper
-    wp --path=/var/www/"$domain"/htdocs option add rt_wp_nginx_helper_options --format=json '{"enable_purge":"1","cache_method":"enable_fastcgi","purge_method":"get_request","enable_map":null,"enable_log":null,"log_level":"INFO","log_filesize":"5","enable_stamp":null,"purge_homepage_on_edit":"1","purge_homepage_on_del":"1","purge_archive_on_edit":"1","purge_archive_on_del":"1","purge_archive_on_new_comment":null,"purge_archive_on_deleted_comment":null,"purge_page_on_mod":"1","purge_page_on_new_comment":"1","purge_page_on_deleted_comment":"1","redis_hostname":"127.0.0.1","redis_port":"6379","redis_prefix":"nginx-cache:","purge_url":"","redis_enabled_by_constant":0,"smart_http_expire_form_nonce":"19aab78f2b"}'
-}
-
-set_cache_fcgi_nginx_helper_deactivate() {
-    wp --path=/var/www/"$domain"/htdocs plugin deactivate nginx-helper
-    wp --path=/var/www/"$domain"/htdocs option delete rt_wp_nginx_helper_options
-}
-
-set_cache_fcgi() {
+set_cache_proxy_micro() {
     if [[ "$1" == "on" ]]; then
-        if grep -q "#include common/php.conf" /etc/qyc/nginx/sites-available/"$domain"; then
-            echo "FastCGI cache is already enabled."
-        else
-            sed "s+    include common/php.conf;+    #include common/php.conf;+" -i /etc/qyc/nginx/sites-available/"$domain"
-            sed "s+#include common/wpfcgi.conf;+include common/wpfcgi.conf;+" -i /etc/qyc/nginx/sites-available/"$domain"
-
-            nginx -s reload
-            echo "FastCGI microcache enabled."
-        fi
+        # OpenResty NGINX Microcaching feature has to be implemented here
+        echo "Not yet implemented"
     elif [[ "$1" == "off" ]]; then
-        if grep -q "#include common/wpfcgi.conf" /etc/qyc/nginx/sites-available/"$domain"; then
-            echo "FastCGI cache is already disabled."
-        else
-            sed -i "s+#include common/php.conf;+include common/php.conf;+" /etc/qyc/nginx/sites-available/"$domain"
-            sed -i "s+    include common/wpfcgi.conf;+    #include common/wpfcgi.conf;+" /etc/qyc/nginx/sites-available/"$domain"
-
-            nginx -s reload
-            echo "FastCGI microcache disabled."
-        fi
+        # OpenResty NGINX Microcaching feature has to be implemented here
+        echo "Not yet implemented"
     else
         print_help_set
     fi
@@ -525,9 +501,9 @@ set_cache_parser() {
     elif [[ "$1" == "cf" || "$1" == "cloudflare" ]]; then
         shift
         set_cache_cloudflare "$@"
-    elif [[ "$1" == "fcgi" || "$1" == "f" ]]; then
+    elif [[ "$1" == "proxy-micro" || "$1" == "pm" ]]; then
         shift
-        set_cache_fcgi "$@"
+        set_cache_proxy_micro "$@"
     else
         echo "Invalid option: $1"
         print_help_set
@@ -548,11 +524,11 @@ set_alias() {
             exit
         fi
 
-        if grep "$aliasdomain" /var/www/"$domain"/nginx-conf/server-names.conf >/dev/null; then
+        if grep "$aliasdomain" /var/www/"$domain"/conf/or/names.conf >/dev/null; then
             printf "\nAlias domain name already exists.\n\n"
         else
-            sed -i "/;/i$aliasdomain" /var/www/"$domain"/nginx-conf/server-names.conf
-            nginx -s reload
+            sed -i "/;/i$aliasdomain" /var/www/"$domain"/conf/or/names.conf
+            systemctl reload uny-openresty
             echo "Alias domain name $aliasdomain successfully added to site $domain." && printf "\n"
         fi
     elif [[ "$1" == "del" || "$1" == "delete" ]]; then
@@ -567,16 +543,16 @@ set_alias() {
             exit
         fi
 
-        if grep "$aliasdomain" /var/www/"$domain"/nginx-conf/server-names.conf >/dev/null; then
-            sed -i "/$aliasdomain/d" /var/www/"$domain"/nginx-conf/server-names.conf
-            nginx -s reload
+        if grep "$aliasdomain" /var/www/"$domain"/conf/or/names.conf >/dev/null; then
+            sed -i "/$aliasdomain/d" /var/www/"$domain"/conf/or/names.conf
+            systemctl reload uny-openresty
             echo "Alias domain name $aliasdomain successfully deleted from site $domain." && printf "\n"
         else
             printf "\nAlias domain name does not exists.\n\n"
         fi
     elif [[ "$1" == "ls" || "$1" == "list" ]]; then
         echo "All domain names of site $domain:"
-        sed "s/server_name//" -i /var/www/"$domain"/nginx-conf/server-names.conf | sed "s/;//"
+        sed "s/server_name//" -i /var/www/"$domain"/conf/or/names.conf | sed "s/;//"
     else
         print_help_set
     fi
@@ -609,30 +585,30 @@ fn_ls() {
     done
 }
 
-set_firewall() {
-    if [[ "$1" =~ (on|enabled) ]]; then
-        if ! grep "#include common/7g.conf;" /etc/qyc/nginx/sites-available/"$domain" >/dev/null; then
-            printf "\n7g Firewall is already enabled.\n"
-        else
-            sed -i "s+#include common/7g.conf;+include common/7g.conf;+" /etc/qyc/nginx/sites-available/"$domain"
-            nginx -s reload
-            printf "\n7g Firewall enabled.\n\n"
-        fi
-    elif [[ "$1" =~ (off|disabled) ]]; then
-        if grep "#include common/7g.conf;" /etc/qyc/nginx/sites-available/"$domain" >/dev/null; then
-            printf "\n7g Firewall is already disabled.\n"
-        else
-            sed -i "s+include common/7g.conf;+#include common/7g.conf;+" /etc/qyc/nginx/sites-available/"$domain"
-            nginx -s reload
-            printf "\n7g Firewall disabled.\n\n"
-        fi
-    else
-        print_help_set
-    fi
-}
+# set_firewall() {
+#     if [[ "$1" =~ (on|enabled) ]]; then
+#         if ! grep "#include common/7g.conf;" /etc/uny/openresty/sites-available/"$domain" >/dev/null; then
+#             printf "\n7g Firewall is already enabled.\n"
+#         else
+#             sed -i "s+#include common/7g.conf;+include common/7g.conf;+" /etc/uny/openresty/sites-available/"$domain"
+#             systemctl reload uny-openresty
+#             printf "\n7g Firewall enabled.\n\n"
+#         fi
+#     elif [[ "$1" =~ (off|disabled) ]]; then
+#         if grep "#include common/7g.conf;" /etc/uny/openresty/sites-available/"$domain" >/dev/null; then
+#             printf "\n7g Firewall is already disabled.\n"
+#         else
+#             sed -i "s+include common/7g.conf;+#include common/7g.conf;+" /etc/uny/openresty/sites-available/"$domain"
+#             systemctl reload uny-openresty
+#             printf "\n7g Firewall disabled.\n\n"
+#         fi
+#     else
+#         print_help_set
+#     fi
+# }
 
 set_enable() {
-    if ls /etc/qyc/nginx/sites-enabled/*"$domain"* >/dev/null 2>/dev/null; then
+    if ls /etc/uny/openresty/sites-enabled/*"$domain"* >/dev/null 2>/dev/null; then
         echo "Site $domain is already enabled."
     else
         enable_site
@@ -640,7 +616,7 @@ set_enable() {
 }
 
 set_disable() {
-    if ls /etc/qyc/nginx/sites-enabled/*"$domain"* >/dev/null 2>/dev/null; then
+    if ls /etc/uny/openresty/sites-enabled/*"$domain"* >/dev/null 2>/dev/null; then
         disable_site
     else
         echo "Site $domain is already disabled."
@@ -704,7 +680,7 @@ clone_site() {
     echo "Making new site..."
     mk_common_site
     echo "Copying files..."
-    rsync -ar --exclude 'nginx-conf/server-names.conf' /var/www/"$clonefrom"/ /var/www/"$cloneto"/
+    rsync -ar --exclude 'conf/or/names.conf' /var/www/"$clonefrom"/ /var/www/"$cloneto"/
 
     echo "Copying the database..."
 
@@ -730,7 +706,7 @@ clone_site() {
         qyc set "$cloneto" cache o on
     fi
 
-    nginx -s reload
+    systemctl reload uny-openresty
     systemctl reload php-fpm
 
     wpadmin=$(yq .wp-login.user /var/qyc/sites/"$clonefrom")
@@ -949,7 +925,7 @@ fn_del() {
 
 fn_info_db() {
     admindbpass=$(yq .admin_password /var/qyc/cnf.yaml)
-    if [[ -z "$(ls -A /etc/qyc/nginx/sites-available)" ]]; then
+    if [[ -z "$(ls -A /etc/uny/openresty/sites-available)" ]]; then
         cat <<EOF
 
 There are no sites available on your server. Make a site and run this command again.
@@ -959,7 +935,7 @@ user: admin
 password: $admindbpass
 
 EOF
-    elif [[ -z "$(ls -A /etc/qyc/nginx/sites-enabled)" ]]; then
+    elif [[ -z "$(ls -A /etc/uny/openresty/sites-enabled)" ]]; then
         cat <<EOF
 
 You have at least one site through which you could access phpMyAdmin, but unfortunately none are enabled.
@@ -970,7 +946,7 @@ password: $admindbpass
 
 EOF
     else
-        firstdomain=$(find /etc/qyc/nginx/sites-available -maxdepth 1 -name "*.*" -type f -printf '%P\n' | head -1)
+        firstdomain=$(find /etc/uny/openresty/sites-available -maxdepth 1 -name "*.*" -type f -printf '%P\n' | head -1)
         cat <<EOF
    
 Log in as the priviledged admin user. 
