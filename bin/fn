@@ -35,13 +35,13 @@ domain_parser() {
 
 enable_site() {
     ln -s /etc/uny/openresty/sites-available/"$domain" /etc/uny/openresty/sites-enabled/
-    yq '.enabled = "yes"' -i /var/qyc/sites/"$domain".yaml
+    yq '.enabled = "yes"' -i /var/www/"$domain"/conf/qyc-site.yaml
     systemctl reload uny-openresty
 }
 
 disable_site() {
     rm /etc/uny/openresty/sites-enabled/"$domain"
-    yq '.enabled = "no"' -i /var/qyc/sites/"$domain".yaml
+    yq '.enabled = "no"' -i /var/www/"$domain"/conf/qyc-site.yaml
     systemctl reload uny-openresty
 }
 
@@ -58,7 +58,7 @@ GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
 FLUSH PRIVILEGES;
 EOF
 
-    tee -a /var/qyc/sites/"$domain".yaml <<EOF
+    tee -a /var/www/"$domain"/conf/qyc-site.yaml <<EOF
 fb-db-login:
   user:     $dbnaming
   password: $dbpassword
@@ -67,14 +67,14 @@ EOF
 }
 
 mk_common_site() {
-    echo "domain: $domain" >/var/qyc/sites/"$domain".yaml
-    type=$(grep -Po "^.*(?=-template)" <<<"$template" | tr -d ".")
-    echo "site-type: $type" >>/var/qyc/sites/"$domain".yaml
-
     mkdir -p /var/www/"$domain"/{htdocs,conf/{or,ols}}
+
+    echo "domain: $domain" >/var/www/"$domain"/conf/qyc-site.yaml
+    echo "site-type: $site_type" >>/var/www/"$domain"/conf/qyc-site.yaml
+
     [[ ! -d /var/qyc/cloudflare/"$root_domain" ]] && mkdir /var/qyc/cloudflare/"$root_domain"
 
-    cp /var/qyc/qycli/cnf/openresty/"$template" /etc/uny/openresty/sites-available/"$domain"
+    cp /var/qyc/qycli/cnf/openresty/"$site_type"-template.conf /etc/uny/openresty/sites-available/"$domain"
     sed -i "s/dmn.tld/$domain/g" /etc/uny/openresty/sites-available/"$domain"
     if [[ $subdomain == true ]]; then
         domainlist=$domain
@@ -167,14 +167,14 @@ EOF
 }
 
 print_login_info() {
-    if [[ $(yq .site-type /var/qyc/sites/"$domain".yaml) == "wp" ]]; then
+    if [[ $(yq .site-type /var/www/"$domain"/conf/qyc-site.yaml) == "wp" ]]; then
         cat <<EOF
 $domain is ready.
 Login here: https://$domain/wp-login.php
 
 EOF
         if [[ -n $wpadmin ]]; then
-            tee -a /var/qyc/sites/"$domain".yaml <<EOF
+            tee -a /var/www/"$domain"/conf/qyc-site.yaml <<EOF
 wp-login:
   user:     $wpadmin
   email:    $wpemail
@@ -252,7 +252,6 @@ wp_cf_page_cache_token_and_plugin_options() {
 }
 
 mk_wp() {
-    template=wp-template.conf
     mk_common "$@"
     shift
 
@@ -283,7 +282,6 @@ mk_wp() {
     done
 
     echo "Installing WordPress..."
-    systemctl reload php-fpm
     wget -qrO /var/www/"$domain"/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
     tar -xf /var/www/"$domain"/htdocs/latest.tar.gz -C /var/www/"$domain"/
     mv /var/www/"$domain"/wordpress/* /var/www/"$domain"/htdocs/
@@ -294,8 +292,9 @@ mk_wp() {
     ln -s /var/qyc/qycli-plugin/qycli.php /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli.php
     #ln -s /var/qyc/qycli-plugin/qycli-plugin /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli-plugin
 
-    cp /var/www/"$domain"/htdocs/wp-config-sample.php /var/www/"$domain"/wp-config.php
-    ln -rs /var/www/"$domain"/wp-config.php /var/www/"$domain"/edit-config.php
+    cp /var/www/"$domain"/htdocs/wp-config-sample.php /var/www/"$domain"/conf/wp-config.php
+    cp /var/qyc/qycli/cnf/wp/wp-config-redirect.php /var/www/"$domain"/htdocs/wp-config.php
+    #ln -rs /var/www/"$domain"/wp-config.php /var/www/"$domain"/edit-config.php
     chown unyweb:unyweb -R /var/www/"$domain"/*
     wp --path=/var/www/"$domain"/htdocs config set DB_NAME "${dbnaming}"
     wp --path=/var/www/"$domain"/htdocs config set DB_USER "${dbnaming}"
@@ -348,16 +347,16 @@ mk_wp() {
 }
 
 mk_site() {
-    template="site-template.conf"
     mk_common "$@"
     shift
 }
 
 fn_mk() {
-    if [[ $1 == "wp" ]]; then
+    site_type="$1"
+    if [[ $site_type == "wp" ]]; then
         shift
         mk_wp "$@"
-    elif [[ $1 == "site" ]]; then
+    elif [[ $site_type == "site" ]]; then
         shift
         mk_site "$@"
     else
@@ -559,8 +558,8 @@ set_alias() {
 }
 
 fn_ls_sites() {
-    for site in /var/qyc/sites/*; do
-        yq "$site"
+    for site in /var/www/*; do
+        yq "$site"/conf/qyc-site.yaml
         echo
     done
 }
@@ -669,7 +668,7 @@ fn_set() {
 
 clone_site() {
     domain=$cloneto
-    template=wp-template.conf
+    site_type="$(yq .site-type /var/www/"$clonefrom"/conf/qyc-site.yaml)"
 
     if [[ -f /var/www/$clonefrom/htdocs/wp-content/object-cache.php ]]; then
         echo "Disabling object cache for cloning..."
@@ -709,9 +708,9 @@ clone_site() {
     systemctl reload uny-openresty
     systemctl reload php-fpm
 
-    wpadmin=$(yq .wp-login.user /var/qyc/sites/"$clonefrom")
-    wpemail=$(yq .wp-login.email /var/qyc/sites/"$clonefrom")
-    wppw=$(yq .wp-login.password /var/qyc/sites/"$clonefrom")
+    wpadmin=$(yq .wp-login.user /var/www/"$clonefrom"/conf/qyc-site.yaml)
+    wpemail=$(yq .wp-login.email /var/www/"$clonefrom"/conf/qyc-site.yaml)
+    wppw=$(yq .wp-login.password /var/www/"$clonefrom"/conf/qyc-site.yaml)
 
     cat <<EOF
 Cloning of $clonefrom to $cloneto is done.
@@ -972,6 +971,6 @@ fn_info() {
 }
 
 fn_sec() {
-    source /var/qyc/qycli/sec_firewall
+    source /var/qyc/qycli/ins/sec_firewall
     yq '.sec_install = "yes"' -i /var/qyc/cnf.yaml
 }
