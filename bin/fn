@@ -96,7 +96,6 @@ EOF
 }
 
 del_dns_entries() {
-    cf_token_dns=$(yq -py -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
     root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
     if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
 
@@ -194,9 +193,10 @@ get_public_ips() {
 }
 
 dns_and_infos() {
+    cf_token_dns=$(yq -py -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
     get_public_ips
     if [[ $ipv6 != "" ]]; then
-        if [[ $cf_token != "" ]]; then
+        if [[ $cf_token_dns != "" ]]; then
             dns_value=$ipv6
             dns_type=AAAA
             echo "Setting DNS record"
@@ -208,7 +208,7 @@ dns_and_infos() {
             print_login_info
         fi
     elif [[ $ipv4 != "" ]]; then
-        if [[ $cf_token != "" ]]; then
+        if [[ $cf_token_dns != "" ]]; then
             dns_value=$ipv4
             dns_type=A
             echo "Setting DNS record"
@@ -387,16 +387,6 @@ del_site() {
     rm -r /var/www/"$domain"/*
     rmdir /var/www/"$domain"
     echo "Files deleted."
-    # Must not delete when root_domain still in use
-    if [[ $(qyc list | grep "$root_domain") == "" ]]; then
-        cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
-        for id in $(yq -py -oy .result.id /var/qyc/cloudflare/"$root_domain"/*.json); do
-            curl -X DELETE "https://api.cloudflare.com/client/v4/user/tokens/$id" \
-                -H "Authorization: Bearer $cf_token"
-        done
-        rm -r /var/qyc/cloudflare/"$root_domain"
-        echo "Cloudflare tokens deleted."
-    fi
 
     if [[ $(qyc list | grep "$root_domain") == "" ]]; then
         root_domain_account_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
