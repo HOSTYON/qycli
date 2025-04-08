@@ -388,13 +388,6 @@ del_site() {
     rmdir /var/www/"$domain"
     echo "Files deleted."
 
-    if [[ $(qyc list | grep "$root_domain") == "" ]]; then
-        root_domain_account_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json)
-        curl -X DELETE "https://api.cloudflare.com/client/v4/user/tokens/$id" \
-            -H "Authorization: Bearer $cf_token"
-        rm /var/qyc/cloudflare/crowdsec/cf_token_crowdsec_"$root_domain_account_id".json
-    fi
-
     local snakedomain=${domain//[^0-9A-Za-z]/_}
     local dbnaming="qyc_$snakedomain"
 
