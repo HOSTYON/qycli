@@ -412,7 +412,7 @@ del_site() {
 DROP USER ${dbnaming}@localhost;    
 DROP DATABASE ${dbnaming};
 EOF
-    systemctl reload php-fpm
+    systemctl reload uny-openlitespeed
     echo "Database deleted."
     echo "$domain deleted."
 }
@@ -462,7 +462,7 @@ set_cache_object() {
             fi
             ln -s plugins/wp-redis/object-cache.php /var/www/"$domain"/htdocs/wp-content/object-cache.php
             wp --path=/var/www/"$domain"/htdocs transient delete-all
-            systemctl reload php-fpm
+            systemctl reload uny-openlitespeed
             printf "\nObject cache enabled.\n\n"
         fi
     elif [[ "$1" == "off" ]]; then
@@ -472,7 +472,7 @@ set_cache_object() {
             wp --path=/var/www/"$domain"/htdocs plugin deactivate wp-redis
             rm /var/www/"$domain"/htdocs/wp-content/object-cache.php
             wp --path=/var/www/"$domain"/htdocs transient delete-all
-            systemctl reload php-fpm
+            systemctl reload uny-openlitespeed
             printf "\nObject cache disabled.\n\n"
         fi
     else
@@ -714,7 +714,7 @@ clone_site() {
     fi
 
     systemctl reload uny-openresty
-    systemctl reload php-fpm
+    systemctl reload uny-openlitespeed
 
     wpadmin=$(yq .wp-login.user /var/www/"$clonefrom"/conf/qyc-site.yaml)
     wpemail=$(yq .wp-login.email /var/www/"$clonefrom"/conf/qyc-site.yaml)
@@ -820,12 +820,12 @@ cnf_opcache() {
         grep -q "opcache.enable = 0" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing..." && exit
         sed "s+opcache.enable = 1+opcache.enable = 0+" -i /etc/qyc/php/fpm/php.ini
         sed "s+opcache.enable_cli = 1+opcache.enable_cli = 0+" -i /etc/qyc/php/fpm/php.ini
-        systemctl reload php-fpm
+        systemctl reload uny-openlitespeed
     elif [[ "$1" == "on" ]]; then
         grep -q "opcache.enable = 1" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing..." && exit
         sed "s+opcache.enable = 0+opcache.enable = 1+" -i /etc/qyc/php/fpm/php.ini
         sed "s+opcache.enable_cli = 0+opcache.enable_cli = 1+" -i /etc/qyc/php/fpm/php.ini
-        systemctl reload php-fpm
+        systemctl reload uny-openlitespeed
     else
         echo 'Missing "on" or "off"'
         print_help_set
