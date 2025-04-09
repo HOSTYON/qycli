@@ -105,7 +105,7 @@ del_dns_entries() {
         existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
             -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" | tee -a /var/qyc/cache/old_dns_entries.json |
-            yq -py -oy '.result[].id')
+            yq -oy '.result[].id')
 
         # Delete DNS records for a Zone if they exist
         if [[ $existing_dns_records != "" ]]; then
@@ -195,7 +195,7 @@ get_public_ips() {
 }
 
 dns_and_infos() {
-    cf_token_dns=$(yq -py -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+    cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
     get_public_ips
     if [[ $ipv6 != "" ]]; then
         if [[ $cf_token_dns != "" ]]; then
@@ -255,7 +255,7 @@ wp_cf_page_cache_plugin_setup() {
 }
 
 wp_cf_page_cache_token_and_plugin_options() {
-    cf_token_wp_cf_page_cache=$(yq -py -oy .result.value /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json)
+    cf_token_wp_cf_page_cache=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json)
     if [[ $cf_token_wp_cf_page_cache != "" ]]; then
         wp_cf_page_cache_plugin_setup
     fi
@@ -376,7 +376,8 @@ fn_mk() {
 }
 
 del_site() {
-    if [[ -f /var/qyc/cloudflare/cf_token_accounts_zones_dns.json && $(yq -py -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json) != "" ]]; then
+    cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+    if [[ $cf_token_dns != "" ]]; then
         del_dns_entries
     fi
     if [[ $dns_entries_deleted == "true" ]]; then
