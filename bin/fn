@@ -67,15 +67,17 @@ EOF
 }
 
 mk_common_site() {
+    url_root="$domain""$location"
+
     mkdir -p /var/www/"$domain"/{htdocs,conf/{or,ols}}
 
-    echo "domain: $domain" >/var/www/"$domain"/conf/qyc-site.yaml
+    echo "url_root: $url_root" >/var/www/"$domain"/conf/qyc-site.yaml
     echo "site-type: $site_type" >>/var/www/"$domain"/conf/qyc-site.yaml
 
     [[ ! -d /var/qyc/cloudflare/"$root_domain" ]] && mkdir /var/qyc/cloudflare/"$root_domain"
 
     cp /var/qyc/qycli/cnf/openresty/"$site_type"-template.conf /etc/uny/openresty/sites-available/"$domain"
-    sed -i "s/dmn.tld/$domain/g" /etc/uny/openresty/sites-available/"$domain"
+    sed -e "s|dmn\.tld|$domain|g" -e "s|LOCATION|$location|g" -i /etc/uny/openresty/sites-available/"$domain"
     if [[ $subdomain == true ]]; then
         domainlist=$domain
     else
@@ -361,6 +363,7 @@ mk_site() {
 
 fn_mk() {
     site_type="$1"
+    location="/"
     if [[ $site_type == "wp" ]]; then
         shift
         mk_wp "$@"
