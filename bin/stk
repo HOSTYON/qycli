@@ -105,7 +105,7 @@ stk_wpcli_install() {
     wget -qO /var/qyc/bin/wp-cli https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
     chmod +x /var/qyc/bin/wp-cli
     tee /bin/wp >/dev/null <<'EOF'
-runuser -u unyweb -- /var/qyc/bin/wp-cli $@
+runuser -u unyweb -- /var/qyc/bin/wp-cli --config-file="../conf/wp-config.php" $@
 EOF
     chmod +x /bin/wp
 }
