@@ -102,6 +102,8 @@ EOF
         )"
         sed -zEn "s|(listener Default \{[^\}]*})|&\n\n${ols_vhost}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
 
+        chown lsadm:unyweb -R /etc/uny/openlitespeed/conf/vhosts/"$domain"
+
         systemctl reload uny-openlitespeed
     fi
 
