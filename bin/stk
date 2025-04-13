@@ -98,14 +98,14 @@ stk_valkey_install() {
     upd_valkey
     upd_valkey_conf
 
-    usermod -g qycli valkey
+    usermod -g unyweb valkey
 }
 
 stk_wpcli_install() {
     wget -qO /var/qyc/bin/wp-cli https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
     chmod +x /var/qyc/bin/wp-cli
     tee /bin/wp >/dev/null <<'EOF'
-runuser -u qycli -- /var/qyc/bin/wp-cli $@
+runuser -u unyweb -- /var/qyc/bin/wp-cli $@
 EOF
     chmod +x /bin/wp
 }
