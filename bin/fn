@@ -326,8 +326,9 @@ mk_wp() {
     wp --path=/var/www/"$domain"/htdocs --config-file=/var/www/"$domain"/conf/wp-config.php config set DB_PASSWORD "${dbpassword}"
     wp --path=/var/www/"$domain"/htdocs --config-file=/var/www/"$domain"/conf/wp-config.php config set DB_HOST :/run/mysqld/mysqld.sock
     wp --path=/var/www/"$domain"/htdocs --config-file=/var/www/"$domain"/conf/wp-config.php config shuffle-salts
+    wp --path=/var/www/"$domain"/htdocs --config-file=/var/www/"$domain"/conf/wp-config.php config set table_prefix _qyc
     # shellcheck disable=2016
-    sed -i 's+\$table_prefix = '\''wp_'\'';+\$table_prefix = '\''qyc_'\'';+' /var/www/"$domain"/wp-config.php
+    #sed -i 's+\$table_prefix = '\''wp_'\'';+\$table_prefix = '\''qyc_'\'';+' /var/www/"$domain"/conf/wp-config.php
 
     [[ "$wptitle" == "" ]] && wptitle=$domain
     [[ "$wpadmin" == "" ]] && wpadmin=qycli
