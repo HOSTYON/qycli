@@ -317,6 +317,7 @@ mk_wp() {
     #ln -s /var/qyc/qycli-plugin/qycli-plugin /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli-plugin
 
     cp /var/www/"$domain"/htdocs/wp-config-sample.php /var/www/"$domain"/conf/wp-config.php
+    sed -e "s|require_once ABSPATH . 'wp-settings.php';||" -e "s|/\*\* Sets up WordPress vars and included files. \*/||" -i /var/www/"$domain"/conf/wp-config.php
     cp /var/qyc/qycli/cnf/wp/wp-config-redirect.php /var/www/"$domain"/htdocs/wp-config.php
     #ln -rs /var/www/"$domain"/wp-config.php /var/www/"$domain"/edit-config.php
     chown unyweb:unyweb -R /var/www/"$domain"/*
