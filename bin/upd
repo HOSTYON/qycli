@@ -18,7 +18,8 @@ upd_get_ram_mb() {
 #}
 
 upd_openlitespeed_conf() {
-    sed -zEn "/(address.*\*)/{s/\*/[::1]/;p}" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+    sed -E "s/(.*address\s*)\*/\1[::1]/" /etc/uny/openlitespeed/conf/httpd_config.conf
+    sed -zEn "/(listener Default\s*\{[^\}]*})/{s//\1/; :a s/\s*map.*Example\s*\*\n/\n/;ta;p }" -i /etc/uny/openlitespeed/conf/httpd_config.conf
 
     for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
         phpv_short="${phpv//\./}"

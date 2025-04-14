@@ -107,9 +107,16 @@ EOF
             sed -e "s|DOMAIN|$domain|g" -e "s|HTDOCS|/var/www/${domain}/htdocs|g" -e "s|VHOSTCONF|\$SERVER_ROOT/conf/vhosts/${domain}/vhconf.conf|g" \
                 /var/qyc/qycli/cnf/openlitespeed/"$site_type"-vhost-template.conf
         )"
-        sed -zEn "s|(listener Default \{[^\}]*})|&\n\n${ols_vhost}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+        sed -zEn "s|(listener Default\s*\{[^\}]*})|&\n\n${ols_vhost}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
 
-        chown lsadm:unyweb -R /etc/uny/openlitespeed/conf/vhosts/"$domain"
+        for name in $domainlist; do
+            if [[ $commalist == "" ]]; then
+                commalist="$name"
+            else
+                commalist+=", $name"
+            fi
+        done
+        sed -E "/secure\s*0/a\    map $commalist" -i /etc/uny/openlitespeed/conf/httpd_config.conf
 
         systemctl reload uny-openlitespeed
     fi
