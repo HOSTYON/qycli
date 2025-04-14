@@ -116,7 +116,7 @@ EOF
                 commalist+=", $name"
             fi
         done
-        sed -E "/secure\s*0/a\    map $commalist" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+        sed -E "/secure\s*0/a\    map $domain $commalist" -i /etc/uny/openlitespeed/conf/httpd_config.conf
 
         systemctl reload uny-openlitespeed
     fi
