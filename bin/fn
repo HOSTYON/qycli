@@ -94,7 +94,14 @@ EOF
 
     if [[ $backend == "openlitespeed" ]]; then
         mkdir -p /etc/uny/openlitespeed/conf/vhosts/"$domain"
-        sed "s|HTDOCS|/var/www/${domain}/htdocs|g" /var/qyc/qycli/cnf/openlitespeed/"$site_type"-vhostconf-template.conf >/etc/uny/openlitespeed/conf/vhosts/"$domain"/vhconf.conf
+
+        if [[ $php_site_version == "" ]]; then
+            php_site_version="$(yq .php_default_version /var/qyc/cnf.yaml)"
+        fi
+        php_site_version_short="${php_site_version//\./}"
+
+        sed -e "s|HTDOCS|/var/www/${domain}/htdocs|g" -e "s|SHORTVER|$php_site_version_short|g" \
+            /var/qyc/qycli/cnf/openlitespeed/"$site_type"-vhostconf-template.conf >/etc/uny/openlitespeed/conf/vhosts/"$domain"/vhconf.conf
 
         ols_vhost="$(
             sed -e "s|DOMAIN|$domain|g" -e "s|HTDOCS|/var/www/${domain}/htdocs|g" -e "s|VHOSTCONF|\$SERVER_ROOT/conf/vhosts/${domain}/vhconf.conf|g" \
