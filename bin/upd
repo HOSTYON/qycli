@@ -33,7 +33,7 @@ upd_openlitespeed_conf() {
                 sed -e "s|SHORTVER|$phpv_short|g" -e "s|LSPHP_PATH|${lsphp_path[0]}|g" \
                     /var/qyc/qycli/cnf/openlitespeed/extprocessor-template.conf
             )"
-            sed -zEn "s|(extprocessor lsphp.*\{[^\}]*})|&\n\n${ols_extproc}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+            sed -zEn "s|(ext[pP]rocessor lsphp\s*\{[^\}]*})|&\n\n${ols_extproc}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
         fi
     done
 
