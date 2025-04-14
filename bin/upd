@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
 upd_get_cpus() {
-    yq .cpus /var/qyc/cnf.yaml
+    grep -c processor /proc/cpuinfo
 }
 
 upd_get_ram_mb() {
-    yq .ram_in_mb /var/qyc/cnf.yaml
+    rammb=$(($(grep MemTotal /proc/meminfo | tr -d 'MemTotal: kB') / 1000))
+    echo $rammb
 }
 
 #upd_firewall() {
@@ -157,25 +158,6 @@ upd_valkey() {
     unyp si valkey
 
     systemctl reenable uny-valkey
-}
-
-upd_system_resources_qycli_cnf() {
-    cpus=$(grep -c processor /proc/cpuinfo)
-    ram_in_mb=$(($(grep MemTotal /proc/meminfo | tr -d 'MemTotal: kB') / 1000))
-
-    if ! grep -q "cpus" /var/qyc/cnf.yaml; then
-        echo "cpus: $cpus" >>/var/qyc/cnf.yaml
-    fi
-    if [[ $cpus != $(yq .cpus /var/qyc/cnf.yaml) ]]; then
-        sed -i "s+.*cpus.*+cpus: $cpus+" /var/qyc/cnf.yaml
-    fi
-
-    if ! grep -q "ram_in_mb" /var/qyc/cnf.yaml; then
-        echo "ram_in_mb: $ram_in_mb" >>/var/qyc/cnf.yaml
-    fi
-    if [[ $ram_in_mb != $(yq .ram_in_mb /var/qyc/cnf.yaml) ]]; then
-        sed -i "s+.*ram_in_mb.*+ram_in_mb: $ram_in_mb+" /var/qyc/cnf.yaml
-    fi
 }
 
 upd_get_new_cf_ips() {
@@ -366,7 +348,6 @@ upd_qycli() {
 }
 
 upd_fn() {
-    upd_system_resources_qycli_cnf
     upd_get_new_cf_ips
     upd_mariadb
     upd_mariadb_conf
