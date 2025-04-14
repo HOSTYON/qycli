@@ -766,15 +766,25 @@ fn_clone() {
     fi
 }
 
-cnf_php_version() {
-    if [[ "$1" =~ (8.[0-2]|7.4) ]]; then
-        new_ver=$1
-        export new_ver
-    else
-        echo "No correct version number for PHP, should be 7.4, 8.0 or 8.1"
-        exit
+cnf_php_versions() {
+    invalid_versions="$(echo "$1" | tr "," "\n" | grep -v "[7-9]\.[0-9]")"
+    if [ "$invalid_versions" != "" ]; then
+        for ver in $invalid_versions; do
+            echo "$ver is not a valid PHP version."
+        done
+        echo "Aborting PHP config change due to invalid PHP version(s)."
+        exit 1
     fi
-    sed "s/^php_version: .*/php_version: $1/" -i /var/qyc/cnf.yaml
+    php_versions="$(echo "$1" | tr "," "\n")"
+
+    php_default_version="$(echo "$php_versions" | head -n1)"
+    yq ".php_default_version = $php_default_version" -i /var/qyc/cnf.yaml
+
+    yq 'del(.php_versions)' -i /var/qyc/cnf.yaml
+    for ver in $php_versions; do
+        yq ".php_versions += [$ver]" -i /var/qyc/cnf.yaml
+    done
+
     upd_php
 }
 
@@ -783,10 +793,7 @@ cnf_php_parser() {
         case "$1" in
         v | ver | version)
             shift
-            cnf_php_version "$@"
-            ;;
-        8.1 | 8.0 | 7.4 | 8.2)
-            cnf_php_version "$@"
+            cnf_php_versions "$@"
             ;;
         *)
             echo "Invalid option: $1"

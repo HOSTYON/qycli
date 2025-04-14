@@ -117,9 +117,12 @@ upd_php_conf() {
 }
 
 upd_php() {
-    php_version=$(yq .php_version /var/qyc/cnf.yaml) # Reading the qycli.cnf file
-    unyp install php/"$php_version"
-    unyp si php/"$php_version"
+    for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
+        unyp install php/"$phpv"
+    done
+
+    php_default_version=$(yq .php_default_version /var/qyc/cnf.yaml)
+    unyp si php/"$php_default_version"
 }
 
 upd_valkey_conf() {

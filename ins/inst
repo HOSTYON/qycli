@@ -33,11 +33,16 @@ fi
 
 tee /var/qyc/cnf.yaml <<EOF
 branch_name: $branch_name
-php_version: $php_version
 cloudflare_token: $cloudflare_token
 auto_update: $auto_update
+php_default_version: $php_version
 EOF
 echo
+
+echo "php_versions:" >>/var/qyc/cnf.yaml
+for ver in $php_versions; do
+    sed "/php_versions:/a\  - $ver" -i /var/qyc/cnf.yaml
+done
 
 for preq in wget xz systemd-detect-virt systemctl; do
     if command -v "$preq" >/dev/null; then
