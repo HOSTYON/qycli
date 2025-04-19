@@ -26,6 +26,10 @@ stk_utility_and_repos() {
     useradd -c "qycli Stack User" -d /var/www -g qycli \
         -s /bin/false qycli
 
+    # Create dir for wp-cli
+    mkdir -p /uny/home/unyweb
+    chown unyweb:unyweb /uny/home/unyweb
+
     # admin user password
     echo "admin_password: $(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)" >>/var/qyc/cnf.yaml
 
