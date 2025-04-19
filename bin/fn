@@ -273,6 +273,7 @@ mk_common() {
 }
 
 wp_cf_page_cache_plugin_setup() {
+    root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
     if [[ $root_domain_zone_id != "" ]]; then
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
         wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
