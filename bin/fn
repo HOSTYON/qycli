@@ -374,14 +374,12 @@ mk_wp() {
 
     #wp --path=/var/www/"$domain"/htdocs login install --activate
 
-    #qyc set "$domain" cache o on
-
-    # WP Cloudflare Super Page Cache Setup
-    wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache
-
-    systemctl reload uny-openresty
+    # Install LiteSpeed Cache Plugin and WP Cloudflare Super Page Cache Setup
+    wp --path=/var/www/"$domain"/htdocs plugin install --activate litespeed-cache wp-cloudflare-page-cache
 
     wp_cf_page_cache_token_and_plugin_options
+
+    systemctl reload uny-openresty
 
     dns_and_infos
 }
@@ -473,13 +471,12 @@ set_cache_object() {
         if [[ -f /var/www/$domain/htdocs/wp-content/object-cache.php ]]; then
             echo "Object cache is already enabled."
         else
-            usermod -aG valkey qycli
-            wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-redis
-            wp --path=/var/www/"$domain"/htdocs config set WP_CACHE_KEY_SALT "qyc_$domain"
-            if ! grep -q "redis_server" /var/www/"$domain"/wp-config.php; then
-                sed -i "/That's all, stop editing/i\$redis_server = array( 'host' => '/run/valkey/valkey.sock','port' => null,'database' => 1, );" /var/www/"$domain"/wp-config.php
-            fi
-            ln -s plugins/wp-redis/object-cache.php /var/www/"$domain"/htdocs/wp-content/object-cache.php
+            #usermod -aG valkey unyweb
+            # Check in valkey.conf to set the socket permissions correctly
+            wp --path=/var/www/"$domain"/htdocs option patch update litespeed.conf.object 1
+            wp --path=/var/www/"$domain"/htdocs option patch update litespeed.conf.object-kind 1
+            wp --path=/var/www/"$domain"/htdocs option patch update litespeed.conf.object-host /run/valkey/valkey.sock
+            wp --path=/var/www/"$domain"/htdocs option patch update litespeed.conf.object-port 0
             wp --path=/var/www/"$domain"/htdocs transient delete-all
             systemctl reload uny-openlitespeed
             printf "\nObject cache enabled.\n\n"
