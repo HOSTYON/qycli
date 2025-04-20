@@ -326,8 +326,9 @@ mk_wp() {
     rm -rf /var/www/"$domain"/wordpress
     rm /var/www/"$domain"/htdocs/latest.tar.gz
 
+    # Must Use Plguins - qycli-plugin disabled at the moment
     mkdir /var/www/"$domain"/htdocs/wp-content/mu-plugins
-    ln -s /var/qyc/qycli-plugin/qycli.php /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli.php
+    #ln -s /var/qyc/qycli-plugin/qycli.php /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli.php
     #ln -s /var/qyc/qycli-plugin/qycli-plugin /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli-plugin
 
     cp /var/www/"$domain"/htdocs/wp-config-sample.php /var/www/"$domain"/conf/wp-config.php
