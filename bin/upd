@@ -249,7 +249,6 @@ upd_get_cf_tokens() {
     "name": "qycli WPCSP-Cache - '"$time"'",
     "policies": [
         {
-            "id": "5ee1bab8e862424d931226a0acb24662",
             "effect": "allow",
             "resources": {
                 "com.cloudflare.api.account.zone.*": "*"
@@ -286,7 +285,6 @@ upd_get_cf_tokens() {
             ]
         },
         {
-            "id": "82fe198aa7b64c2db185c0474bba3e7a",
             "effect": "allow",
             "resources": {
                 "com.cloudflare.api.account.*": "*"
