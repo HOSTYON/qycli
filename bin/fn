@@ -419,6 +419,24 @@ del_site() {
 
     rm /etc/uny/openresty/sites-enabled/"$domain"
     rm /etc/uny/openresty/sites-available/"$domain"
+
+    if [[ $(yq .backend /var/www/"$domain"/conf/qyc-site.yaml) == "openlitespeed" ]]; then
+        rm -rf /etc/uny/openlitespeed/conf/vhosts/"$domain"
+
+        sed -z "s|virtualhost $domain [^}]*}\n\n||g" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+
+        for name in $domainlist; do
+            if [[ $commalist == "" ]]; then
+                commalist="$name"
+            else
+                commalist+=", $name"
+            fi
+        done
+        sed -E "/secure\s*0/a\    map $domain $commalist" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+
+        systemctl reload uny-openlitespeed
+    fi
+
     rm -r /var/www/"$domain"/*
     rmdir /var/www/"$domain"
     echo "Files deleted."
