@@ -336,12 +336,12 @@ mk_wp() {
     cp /var/qyc/qycli/cnf/wp/wp-config-redirect.php /var/www/"$domain"/htdocs/wp-config.php
     #ln -rs /var/www/"$domain"/wp-config.php /var/www/"$domain"/edit-config.php
     chown unyweb:unyweb -R /var/www/"$domain"/*
-    wp --path=/var/www/"$domain"/htdocs --config-file=/var/www/"$domain"/conf/wp-config.php config set DB_NAME "${dbnaming}"
-    wp --path=/var/www/"$domain"/htdocs --config-file=/var/www/"$domain"/conf/wp-config.php config set DB_USER "${dbnaming}"
-    wp --path=/var/www/"$domain"/htdocs --config-file=/var/www/"$domain"/conf/wp-config.php config set DB_PASSWORD "${dbpassword}"
-    wp --path=/var/www/"$domain"/htdocs --config-file=/var/www/"$domain"/conf/wp-config.php config set DB_HOST :/run/mysqld/mysqld.sock
-    wp --path=/var/www/"$domain"/htdocs --config-file=/var/www/"$domain"/conf/wp-config.php config shuffle-salts
-    wp --path=/var/www/"$domain"/htdocs --config-file=/var/www/"$domain"/conf/wp-config.php config set table_prefix _qyc
+    wp --path=/var/www/"$domain"/htdocs config set DB_NAME "${dbnaming}"
+    wp --path=/var/www/"$domain"/htdocs config set DB_USER "${dbnaming}"
+    wp --path=/var/www/"$domain"/htdocs config set DB_PASSWORD "${dbpassword}"
+    wp --path=/var/www/"$domain"/htdocs config set DB_HOST :/run/mysqld/mysqld.sock
+    wp --path=/var/www/"$domain"/htdocs config shuffle-salts
+    wp --path=/var/www/"$domain"/htdocs config set table_prefix _qyc
     # shellcheck disable=2016
     #sed -i 's+\$table_prefix = '\''wp_'\'';+\$table_prefix = '\''qyc_'\'';+' /var/www/"$domain"/conf/wp-config.php
 
@@ -367,11 +367,11 @@ mk_wp() {
     #wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
     #wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
 
-    wp --path=/var/www/"$domain"/htdocs --config-file=/var/www/"$domain"/conf/wp-config.php config set WP_AUTO_UPDATE_CORE minor
+    wp --path=/var/www/"$domain"/htdocs config set WP_AUTO_UPDATE_CORE minor
     wp --path=/var/www/"$domain"/htdocs plugin auto-updates enable --all
     wp --path=/var/www/"$domain"/htdocs theme auto-updates enable --all
 
-    wp --path=/var/www/"$domain"/htdocs --config-file=/var/www/"$domain"/conf/wp-config.php config set WP_MEMORY_LIMIT 128M
+    wp --path=/var/www/"$domain"/htdocs config set WP_MEMORY_LIMIT 128M
 
     #wp --path=/var/www/"$domain"/htdocs login install --activate
 
