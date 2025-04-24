@@ -424,15 +424,7 @@ del_site() {
         rm -rf /etc/uny/openlitespeed/conf/vhosts/"$domain"
 
         sed -z "s|virtualhost $domain [^}]*}\n\n||g" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-
-        for name in $domainlist; do
-            if [[ $commalist == "" ]]; then
-                commalist="$name"
-            else
-                commalist+=", $name"
-            fi
-        done
-        sed -E "/secure\s*0/a\    map $domain $commalist" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+        sed "s|^.*map $domain.*$\n||g" -i /etc/uny/openlitespeed/conf/httpd_config.conf
 
         systemctl reload uny-openlitespeed
     fi
