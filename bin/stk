@@ -109,11 +109,14 @@ stk_wpcli_install() {
     wget -qO /var/qyc/bin/wp-cli https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
     chmod +x /var/qyc/bin/wp-cli
     tee /bin/wp >/dev/null <<'EOF'
-if [[ $(pwd) =~ /var/www/.*/htdocs ]]; then
-runuser -u unyweb -- /var/qyc/bin/wp-cli --config-file=../conf/wp-config.php $@
-elif [[ $@ =~ .*--path=/var/www/.*/htdocs.* ]]; then
-config_file="$(echo "$@" | grep -o "path=/.*htdocs" | sed -e "s|path=||" -e "s|htdocs|conf|")/wp-config.php"
-runuser -u unyweb -- /var/qyc/bin/wp-cli --config-file="$config_file" $@
+if [[ $@ =~ \ config\  ]]; then
+    if [[ $(pwd) =~ /var/www/.*/htdocs ]]; then
+    runuser -u unyweb -- /var/qyc/bin/wp-cli --config-file=../conf/wp-config.php $@
+    fi
+    if [[ $@ =~ .*--path=/var/www/.*/htdocs.* ]]; then
+    config_file="$(echo "$@" | grep -o "path=/.*htdocs" | sed -e "s|path=||" -e "s|htdocs|conf|")/wp-config.php"
+    runuser -u unyweb -- /var/qyc/bin/wp-cli --config-file="$config_file" $@
+    fi
 else
 runuser -u unyweb -- /var/qyc/bin/wp-cli $@
 fi
