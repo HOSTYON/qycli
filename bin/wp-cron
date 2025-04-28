@@ -2,6 +2,6 @@
 
 for site in /var/www/*; do
     if grep -q "site-type: wp" "${site}"/conf/qyc-site.yaml; then
-        wget -q --spider https://"$(basename "${site}")"/wp-cron.php
+        wget -q --spider https://"$(basename "${site}")"/wp-cron.php?doing_wp_cron
     fi
 done
