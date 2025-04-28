@@ -336,6 +336,14 @@ upd_psl() {
 #     fi
 # }
 
+upd_qycli_wp_cron() {
+    chmod +x /var/qyc/qycli/bin/wp-cron
+    cp -a /var/qyc/qycli/cnf/wp/wp-cron.* /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl reenable wp-cron.timer
+    systemctl start wp-cron.timer
+}
+
 upd_qycli() {
     qycli_branch="$(yq .branch_name /var/qyc/cnf.yaml)"
     git -C /var/qyc/qycli checkout "$qycli_branch"
@@ -350,6 +358,8 @@ upd_qycli() {
     chmod 755 /bin/qyc
     chmod 755 /var/qyc/qycli/ins/kernel
     chmod 755 /var/qyc/qycli/ins/sec_firewall
+
+    upd_qycli_wp_cron
 }
 
 upd_fn() {

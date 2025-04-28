@@ -37,11 +37,7 @@ stk_utility_and_repos() {
         unyp si nftables
     fi
 
-    chmod +x /var/qyc/qycli/bin/wp-cron
-    cp -a /var/qyc/qycli/cnf/wp/wp-cron.* /etc/systemd/system/
-    systemctl daemon-reload
-    systemctl reenable wp-cron.timer
-    systemctl start wp-cron.timer
+    upd_qycli_wp_cron
 }
 
 stk_postfix_install() {
