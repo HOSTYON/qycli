@@ -2,7 +2,7 @@
 Description=WP-Cron Timer
 
 [Timer]
-OnCalendar=*:*:0/1
+OnCalendar=*:0/2
 Unit=wp-cron.service
 
 [Install]
