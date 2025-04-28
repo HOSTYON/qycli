@@ -1,0 +1,6 @@
+[Unit]
+Description=WP-Cron Service
+
+[Service]
+Type=oneshot
+ExecStart=/var/qyc/qycli/bin/wp-cron

@@ -1,0 +1,9 @@
+[Unit]
+Description=WP-Cron Timer
+
+[Timer]
+OnCalendar=*:*:0/1
+Unit=wp-cron.service
+
+[Install]
+WantedBy=timers.target
