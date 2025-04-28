@@ -1,5 +1,7 @@
 #! /usr/bin/env bash
 
 for site in ls /var/www; do
-    wget -q --spider https://${site}/wp-cron.php
+    if grep -q "site-type: wp" /var/www/${site}/conf/qyc-site.yaml; then
+        wget -q --spider https://${site}/wp-cron.php
+    fi
 done
