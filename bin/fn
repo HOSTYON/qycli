@@ -381,6 +381,8 @@ mk_wp() {
     wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-kind 1
     wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-host /run/valkey/valkey.sock
     wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-port 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object 1
+    systemctl restart uny-openlitespeed
 
     wp_cf_page_cache_token_and_plugin_options
 
