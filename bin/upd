@@ -338,10 +338,18 @@ upd_psl() {
 
 upd_qycli_wp_cron() {
     chmod +x /var/qyc/qycli/bin/wp-cron
-    cp -a /var/qyc/qycli/cnf/wp/wp-cron.* /etc/systemd/system/
-    systemctl daemon-reload
-    systemctl reenable wp-cron.timer
-    systemctl start wp-cron.timer
+    for unit in /var/qyc/qycli/cnf/wp/wp-cron.*; do
+        if ! cmp -s "$unit" /etc/systemd/system/"$(basename "$unit")"; then
+            cp -a "$unit" /etc/systemd/system/
+            d_reload=yes
+        fi
+    done
+    if [[ $d_reload == "yes" ]]; then
+        systemctl daemon-reload
+        systemctl reenable wp-cron.timer
+        systemctl start wp-cron.timer
+        d_reload=
+    fi
 }
 
 upd_qycli() {
