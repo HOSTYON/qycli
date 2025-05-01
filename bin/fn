@@ -498,7 +498,7 @@ set_cache_object() {
             echo "Object cache is already disabled."
         else
             wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object 0
-            wp --path=/var/www/"$domain"/htdocs transient delete-all
+            wp --path=/var/www/"$domain"/htdocs cache flush
             systemctl restart uny-openlitespeed
             printf "\nObject cache disabled.\n\n"
         fi
