@@ -378,6 +378,10 @@ mk_wp() {
     # Install LiteSpeed Cache Plugin and WP Cloudflare Super Page Cache Setup
     wp --path=/var/www/"$domain"/htdocs plugin install --activate litespeed-cache wp-cloudflare-page-cache
 
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-kind 1
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-host /run/valkey/valkey.sock
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-port 0
+
     wp_cf_page_cache_token_and_plugin_options
 
     systemctl reload uny-openresty
@@ -484,10 +488,7 @@ set_cache_object() {
         else
             #usermod -aG valkey unyweb
             # Check in valkey.conf to set the socket permissions correctly
-            wp --path=/var/www/"$domain"/htdocs option patch update litespeed.conf.object 1
-            wp --path=/var/www/"$domain"/htdocs option patch update litespeed.conf.object-kind 1
-            wp --path=/var/www/"$domain"/htdocs option patch update litespeed.conf.object-host /run/valkey/valkey.sock
-            wp --path=/var/www/"$domain"/htdocs option patch update litespeed.conf.object-port 0
+            wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object 1
             wp --path=/var/www/"$domain"/htdocs transient delete-all
             systemctl reload uny-openlitespeed
             printf "\nObject cache enabled.\n\n"
