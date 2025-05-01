@@ -372,11 +372,20 @@ mk_wp() {
     wp --path=/var/www/"$domain"/htdocs theme auto-updates enable --all
 
     wp --path=/var/www/"$domain"/htdocs config set WP_MEMORY_LIMIT 128M
+    wp --path=/var/www/"$domain"/htdocs config set DISABLE_WP_CRON true
 
     #wp --path=/var/www/"$domain"/htdocs login install --activate
 
     # Install LiteSpeed Cache Plugin and WP Cloudflare Super Page Cache Setup
     wp --path=/var/www/"$domain"/htdocs plugin install --activate litespeed-cache wp-cloudflare-page-cache
+
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-priv 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-commenter 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-rest 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-page_login 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-resources 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-mobile 0
 
     wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-kind 1
     wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-host /run/valkey/valkey.sock
