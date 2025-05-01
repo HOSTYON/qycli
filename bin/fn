@@ -59,7 +59,7 @@ FLUSH PRIVILEGES;
 EOF
 
     tee -a /var/www/"$domain"/conf/qyc-site.yaml <<EOF
-fb-db-login:
+backend-login:
   user:     $dbnaming
   password: $dbpassword
 EOF
@@ -382,13 +382,14 @@ mk_wp() {
     wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-host /run/valkey/valkey.sock
     wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-port 0
     wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object 1
-    systemctl restart uny-openlitespeed
 
     wp_cf_page_cache_token_and_plugin_options
 
     systemctl reload uny-openresty
 
     dns_and_infos
+
+    systemctl restart uny-openlitespeed
 }
 
 mk_site() {
