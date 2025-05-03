@@ -280,9 +280,10 @@ wp_cf_page_cache_token_and_plugin_options() {
             wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
             wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
             wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken_domain "$domain"
+            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken_domain "$root_domain"
             wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_auth_mode 1
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_fallback_cache 0
+            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_fallback_cache 1
+            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_cache_enabled 1
         else
             echo "You are going to need to set up Cloudflare Super Page Cache manually."
         fi
@@ -377,22 +378,20 @@ mk_wp() {
     #wp --path=/var/www/"$domain"/htdocs login install --activate
 
     # Install LiteSpeed Cache Plugin and WP Cloudflare Super Page Cache Setup
-    wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache #litespeed-cache
+    wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache litespeed-cache
 
-    # wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache 0
-    # wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-priv 0
-    # wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-commenter 0
-    # wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-rest 0
-    # wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-page_login 0
-    # wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-resources 0
-    # wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-mobile 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-priv 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-commenter 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-rest 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-page_login 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-resources 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-mobile 0
 
-    # wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-kind 1
-    # wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-host /run/valkey/valkey.sock
-    # wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-port 0
-    # wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object 1
-
-    wp --path=/var/www/"$domain"/htdocs rewrite flush
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-kind 1
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-host /run/valkey/valkey.sock
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-port 0
+    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object 1
 
     while [[ $(wget -S --spider --header="Host:$domain" http://localhost:8088/wp-json/ 2>&1 | grep -o "HTTP/.*" | cut -f2 -d" ") != "200" ]]; do
         #wp --path=/var/www/"$domain"/htdocs rewrite structure "$(wp --path=/var/www/"$domain"/htdocs option get permalink_structure)"
