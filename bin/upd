@@ -69,9 +69,14 @@ upd_openresty_conf_renew_cf_ips() {
 
 upd_openresty_conf() {
     for inode in /var/qyc/qycli/cnf/openresty/*; do
-        if [[ $(basename "$inode") != "perf.conf" ]]; then
+        if [[ ! $(basename "$inode") =~ (perf\.conf|conf\.d) ]]; then
             ln -sfn "$inode" /etc/uny/openresty/"$(basename "$inode")"
         fi
+    done
+
+    mkdir -p /etc/uny/openresty/conf.d
+    for inode in /var/qyc/qycli/cnf/openresty/conf.d/*; do
+        ln -sfn "$inode" /etc/uny/openresty/conf.d/"$(basename "$inode")"
     done
 
     cp /var/qyc/qycli/cnf/openresty/perf.conf /etc/uny/openresty/
