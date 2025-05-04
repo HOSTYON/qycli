@@ -68,12 +68,17 @@ upd_openresty_conf_renew_cf_ips() {
 }
 
 upd_openresty_conf() {
-    cp -rf /var/qyc/qycli/cnf/openresty/* /etc/uny/openresty/
+    for inode in /var/qyc/qycli/cnf/openresty/*; do
+        if [[ $(basename "$inode") != "perf.conf" ]]; then
+            ln -sfn "$inode" /etc/uny/openresty/"$(basename "$inode")"
+        fi
+    done
 
+    cp /var/qyc/qycli/cnf/openresty/perf.conf /etc/uny/openresty/
     worker_processes=$(upd_get_cpus)                # 1 worker per CPU
     worker_connections=$(($(upd_get_cpus) * 10000)) # 10000 per CPU
-    sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/uny/openresty/nginx.conf
-    sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/uny/openresty/nginx.conf
+    sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/uny/openresty/perf.conf
+    sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/uny/openresty/perf.conf
 
     cp /var/qyc/qycli/cnf/openresty/qyc-openresty-logrotate /etc/logrotate.d/qyc-openresty-logrotate
 
@@ -368,6 +373,7 @@ upd_qycli() {
     chmod 755 /var/qyc/qycli/ins/sec_firewall
 
     upd_qycli_wp_cron
+    upd_openresty_conf
 }
 
 upd_fn() {
