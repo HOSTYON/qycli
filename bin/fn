@@ -528,11 +528,21 @@ set_cache_object() {
 
 set_cache_proxy_micro() {
     if [[ "$1" == "on" ]]; then
-        # OpenResty NGINX Microcaching feature has to be implemented here
-        echo "Not yet implemented"
+        if ! grep -q "#include common/proxy_microcache.conf;" /etc/uny/openresty/sites-available/"$domain"; then
+            sed "s|#include common/proxy_microcache.conf;|include common/proxy_microcache.conf;|" -i /etc/uny/openresty/sites-available/"$domain"
+            systemctl restart uny-openresty
+            echo "Microcaching turned on for $domain."
+        else
+            echo "Microcaching is already turned on for $domain."
+        fi
     elif [[ "$1" == "off" ]]; then
-        # OpenResty NGINX Microcaching feature has to be implemented here
-        echo "Not yet implemented"
+        if ! grep -q "[^#]include common/proxy_microcache.conf;" /etc/uny/openresty/sites-available/"$domain"; then
+            sed "s|include common/proxy_microcache.conf;|#include common/proxy_microcache.conf;|" -i /etc/uny/openresty/sites-available/"$domain"
+            systemctl restart uny-openresty
+            echo "Microcaching turned off for $domain."
+        else
+            echo "Microcaching is already turned off for $domain."
+        fi
     else
         print_help_set
     fi
