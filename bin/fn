@@ -536,7 +536,7 @@ set_cache_proxy_micro() {
             echo "Microcaching is already turned on for $domain."
         fi
     elif [[ "$1" == "off" ]]; then
-        if ! grep -q "[^#]include common/proxy_microcache.conf;" /etc/uny/openresty/sites-available/"$domain"; then
+        if grep -q "[^#]include common/proxy_microcache.conf;" /etc/uny/openresty/sites-available/"$domain"; then
             sed "s|include common/proxy_microcache.conf;|#include common/proxy_microcache.conf;|" -i /etc/uny/openresty/sites-available/"$domain"
             systemctl restart uny-openresty
             echo "Microcaching turned off for $domain."
