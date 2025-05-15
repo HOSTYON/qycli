@@ -142,7 +142,7 @@ upd_php_conf() {
 
         # Count the total number of extprocessors in httpd_config.conf
         #extproc_number="$(grep "extprocessor" /etc/uny/openlitespeed/conf/httpd_config.conf | grep -cv "extprocessor lsphp ")"
-        local maxchil=$(($(upd_get_ram_mb) * 60 / 120 / 100)) # pm.max_children = 60% Total Memory / 120MB
+        local maxchil=$(($(upd_get_ram_mb) * 50 / 130 / 100)) # pm.max_children = 50% Total Memory / 130MB
         #cp /var/qyc/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/qyc/php/fpm/pool.d/qycli.conf
         #sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" -i /etc/qyc/php/fpm/pool.d/qycli.conf
     done
