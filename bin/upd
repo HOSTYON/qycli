@@ -145,7 +145,6 @@ upd_php_conf() {
             sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(LSAPI_AVOID_FORK=).*|\11|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
         fi
     fi
-
 }
 
 upd_php() {
