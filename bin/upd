@@ -18,28 +18,8 @@ upd_get_ram_mb() {
 #}
 
 upd_openlitespeed_conf() {
-    sed -E "s/(.*address\s*)\*/\1[::1]/" /etc/uny/openlitespeed/conf/httpd_config.conf
+    sed -E "s/(.*address\s*)\*/\1[::1]/" -i /etc/uny/openlitespeed/conf/httpd_config.conf
     sed -zEn "/(listener Default\s*\{[^\}]*})/{s//\1/; :a s/\s*map.*Example\s*\*\n/\n/;ta;p }" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-
-    for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
-        phpv_short="${phpv//\./}"
-
-        lsphp_path=(/uny/pkg/php/"$phpv"*/bin/lsphp*)
-        if echo "${lsphp_path[0]}" | grep -q "\*"; then
-            echo "PHP $phpv installation directory does not exist. Aborting."
-            return 1
-        fi
-
-        if ! grep -q "extprocessor lsphp${phpv_short}" /etc/uny/openlitespeed/conf/httpd_config.conf; then
-            ols_extproc="$(
-                sed -e "s|SHORTVER|$phpv_short|g" -e "s|LSPHP_PATH|${lsphp_path[0]}|g" \
-                    /var/qyc/qycli/cnf/openlitespeed/extprocessor-template.conf
-            )"
-            sed -zEn "s|(ext[pP]rocessor lsphp\s*\{[^\}]*})|&\n\n${ols_extproc}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-        fi
-    done
-
-    systemctl restart uny-openlitespeed
 }
 
 upd_openlitespeed() {
@@ -130,32 +110,55 @@ upd_mariadb() {
 }
 
 upd_php_conf() {
-    for phpver in /uny/pkg/php/*; do
-        small_phpver="$(basename "$phpver" | cut -d. -f1,2)"
+    phpv_short="${phpv//\./}"
 
-        cp /var/qyc/qycli/cnf/php/php.ini /etc/uny/php/"$small_phpver"/php.ini
-        chown -R qycli:qycli /etc/uny/php/"$small_phpver"
+    cp /var/qyc/qycli/cnf/php/php.ini /etc/uny/php/"$phpv"/php.ini
+    chown -R qycli:qycli /etc/uny/php/"$phpv"
 
+    lsphp_path=(/uny/pkg/php/"$phpv"*/bin/lsphp*)
+    if echo "${lsphp_path[0]}" | grep -q "\*"; then
+        echo "PHP $phpv installation directory does not exist. Aborting."
+        exit 1
+    fi
+
+    if ! grep -q€ "ext[pP]rocessor lsphp${phpv_short}" /etc/uny/openlitespeed/conf/httpd_config.conf; then
+        ols_extproc="$(
+            sed -e "s|SHORTVER|$phpv_short|g" -e "s|LSPHP_PATH|${lsphp_path[0]}|g" \
+                /var/qyc/qycli/cnf/openlitespeed/extprocessor-template.conf
+        )"
+        sed -zEn "s|(ext[pP]rocessor lsphp\s*\{[^\}]*})|&\n\n${ols_extproc}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+    else
+        sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(path\s*).*|\1${lsphp_path[0]}|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+    fi
+
+    if [[ $phpv == "$php_default_version" ]]; then
         local opmem=$(($(upd_get_ram_mb) * 10 / 100)) # 10% of all memory in MB
         sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
-            -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/uny/php/"$small_phpver"/php.ini
+            -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/uny/php/"$phpv"/php.ini
 
-        # Count the total number of extprocessors in httpd_config.conf
-        #extproc_number="$(grep "extprocessor" /etc/uny/openlitespeed/conf/httpd_config.conf | grep -cv "extprocessor lsphp ")"
-        local maxchil=$(($(upd_get_ram_mb) * 50 / 130 / 100)) # pm.max_children = 50% Total Memory / 130MB
-        #cp /var/qyc/qycli/cnf/php/fpm/pool.d/qycli.conf /etc/qyc/php/fpm/pool.d/qycli.conf
-        #sed -e "s/.*pm.max_children.*/pm.max_children = ${maxchil}/" -i /etc/qyc/php/fpm/pool.d/qycli.conf
-    done
-    cp /var/qyc/qycli/cnf/php/qyc-php-logrotate /etc/logrotate.d/qyc-php-logrotate
+        local php_children=$(($(upd_get_ram_mb) * 50 / 130 / 100)) # pm.max_children = 50% Total Memory / 130MB
+        sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(PHP_LSAPI_CHILDREN=).*|\1${php_children}|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+
+        if [[ $(upd_get_ram_mb) < 1050 ]]; then
+            sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(LSAPI_AVOID_FORK=).*|\1200M|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+        else
+            sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(LSAPI_AVOID_FORK=).*|\11|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+        fi
+    fi
+
 }
 
 upd_php() {
+    php_default_version=$(yq .php_default_version /var/qyc/cnf.yaml)
+
     for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
         unyp install php/"$phpv"
+        upd_php_conf
     done
 
-    php_default_version=$(yq .php_default_version /var/qyc/cnf.yaml)
-    unyp si php/"$php_default_version"
+    unyp system-install php/"$php_default_version"
+    systemctl restart uny-openlitespeed
+    cp /var/qyc/qycli/cnf/php/qyc-php-logrotate /etc/logrotate.d/qyc-php-logrotate
 }
 
 upd_valkey_conf() {
