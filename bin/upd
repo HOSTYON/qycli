@@ -121,7 +121,7 @@ upd_php_conf() {
         exit 1
     fi
 
-    if ! grep -q€ "ext[pP]rocessor lsphp${phpv_short}" /etc/uny/openlitespeed/conf/httpd_config.conf; then
+    if ! grep -q "ext[pP]rocessor lsphp${phpv_short}" /etc/uny/openlitespeed/conf/httpd_config.conf; then
         ols_extproc="$(
             sed -e "s|SHORTVER|$phpv_short|g" -e "s|LSPHP_PATH|${lsphp_path[0]}|g" \
                 /var/qyc/qycli/cnf/openlitespeed/extprocessor-template.conf
