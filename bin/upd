@@ -139,7 +139,7 @@ upd_php_conf() {
         local php_children=$(($(upd_get_ram_mb) * 50 / 130 / 100)) # pm.max_children = 50% Total Memory / 130MB
         sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(PHP_LSAPI_CHILDREN=).*|\1${php_children}|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
 
-        if [[ $(upd_get_ram_mb) < 1050 ]]; then
+        if [[ $(upd_get_ram_mb) -lt 1050 ]]; then
             sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(LSAPI_AVOID_FORK=).*|\1200M|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
         else
             sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(LSAPI_AVOID_FORK=).*|\11|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
