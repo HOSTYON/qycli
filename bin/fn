@@ -679,7 +679,7 @@ set_php_version() {
     php_ver_short="${1/\./}"
     if grep -q "ext[pP]rocessor lsphp${php_ver_short}" /etc/uny/openlitespeed/conf/httpd_config.conf; then
         sed "s|lsphp[0-9][0-9]|lsphp${php_ver_short}|" -i /etc/uny/openlitespeed/conf/vhosts/"$domain"/vhconf.conf
-        systemctl reload uny-openlitespeed
+        systemctl restart uny-openlitespeed
     else
         echo "PHP version not in OpenLitespeed. Aborting..."
         exit 1
