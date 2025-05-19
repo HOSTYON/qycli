@@ -121,15 +121,15 @@ upd_php_conf() {
         exit 1
     fi
 
-    if ! grep -q "ext[pP]rocessor lsphp${phpv_short}" /etc/uny/openlitespeed/conf/httpd_config.conf; then
-        ols_extproc="$(
-            sed -e "s|SHORTVER|$phpv_short|g" -e "s|LSPHP_PATH|${lsphp_path[0]}|g" \
-                /var/qyc/qycli/cnf/openlitespeed/extprocessor-template.conf
-        )"
-        sed -zEn "s|(ext[pP]rocessor lsphp\s*\{[^\}]*})|&\n\n${ols_extproc}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-    else
-        sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(path\s*).*|\1${lsphp_path[0]}|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+    if grep -q "ext[pP]rocessor lsphp${phpv_short}" /etc/uny/openlitespeed/conf/httpd_config.conf; then
+        sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/d" -i /etc/uny/openlitespeed/conf/httpd_config.conf
     fi
+
+    ols_extproc="$(
+        sed -e "s|SHORTVER|$phpv_short|g" -e "s|LSPHP_PATH|${lsphp_path[0]}|g" \
+            /var/qyc/qycli/cnf/openlitespeed/extprocessor-template.conf
+    )"
+    sed -zEn "s|(ext[pP]rocessor lsphp\s*\{[^\}]*})|&\n\n${ols_extproc}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
 
     if [[ $phpv == "$php_default_version" ]]; then
         local opmem=$(($(upd_get_ram_mb) * 5 / 100)) # 5% of all memory in MB
