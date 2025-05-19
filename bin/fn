@@ -843,6 +843,7 @@ cnf_php_parser() {
         v | ver | version)
             shift
             cnf_php_versions "$@"
+            shift
             ;;
         *)
             echo "Invalid option: $1"
