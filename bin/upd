@@ -116,7 +116,7 @@ upd_php_conf() {
     chown -R qycli:qycli /etc/uny/php/"$phpv"
 
     lsphp_path=(/uny/pkg/php/"$phpv"*/bin/lsphp*)
-    if echo "${lsphp_path[0]}" | grep -q "\*"; then
+    if echo "${lsphp_path[-1]}" | grep -q "\*"; then
         echo "PHP $phpv installation directory does not exist. Aborting."
         exit 1
     fi
@@ -126,7 +126,7 @@ upd_php_conf() {
     fi
 
     ols_extproc="$(
-        sed -e "s|SHORTVER|$phpv_short|g" -e "s|LSPHP_PATH|${lsphp_path[0]}|g" \
+        sed -e "s|SHORTVER|$phpv_short|g" -e "s|LSPHP_PATH|${lsphp_path[-1]}|g" \
             /var/qyc/qycli/cnf/openlitespeed/extprocessor-template.conf
     )"
     sed -zEn "s|(ext[pP]rocessor lsphp\s*\{[^\}]*})|&\n\n${ols_extproc}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
