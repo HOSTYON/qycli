@@ -136,6 +136,8 @@ upd_php_conf() {
         sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
             -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/uny/php/"$phpv"/php.ini
 
+        sed -E -e "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|#(\s*env\s*LSAPI_AVOID_FORK=)|\1|; s|#(\s*env\s*PHP_LSAPI_CHILDREN=)|\1|" /etc/uny/openlitespeed/conf/httpd_config.conf
+
         local php_children=$(($(upd_get_ram_mb) * 50 / 130 / 100)) # pm.max_children = 50% Total Memory / 130MB
         sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(PHP_LSAPI_CHILDREN=).*|\1${php_children}|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
 
