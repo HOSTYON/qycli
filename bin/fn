@@ -952,6 +952,7 @@ fn_cnf() {
             php)
                 shift
                 cnf_php_parser "$@"
+                shift
                 ;;
             cft | cloudflaretoken)
                 shift
