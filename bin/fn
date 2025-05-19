@@ -843,7 +843,6 @@ cnf_php_parser() {
         v | ver | version)
             shift
             cnf_php_versions "$@"
-            shift
             ;;
         *)
             echo "Invalid option: $1"
@@ -970,9 +969,6 @@ fn_cnf() {
             qycv | qycliversion)
                 shift
                 cnf_qycli_version "$@"
-                ;;
-            "")
-                print_help_cnf
                 ;;
             *)
                 echo "Invalid option: $1"
