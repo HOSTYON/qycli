@@ -132,7 +132,7 @@ upd_php_conf() {
     fi
 
     if [[ $phpv == "$php_default_version" ]]; then
-        local opmem=$(($(upd_get_ram_mb) * 10 / 100)) # 10% of all memory in MB
+        local opmem=$(($(upd_get_ram_mb) * 5 / 100)) # 5% of all memory in MB
         sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
             -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/uny/php/"$phpv"/php.ini
 
