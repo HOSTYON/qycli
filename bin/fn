@@ -837,22 +837,6 @@ cnf_php_versions() {
     upd_php
 }
 
-cnf_php_parser() {
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        v | ver | version)
-            shift
-            cnf_php_versions "$@"
-            ;;
-        *)
-            echo "Invalid option: $1"
-            print_help_cnf
-            ;;
-        esac
-        shift
-    done
-}
-
 verify_cloudflare_token() {
     if wget --method=get -O- -q \
         --header="Authorization: Bearer $cf_token" \
@@ -951,8 +935,7 @@ fn_cnf() {
             case "$1" in
             php)
                 shift
-                cnf_php_parser "$@"
-                shift
+                cnf_php_versions "$@"
                 ;;
             cft | cloudflaretoken)
                 shift
