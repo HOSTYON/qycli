@@ -3,12 +3,10 @@
 
 branch_name=dev
 
-# Parse options
-wget -q https://raw.githubusercontent.com/HOSTYON/qycli/refs/heads/"$branch_name"/ins/inst-parser
-. inst-parser
-rm -f inst-parser
+echo "command: $0"
+echo "args: ${@}"
 
 # Run installer with options
-wget -q https://raw.githubusercontent.com/HOSTYON/qycli/refs/heads/"$branch_name"/ins/inst
-. inst
-rm -f inst
+#wget -q https://raw.githubusercontent.com/HOSTYON/qycli/refs/heads/"$branch_name"/ins/inst
+#. inst
+#rm -f inst

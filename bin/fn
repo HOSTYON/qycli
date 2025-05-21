@@ -1037,8 +1037,3 @@ fn_info() {
         print_help_info
     fi
 }
-
-fn_sec() {
-    source /var/qyc/qycli/ins/sec_firewall
-    yq '.sec_install = "yes"' -i /var/qyc/cnf.yaml
-}

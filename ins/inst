@@ -1,10 +1,47 @@
 #!/usr/bin/env sh
-# shellcheck disable=1091,2016,2154
+# shellcheck disable=1091,2016,2154,2034
 
 ## Install qycli dev version and stack with "wget -qO- qyc.li/i/stable | bash -s cft YOURTOKENHERE" or the dev version with "wget -qO- qyc.li/i/dev | bash -s cft YOURTOKENHERE"
 ## or "bash <(wget -qO- qyc.li/inst) v dev k no phpv 7.4"
 
+[ "$(whoami)" != "root" ] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 [ -f /bin/qyc ] && echo "qycli is already installed, stopping. Just type qyc to get the help message or go to qycli.org to learn." && exit
+
+kernel_tweaks=yes
+php_versions=8.3
+auto_update=no
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    k | kernel | tweaks)
+        kernel_tweaks="$2"
+        shift
+        ;;
+    php | phpv | php-versions)
+        php_versions="$2"
+        invalid_versions="$(echo "$php_versions" | tr "," "\n" | grep -v "[7-9]\.[0-9]")"
+        if [ "$invalid_versions" != "" ]; then
+            for ver in $invalid_versions; do
+                echo "$ver is not a valid PHP version."
+            done
+            echo "Aborting installation due to invalid PHP version(s)."
+            exit 1
+        fi
+        php_versions="$(echo "$php_versions" | tr "," "\n")"
+        php_default_version="$(echo "$php_versions" | head -n1)"
+        shift
+        ;;
+    cft | cloudflare-token)
+        cloudflare_token="$2"
+        shift
+        ;;
+    aupd | autoupd | autoupdate)
+        auto_update="$2"
+        shift
+        ;;
+    esac
+    shift
+done
 
 echo "Installing qycli."
 echo
@@ -35,7 +72,7 @@ tee /var/qyc/cnf.yaml <<EOF
 branch_name: $branch_name
 cloudflare_token: $cloudflare_token
 auto_update: $auto_update
-php_default_version: $php_version
+php_default_version: $php_default_version
 EOF
 echo
 

@@ -9,14 +9,6 @@ upd_get_ram_mb() {
     echo $rammb
 }
 
-#upd_firewall() {
-#sec_install=$(yq .sec_install /var/qyc/cnf.yaml)
-#if [[ "$sec_install" == "yes" ]]; then
-# shellcheck disable=SC1091
-#source /var/qyc/qycli/sec_firewall
-#fi
-#}
-
 upd_openlitespeed_conf() {
     sed -E "s/(.*address\s*)\*/\1[::1]/" -i /etc/uny/openlitespeed/conf/httpd_config.conf
     sed -zEn "/(listener Default\s*\{[^\}]*})/{s//\1/; :a s/\s*map.*Example\s*\*\n/\n/;ta;p }" -i /etc/uny/openlitespeed/conf/httpd_config.conf
@@ -184,7 +176,6 @@ upd_get_new_cf_ips() {
     if ! cmp -s /var/qyc/cache/cloudflare_ipv4_ips_new /var/qyc/cache/cloudflare_ipv4_ips || ! cmp -s /var/qyc/cache/cloudflare_ipv6_ips_new /var/qyc/cache/cloudflare_ipv6_ips; then
         cp /var/qyc/cache/cloudflare_ipv4_ips_new /var/qyc/cache/cloudflare_ipv4_ips
         cp /var/qyc/cache/cloudflare_ipv6_ips_new /var/qyc/cache/cloudflare_ipv6_ips
-        #upd_firewall
         upd_openresty_conf_renew_cf_ips
     fi
 }
@@ -382,7 +373,6 @@ upd_qycli() {
 
     chmod 755 /bin/qyc
     chmod 755 /var/qyc/qycli/ins/kernel
-    chmod 755 /var/qyc/qycli/ins/sec_firewall
 
     upd_qycli_wp_cron
     upd_openresty_conf
