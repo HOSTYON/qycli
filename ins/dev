@@ -3,8 +3,16 @@
 
 branch_name=dev
 
-echo "command: $0"
-echo "args: ${@}"
+if [ -p /dev/stdin ]; then
+    echo "You piped something to this script!"
+    echo "Some output of the command you piped:"
+    read input
+    echo "$input"
+    echo "That was all."
+    pipe=true
+else
+    echo "No input piped to script."
+fi
 
 # Run installer with options
 #wget -q https://raw.githubusercontent.com/HOSTYON/qycli/refs/heads/"$branch_name"/ins/inst
