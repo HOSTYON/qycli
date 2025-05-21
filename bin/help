@@ -63,9 +63,11 @@ Available options:
   p | password      Set the password for the WordPress admin account
   e | email         Set the email address for the WordPress admin account
   t | title         Set the title for the WordPress site
+  php | phpv        Set the PHP version for the site, if empty default version is used
 
 Examples:
   qyc mk wp domain.com
+  qyc mk wp domain.com php 8.3
   qyc mk wp domain.com u user p password e e@mail.com t "Awesome Website"
 
 EOF
@@ -145,10 +147,10 @@ Usage:
   qyc cnf [option] [option] [value] [option] [value] ...
 
 Available options:
-  php                       values: 8.1|8.0|7.4       Change the php-fpm version for all sites
-  cft|cloudflaretoken       value: <CloudflareToken>  Change the Cloudflare Token to be used
-  aupd|autoupd|autoupdate   values: on|yes|off|no     Turn automatic updates for the server and qycli on or off
-  opc | opcache             values: on|off            Turn Zend OPCache for PHP on or off
+  php                       values: 8.4|8.3|8.2|8.1|7.4    Change the installed php versions, the first one will be the default
+  cft|cloudflaretoken       value:  <CloudflareToken>      Change the Cloudflare Token to be used
+  aupd|autoupd|autoupdate   values: on|yes|off|no          Turn automatic updates for the server and qycli on or off
+  opc | opcache             values: on|off                 Turn Zend OPCache for PHP on or off
 
 Examples:
   qyc cnf php 8.4,8.3
