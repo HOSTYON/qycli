@@ -104,15 +104,15 @@ upd_mariadb() {
 upd_php_conf() {
     phpv_short="${phpv//\./}"
 
-    cp /var/qyc/qycli/cnf/php/php.ini /etc/uny/php/"$phpv"/php.ini
-    chown -R qycli:qycli /etc/uny/php/"$phpv"
-
     lsphp_path=(/uny/pkg/php/"$phpv"*/bin/lsphp*)
     if echo "${lsphp_path[-1]}" | grep -q "\*"; then
         echo "PHP $phpv installation directory does not exist. Aborting."
         # shellcheck disable=SC2104
         continue
     fi
+
+    cp /var/qyc/qycli/cnf/php/php.ini /etc/uny/php/"$phpv"/php.ini
+    chown -R qycli:qycli /etc/uny/php/"$phpv"
 
     if grep -q "ext[pP]rocessor lsphp${phpv_short}" /etc/uny/openlitespeed/conf/httpd_config.conf; then
         sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/d" -i /etc/uny/openlitespeed/conf/httpd_config.conf
