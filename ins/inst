@@ -35,6 +35,14 @@ while [ "$#" -gt 0 ]; do
         cloudflare_token="$2"
         shift
         ;;
+    cftaz)
+        cftaz="$2"
+        shift
+        ;;
+    cftwp)
+        cftwp="$2"
+        shift
+        ;;
     aupd | autoupd | autoupdate)
         auto_update="$2"
         shift

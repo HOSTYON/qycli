@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154
 
 upd_get_cpus() {
     grep -c processor /proc/cpuinfo
@@ -204,26 +205,52 @@ upd_get_cf_accounts_and_zones() {
 
 upd_get_cf_tokens() {
     cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
-    cf_token_accounts_zones_dns=$(yq -oc .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+    cf_token_accounts_zones_dns="$cftaz"
+    cf_token_wp_cf_page_cache="$cftwp"
 
-    cf_token_accounts_zones_dns_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
-        -H "Authorization: Bearer $cf_token_accounts_zones_dns" \
-        -H "Content-Type: application/json")"
-    if [[ $(yq .success <<<"$cf_token_accounts_zones_dns_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_accounts_zones_dns_verify_answer") == "active" ]]; then
-        cf_token_accounts_zones_dns_id="$(yq .result.id <<<"$cf_token_accounts_zones_dns_verify_answer")"
-        # Restore API result for /var/qyc/cloudflare/cf_token_accounts_zones_dns.json with yq ".result.value = 'CFTTOKEN'"
-        curl -X GET https://api.cloudflare.com/client/v4/user/tokens/"$cf_token_accounts_zones_dns_id" \
-            -H "Authorization: Bearer $cf_token" \
-            -H "Content-Type: application/json" \
-            >/var/qyc/cloudflare/cf_token_accounts_zones_dns.json
-        yq ".result.value = 'CFTTOKEN'" -i /var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+    if [[ $cf_token_accounts_zones_dns != "" ]]; then
+        cf_token_accounts_zones_dns_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+            -H "Authorization: Bearer $cf_token_accounts_zones_dns" \
+            -H "Content-Type: application/json")"
+        if [[ $(yq .success <<<"$cf_token_accounts_zones_dns_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_accounts_zones_dns_verify_answer") == "active" ]]; then
+            cf_token_accounts_zones_dns_id="$(yq .result.id <<<"$cf_token_accounts_zones_dns_verify_answer")"
+            # Restore API result
+            curl -X GET https://api.cloudflare.com/client/v4/user/tokens/"$cf_token_accounts_zones_dns_id" \
+                -H "Authorization: Bearer $cf_token" \
+                -H "Content-Type: application/json" \
+                >/var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+            yq ".result.value = '$cf_token_accounts_zones_dns'" -i /var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+        else
+            echo "Cloudflare Accounts and Zones DNS token was given but appears to not be functional anymore. Generating new token."
+            cftaz_gen=yes
+        fi
     else
-        echo "Cloudflare token for accounts, zones and DNS cannot be verified. Aborting."
-        exit 1
+        cftaz_gen=yes
     fi
 
-    if [[ $cf_token != "" ]]; then
-        time="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    if [[ $cf_token_wp_cf_page_cache != "" ]]; then
+        cf_token_wp_cf_page_cache_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+            -H "Authorization: Bearer $cf_token_wp_cf_page_cache" \
+            -H "Content-Type: application/json")"
+        if [[ $(yq .success <<<"$cf_token_wp_cf_page_cache_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_wp_cf_page_cache_verify_answer") == "active" ]]; then
+            cf_token_wp_cf_page_cache_id="$(yq .result.id <<<"$cf_token_wp_cf_page_cache_verify_answer")"
+            # Restore API result
+            curl -X GET https://api.cloudflare.com/client/v4/user/tokens/"$cf_token_wp_cf_page_cache_id" \
+                -H "Authorization: Bearer $cf_token" \
+                -H "Content-Type: application/json" \
+                >/var/qyc/cloudflare/cf_token_wp_cf_page_cache.json
+            yq ".result.value = '$cf_token_wp_cf_page_cache'" -i /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json
+        else
+            echo "Cloudflare WordPress Page Cache token was given but appears to not be functional anymore. Generating new token."
+            cftwp_gen=yes
+        fi
+    else
+        cftwp_gen=yes
+    fi
+
+    time="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+    if [[ $cf_token != "" && $cftaz_gen == "yes" ]]; then
         # Create Accounts Zones and DNS Token
         curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
             -H "Authorization: Bearer $cf_token" \
@@ -265,7 +292,9 @@ upd_get_cf_tokens() {
         }
     ]
 }' >/var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+    fi
 
+    if [[ $cf_token != "" && $cftwp_gen == "yes" ]]; then
         # Create WP Cloudflare Super Page Cache Token
         curl -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
             -H "Authorization: Bearer $cf_token" \
