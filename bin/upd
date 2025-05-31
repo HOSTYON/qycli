@@ -13,6 +13,7 @@ upd_get_ram_mb() {
 upd_openlitespeed_conf() {
     sed -E "s/(.*address\s*)\*/\1[::1]/" -i /etc/uny/openlitespeed/conf/httpd_config.conf
     sed -zEn "/(listener Default\s*\{[^\}]*})/{s//\1/; :a s/\s*map.*Example\s*\*\n/\n/;ta;p }" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+    sed "/module cache {/a storagePath /run/openlitespeed/cache/" -i /etc/uny/openlitespeed/conf/httpd_config.conf
 }
 
 upd_openlitespeed() {
