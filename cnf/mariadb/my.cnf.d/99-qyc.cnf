@@ -19,3 +19,9 @@ thread_cache_size = 100        # from 13 to reduce threads_created of 2,763 in 1
 innodb_io_capacity = 2000      # from 200 to allow higher IOPS on your SSD storage devices
 key_cache_age_threshold = 7200 # from 300 seconds to reduce key_reads RPS of 16+
 key_buffer_size = 64M          # from 8M to reduce key_reads RPS of 16+
+# For ZFS https://www.percona.com/blog/mysql-zfs-performance-update/
+innodb_flush_method = fsync
+innodb_doublewrite = 0 # ZFS is transactional
+innodb_use_native_aio = 0
+innodb_read_io_threads = 10
+innodb_write_io_threads = 10
