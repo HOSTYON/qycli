@@ -168,7 +168,6 @@ stk_crowdsec_install() {
 
 stk_install() {
     stk_utility_and_repos
-    upd_system_resources_qycli_cnf
     stk_postfix_install
     stk_openlitespeed_install
     stk_openresty_install
