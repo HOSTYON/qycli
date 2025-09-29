@@ -302,13 +302,9 @@ mk_common() {
     mk_common_db
 }
 
-mk_domain_check() {
+mk_wp() {
     domain_parser "$@"
     shift
-}
-
-mk_wp() {
-    mk_domain_check "$@"
 
     if [[ $invalid_domain == "1" ]]; then
         print_help_wp && exit
