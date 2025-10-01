@@ -9,7 +9,7 @@
 [ -f /bin/qyc ] && echo "qycli is already installed, stopping. Just type qyc to get the help message or go to qycli.org to learn." && exit
 
 kernel_tweaks=yes
-php_default_version=8.4
+php_versions=8.4
 auto_update=no
 
 while [ "$#" -gt 0 ]; do
