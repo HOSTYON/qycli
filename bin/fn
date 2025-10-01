@@ -310,8 +310,8 @@ mk_wp() {
         print_help_wp && exit
     fi
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
+    while [[ $# -gt 0 ]]; do
+        case "${1}" in
         php | phpv | php-version)
             php_site_version="$2"
             shift
