@@ -2,7 +2,7 @@
 # shellcheck disable=1091,2016,2154,2034
 
 ## Install qycli dev version and stack with "wget -qO- qyc.li/i/stable | bash -s cft YOURTOKENHERE" or the dev version with "wget -qO- qyc.li/i/dev | bash -s cft YOURTOKENHERE"
-## or "bash <(wget -qO- qyc.li/inst) v dev k no phpv 7.4"
+## or wget -qO- qyc.li/i/stable | bash -s php 8.4,8.3,8.2
 ## To install without Cloudflare token do the following: wget -qO- qyc.li/i/stable | bash -s no-cft
 
 [ "$(whoami)" != "root" ] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
@@ -80,7 +80,7 @@ elif [ "$no_cloudflare_token" != "true" ] && [ "$cloudflare_token" != "" ]; then
 fi
 
 if [ ! -d /var/qyc ]; then
-    mkdir -p /var/qyc/qycli /var/qyc/cloudflare/dns /var/qyc/cache/git /var/qyc/bin
+    mkdir -p /var/qyc/cloudflare/dns /var/qyc/cache/git /var/qyc/bin
 fi
 
 tee /var/qyc/cnf.yaml <<EOF
@@ -109,7 +109,7 @@ echo "Installing unypkg - https://unypkg.org"
 echo
 wget -qO- uny.nu/pkg | sh -s
 
-if ! command -v unyp; then
+if ! command -v unyp >/dev/null; then
     echo "unypkg installation didn't work. Aborting."
     exit 1
 fi
@@ -119,10 +119,10 @@ if ! command -v git >/dev/null; then
     unyp system-install git
 fi
 
-git -C /var/qyc/qycli clone -b "$branch_name" https://github.com/HOSTYON/qycli .
+git -C /var/qyc clone -b "$branch_name" https://github.com/HOSTYON/qycli
 git -C /var/qyc clone -b "$branch_name" https://github.com/HOSTYON/qycli-plugin
 
-ln -sfv /var/qyc/qycli/bin/qyc /bin/qyc
+ln -sf /var/qyc/qycli/bin/qyc /bin/qyc
 chmod 755 /bin/qyc
 
 . /var/qyc/qycli/bin/stk

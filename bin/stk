@@ -100,7 +100,7 @@ stk_valkey_install() {
     upd_valkey
     upd_valkey_conf
 
-    usermod -g unyweb valkey
+    # usermod -g unyweb valkey
 }
 
 stk_wpcli_install() {
