@@ -340,7 +340,7 @@ mk_wp() {
         shift
     done
 
-    mk_common "$@"
+    mk_common
     shift
 
     echo "Installing WordPress..."
