@@ -279,13 +279,13 @@ wp_cf_page_cache_token_and_plugin_options() {
     if [[ $cf_token_wp_cf_page_cache != "" ]]; then
         root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
         if [[ $root_domain_zone_id != "" ]]; then
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken_domain "$root_domain"
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_auth_mode 1
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_fallback_cache 1
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_cache_enabled 1
+            wp option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
+            wp option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
+            wp option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
+            wp option patch update swcfpc_config cf_apitoken_domain "$root_domain"
+            wp option patch update swcfpc_config cf_auth_mode 1
+            wp option patch update swcfpc_config cf_fallback_cache 1
+            wp option patch update swcfpc_config cf_cache_enabled 1
         else
             echo "You are going to need to set up Cloudflare Super Page Cache manually."
         fi
@@ -344,28 +344,35 @@ mk_wp() {
     shift
 
     echo "Installing WordPress..."
-    wget -qrO /var/www/"$domain"/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
-    tar -xf /var/www/"$domain"/htdocs/latest.tar.gz -C /var/www/"$domain"/
-    mv /var/www/"$domain"/wordpress/* /var/www/"$domain"/htdocs/
-    rm -rf /var/www/"$domain"/wordpress
-    rm /var/www/"$domain"/htdocs/latest.tar.gz
+    current_dir="$(pwd)"
+
+    cd /var/www/"$domain" || exit
+
+    wget -qrO latest.tar.gz https://wordpress.org/latest.tar.gz
+    tar -xf latest.tar.gz
+    rm latest.tar.gz
+    mv wordpress/* htdocs/
+    rmdir wordpress
 
     # Must Use Plguins - qycli-plugin disabled at the moment
-    mkdir /var/www/"$domain"/htdocs/wp-content/mu-plugins
-    #ln -s /var/qyc/qycli-plugin/qycli.php /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli.php
-    #ln -s /var/qyc/qycli-plugin/qycli-plugin /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli-plugin
+    mkdir htdocs/wp-content/mu-plugins
+    #ln -s /var/qyc/qycli-plugin/qycli.php htdocs/wp-content/mu-plugins/qycli.php
+    #ln -s /var/qyc/qycli-plugin/qycli-plugin htdocs/wp-content/mu-plugins/qycli-plugin
 
-    cp /var/www/"$domain"/htdocs/wp-config-sample.php /var/www/"$domain"/conf/wp-config.php
-    sed -e "s|require_once ABSPATH . 'wp-settings.php';||" -e "s|/\*\* Sets up WordPress vars and included files. \*/||" -i /var/www/"$domain"/conf/wp-config.php
-    cp /var/qyc/qycli/cnf/wp/wp-config-redirect.php /var/www/"$domain"/htdocs/wp-config.php
-    #ln -rs /var/www/"$domain"/wp-config.php /var/www/"$domain"/edit-config.php
-    chown unyweb:unyweb -R /var/www/"$domain"/*
-    wp --path=/var/www/"$domain"/htdocs config set DB_NAME "${dbnaming}"
-    wp --path=/var/www/"$domain"/htdocs config set DB_USER "${dbnaming}"
-    wp --path=/var/www/"$domain"/htdocs config set DB_PASSWORD "${dbpassword}"
-    wp --path=/var/www/"$domain"/htdocs config set DB_HOST :/run/mysqld/mysqld.sock
-    wp --path=/var/www/"$domain"/htdocs config shuffle-salts
-    wp --path=/var/www/"$domain"/htdocs config set table_prefix _qyc
+    cp htdocs/wp-config-sample.php conf/wp-config.php
+    sed -e "s|require_once ABSPATH . 'wp-settings.php';||" -e "s|/\*\* Sets up WordPress vars and included files. \*/||" -i conf/wp-config.php
+    cp /var/qyc/qycli/cnf/wp/wp-config-redirect.php htdocs/wp-config.php
+
+    chown unyweb:unyweb -R ./*
+
+    cd htdocs || exit
+
+    wp config set DB_NAME "${dbnaming}"
+    wp config set DB_USER "${dbnaming}"
+    wp config set DB_PASSWORD "${dbpassword}"
+    wp config set DB_HOST :/run/mysqld/mysqld.sock
+    wp config shuffle-salts
+    wp config set table_prefix _qyc
     # shellcheck disable=2016
     #sed -i 's+\$table_prefix = '\''wp_'\'';+\$table_prefix = '\''qyc_'\'';+' /var/www/"$domain"/conf/wp-config.php
 
@@ -378,47 +385,47 @@ mk_wp() {
         wppw=$(openssl rand -base64 18)
     fi
     [[ "$wpemail" == "" ]] && wpemail=info@$domain
-    wp --path=/var/www/"$domain"/htdocs core install --url=https://"$domain" --title="$wptitle" --admin_user="$wpadmin" --admin_password="$wppw" --admin_email="$wpemail"
+    wp core install --url=https://"$domain" --title="$wptitle" --admin_user="$wpadmin" --admin_password="$wppw" --admin_email="$wpemail"
 
-    wp --path=/var/www/"$domain"/htdocs rewrite structure /%postname%/
-    wp --path=/var/www/"$domain"/htdocs plugin uninstall hello akismet
+    wp rewrite structure /%postname%/
+    wp plugin uninstall hello akismet
 
-    for theme in $(wp --path=/var/www/"$domain"/htdocs theme list --status=inactive --format=csv | grep inactive | sed s/,.*//); do
-        wp --path=/var/www/"$domain"/htdocs theme delete "$theme"
+    for theme in $(wp theme list --status=inactive --format=csv | grep inactive | sed s/,.*//); do
+        wp theme delete "$theme"
     done
-    wp --path=/var/www/"$domain"/htdocs theme update --all
+    wp theme update --all
 
     #wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
     #wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
 
-    wp --path=/var/www/"$domain"/htdocs config set WP_AUTO_UPDATE_CORE minor
-    wp --path=/var/www/"$domain"/htdocs plugin auto-updates enable --all
-    wp --path=/var/www/"$domain"/htdocs theme auto-updates enable --all
+    wp config set WP_AUTO_UPDATE_CORE minor
+    wp plugin auto-updates enable --all
+    wp theme auto-updates enable --all
 
-    wp --path=/var/www/"$domain"/htdocs config set WP_MEMORY_LIMIT 128M
-    wp --path=/var/www/"$domain"/htdocs config set DISABLE_WP_CRON true
+    wp config set WP_MEMORY_LIMIT 128M
+    wp config set DISABLE_WP_CRON true
 
-    #wp --path=/var/www/"$domain"/htdocs login install --activate
+    #wp login install --activate
 
     # Install LiteSpeed Cache Plugin and WP Cloudflare Super Page Cache Setup
-    wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache litespeed-cache
+    wp plugin install --activate wp-cloudflare-page-cache litespeed-cache
 
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-priv 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-commenter 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-rest 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-page_login 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-resources 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-mobile 0
+    wp option update litespeed.conf.cache 0
+    wp option update litespeed.conf.cache-priv 0
+    wp option update litespeed.conf.cache-commenter 0
+    wp option update litespeed.conf.cache-rest 0
+    wp option update litespeed.conf.cache-page_login 0
+    wp option update litespeed.conf.cache-resources 0
+    wp option update litespeed.conf.cache-mobile 0
 
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-kind 1
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-host /run/valkey/valkey.sock
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-port 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object 1
+    wp option update litespeed.conf.object-kind 1
+    wp option update litespeed.conf.object-host /run/valkey/valkey.sock
+    wp option update litespeed.conf.object-port 0
+    wp option update litespeed.conf.object 1
 
     while [[ $(wget -S --spider --header="Host:$domain" http://localhost:8088/wp-json/ 2>&1 | grep -o "HTTP/.*" | cut -f2 -d" ") != "200" ]]; do
-        #wp --path=/var/www/"$domain"/htdocs rewrite structure "$(wp --path=/var/www/"$domain"/htdocs option get permalink_structure)"
-        wp --path=/var/www/"$domain"/htdocs rewrite flush --hard
+        #wp rewrite structure "$(wp option get permalink_structure)"
+        wp rewrite flush --hard
         systemctl restart uny-openlitespeed
     done
 
@@ -429,6 +436,8 @@ mk_wp() {
     dns_and_infos
 
     #systemctl restart uny-openlitespeed
+
+    cd "$current_dir" || exit
 }
 
 mk_site() {
@@ -795,12 +804,17 @@ clone_site() {
     rm /var/www/"$cloneto"/db.sql
 
     echo "Updating the WP config..."
-    wp --path=/var/www/"$cloneto"/htdocs config set DB_NAME "${dbnaming}"
-    wp --path=/var/www/"$cloneto"/htdocs config set DB_USER "${dbnaming}"
-    wp --path=/var/www/"$cloneto"/htdocs config set DB_PASSWORD "${dbpassword}"
-    wp --path=/var/www/"$cloneto"/htdocs config set WP_CACHE_KEY_SALT "qyc_$cloneto"
+    current_dir="$(pwd)"
+    cd /var/www/"$cloneto"/htdocs || exit
+
+    wp config set DB_NAME "${dbnaming}"
+    wp config set DB_USER "${dbnaming}"
+    wp config set DB_PASSWORD "${dbpassword}"
+    wp config set WP_CACHE_KEY_SALT "qyc_$cloneto"
 
     wp_cf_page_cache_token_and_plugin_options
+
+    cd "$current_dir" || exit
 
     if [[ $reenable_clonefrom_object_cache == 1 ]]; then
         echo "Reenabling object cache for $clonefrom"
