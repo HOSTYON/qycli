@@ -108,7 +108,7 @@ stk_wpcli_install() {
     chmod +x /var/qyc/bin/wp-cli
     tee /bin/wp >/dev/null <<'EOF'
 #!/usr/bin/env bash
-if [[ $@ =~ config\  ]]; then
+if [[ $1 =~ config\  || $@ =~ \ config\  ]]; then
     if [[ $(pwd) =~ /var/www/.*/htdocs ]]; then
     runuser -u unyweb -- /var/qyc/bin/wp-cli --config-file=../conf/wp-config.php $@
     fi

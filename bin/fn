@@ -279,13 +279,24 @@ wp_cf_page_cache_token_and_plugin_options() {
     if [[ $cf_token_wp_cf_page_cache != "" ]]; then
         root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
         if [[ $root_domain_zone_id != "" ]]; then
-            wp option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
-            wp option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
-            wp option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
-            wp option patch update swcfpc_config cf_apitoken_domain "$root_domain"
-            wp option patch update swcfpc_config cf_auth_mode 1
-            wp option patch update swcfpc_config cf_fallback_cache 1
-            wp option patch update swcfpc_config cf_cache_enabled 1
+            wp option add swcfpc_config []
+
+            echo '{
+  "cf_auth_mode": 1,
+  "cf_apitoken": "'"$cf_token_wp_cf_page_cache"'",
+  "cf_apitoken_domain": "'"$domain"'",
+  "cf_zoneid": "'"$root_domain_zone_id"'",
+  "cf_zoneid_list": {"'"$root_domain"'":"'"$root_domain_zone_id"'"}
+}' | wp option update swcfpc_config --format=json
+
+            wp option add spc_conflicts_notice_dismissed 1
+            # wp option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
+            # wp option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
+            # wp option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
+            # wp option patch update swcfpc_config cf_apitoken_domain "$root_domain"
+            # wp option patch update swcfpc_config cf_auth_mode 1
+            # wp option patch update swcfpc_config cf_fallback_cache 1
+            # wp option patch update swcfpc_config cf_cache_enabled 1
         else
             echo "You are going to need to set up Cloudflare Super Page Cache manually."
         fi
