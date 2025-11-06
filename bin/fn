@@ -383,7 +383,7 @@ mk_wp() {
     wp config set DB_PASSWORD "${dbpassword}"
     wp config set DB_HOST :/run/mysqld/mysqld.sock
     wp config shuffle-salts
-    wp config set table_prefix _qyc
+    wp config set table_prefix qyc_
     # shellcheck disable=2016
     #sed -i 's+\$table_prefix = '\''wp_'\'';+\$table_prefix = '\''qyc_'\'';+' /var/www/"$domain"/conf/wp-config.php
 
