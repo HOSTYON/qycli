@@ -195,6 +195,14 @@ print_dns_info_auto() {
 The DNS entry has been made at Cloudflare automatically.
 
 EOF
+    if [[ $(yq .site-type /var/www/"$domain"/conf/qyc-site.yaml) == "wp" ]]; then
+        cat <<EOF
+WordPress site at $domain is ready.
+Login here: https://$domain/wp-login.php
+Homepage at: https://$domain/
+
+EOF
+    fi
 }
 
 print_dns_info_manual_v6() {
@@ -217,11 +225,6 @@ EOF
 
 print_login_info() {
     if [[ $(yq .site-type /var/www/"$domain"/conf/qyc-site.yaml) == "wp" ]]; then
-        cat <<EOF
-$domain is ready.
-Login here: https://$domain/wp-login.php
-
-EOF
         if [[ -n $wpadmin ]]; then
             tee -a /var/www/"$domain"/conf/qyc-site.yaml <<EOF
 wp-login:
