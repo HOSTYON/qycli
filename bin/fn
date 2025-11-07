@@ -22,7 +22,7 @@ domain_parser() {
             root_domain=$(echo "$domain" | sed "s+^[^.]*\.++")
             subdomain=true
         else
-            echo "Subdomains deeper than one level are not supported with Cloudflare Universal SSL. Use bla-sub.domain.com instead of bla.sub.domain.com. Aborting..." && exit
+            echo "Subdomains deeper than one level are not supported with Cloudflare Universal SSL. Use bla-sub.domain.com instead of bla.sub.domain.com. Aborting" && exit
         fi
 
         shift
@@ -314,10 +314,10 @@ wp_cf_page_cache_token_and_plugin_options() {
 mk_common() {
     [[ -d /var/www/$domain ]] && printf "\nSite already exists.\n" && exit
 
-    echo "Creating site..."
+    echo "Creating site"
     mk_common_site
 
-    echo "Creating database..."
+    echo "Creating database"
     mk_common_db
 }
 
@@ -362,7 +362,7 @@ mk_wp() {
     mk_common "$@"
     shift
 
-    echo "Installing WordPress..."
+    echo "Installing WordPress"
     current_dir="$(pwd)"
 
     cd /var/www/"$domain" || exit
@@ -798,7 +798,7 @@ set_php_version() {
         sed "s|lsphp[0-9][0-9]|lsphp${php_ver_short}|" -i /etc/uny/openlitespeed/conf/vhosts/"$domain"/vhconf.conf
         systemctl restart uny-openlitespeed
     else
-        echo "PHP version not in OpenLitespeed. Aborting..."
+        echo "PHP version not in OpenLitespeed. Aborting"
         exit 1
     fi
 }
@@ -867,28 +867,29 @@ clone_site() {
     domain=$cloneto
     site_type="$(yq .site-type /var/www/"$clonefrom"/conf/qyc-site.yaml)"
 
-    if [[ -f /var/www/$clonefrom/htdocs/wp-content/object-cache.php ]]; then
-        echo "Disabling object cache for cloning..."
-        qyc set "$clonefrom" cache o off
-        reenable_clonefrom_object_cache=1
-    fi
+    # if [[ -f /var/www/$clonefrom/htdocs/wp-content/object-cache.php ]]; then
+    #     echo "Disabling object cache for cloning"
+    #     qyc set "$clonefrom" cache o off
+    #     reenable_clonefrom_object_cache=1
+    # fi
 
-    echo "Making new site..."
+    echo "Making new site"
     mk_common_site
-    echo "Copying files..."
+    echo "Copying files"
     rsync -ar --exclude 'conf/or/names.conf' /var/www/"$clonefrom"/ /var/www/"$cloneto"/
 
-    echo "Copying the database..."
+    echo "Copying the database"
 
     local snakedomain=${clonefrom//[^0-9A-Za-z]/_}
-    local dbfrom="qyc_$snakedomain"
+    local dbfrom
+    dbfrom="$(yq .backend-login.user /var/www/"$clonefrom"/conf/qyc-site.yaml)"
     mariadb-dump "$dbfrom" | tee /var/www/"$cloneto"/db.sql >/dev/null
     sed -i "s+${clonefrom}+${cloneto}+g" /var/www/"$cloneto"/db.sql
     mk_common_db
     mariadb "$dbnaming" </var/www/"$cloneto"/db.sql
     rm /var/www/"$cloneto"/db.sql
 
-    echo "Updating the WP config..."
+    echo "Updating the WP config"
     current_dir="$(pwd)"
     cd /var/www/"$cloneto"/htdocs || exit
 
@@ -901,11 +902,11 @@ clone_site() {
 
     cd "$current_dir" || exit
 
-    if [[ $reenable_clonefrom_object_cache == 1 ]]; then
-        echo "Reenabling object cache for $clonefrom"
-        qyc set "$clonefrom" cache o on
-        qyc set "$cloneto" cache o on
-    fi
+    # if [[ $reenable_clonefrom_object_cache == 1 ]]; then
+    #     echo "Reenabling object cache for $clonefrom"
+    #     qyc set "$clonefrom" cache o on
+    #     qyc set "$cloneto" cache o on
+    # fi
 
     systemctl reload uny-openresty
     systemctl reload uny-openlitespeed
@@ -1002,12 +1003,12 @@ cnf_cloudflare_token() {
 
 cnf_opcache() {
     if [[ "$1" == "off" ]]; then
-        grep -q "opcache.enable = 0" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing..." && exit
+        grep -q "opcache.enable = 0" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing" && exit
         sed "s+opcache.enable = 1+opcache.enable = 0+" -i /etc/qyc/php/fpm/php.ini
         sed "s+opcache.enable_cli = 1+opcache.enable_cli = 0+" -i /etc/qyc/php/fpm/php.ini
         systemctl reload uny-openlitespeed
     elif [[ "$1" == "on" ]]; then
-        grep -q "opcache.enable = 1" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing..." && exit
+        grep -q "opcache.enable = 1" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing" && exit
         sed "s+opcache.enable = 0+opcache.enable = 1+" -i /etc/qyc/php/fpm/php.ini
         sed "s+opcache.enable_cli = 0+opcache.enable_cli = 1+" -i /etc/qyc/php/fpm/php.ini
         systemctl reload uny-openlitespeed
