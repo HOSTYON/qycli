@@ -472,6 +472,57 @@ fn_mk() {
     fi
 }
 
+fn_mv() {
+    site_source="$1"
+    site_destination="$2"
+
+    [[ ! -d /var/www/$site_source ]] && echo "Source site $site_source doesn't exist." && exit
+
+    domain_parser "$site_destination"
+    [[ $invalid_domain == "1" ]] && exit
+
+    url_root="$(yq .url_root /var/www/"$site_source"/conf/qyc-site.yaml)"
+    location="${url_root//$site_source/}"
+
+    ## Move the files
+    mv /var/www/"$site_source" /var/www/"$site_destination"
+
+    sed "s|$site_source|$site_destination|g" -i /var/www/"$site_destination"/conf/qyc-site.yaml
+
+    ## Site type specific
+    site_type="$(yq .site-type /var/www/"$site_destination"/conf/qyc-site.yaml)"
+
+    # WordPress
+    if [[ $site_type = "wp" ]]; then
+        current_dir="$(pwd)"
+        cd /var/www/"$site_destination"/htdocs || exit
+        wp search-replace "$site_source" "$site_destination"
+        cd "$current_dir" || exit
+    fi
+
+    ## Backends
+    backend="$(yq .backend /var/www/"$site_destination"/conf/qyc-site.yaml)"
+
+    # OpenLiteSpeed
+    if [[ $backend = "openlitespeed" ]]; then
+        mv /etc/uny/openlitespeed/conf/vhosts/"$site_source" /etc/uny/openlitespeed/conf/vhosts/"$site_destination"
+        sed "s|$site_source|$site_destination|g" -i /etc/uny/openlitespeed/conf/vhosts/"$site_destination"/vhconf.conf
+        sed -e "s| $site_source | $site_destination |g" \
+            -e "s| $site_source| $site_destination|g" \
+            -e "s|/$site_source/|/$site_destination/|g" \
+            -e "s| www.$site_source| www.$site_destination|g" \
+            -i /etc/uny/openlitespeed/conf/httpd_config.conf
+        systemctl restart openlitespeed
+    fi
+
+    ## Reverse Proxy - OpenResty
+    [[ -L /etc/uny/openresty/sites-enabled/"$site_source" ]] && rm /etc/uny/openresty/sites-enabled/"$site_source"
+    mv /etc/uny/openresty/sites-available/"$site_source" /etc/uny/openresty/sites-available/"$site_destination"
+    sed "s|$site_source|$site_destination|g" -i /var/www/"$site_destination"/conf/or/names.conf
+    domain="$site_destination"
+    enable_site
+}
+
 del_site() {
     cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
     if [[ $cf_token_dns != "" ]]; then

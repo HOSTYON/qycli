@@ -13,6 +13,9 @@ source /var/qyc/qycli/bin/fn
 if [[ $1 =~ (mk|make) ]]; then
     shift
     fn_mk "$@"
+elif [[ $1 =~ (mv|move) ]]; then
+    shift
+    fn_mv "$@"
 elif [[ $1 =~ (ls|list) ]]; then
     fn_ls "$@"
 elif [[ $1 == "set" ]]; then
