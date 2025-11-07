@@ -485,6 +485,7 @@ fn_mv() {
     location="${url_root//$site_source/}"
 
     ## Move the files
+    echo "Moving site files."
     mv /var/www/"$site_source" /var/www/"$site_destination"
 
     sed "s|$site_source|$site_destination|g" -i /var/www/"$site_destination"/conf/qyc-site.yaml
@@ -494,13 +495,15 @@ fn_mv() {
 
     # WordPress
     if [[ $site_type = "wp" ]]; then
+        echo "Changing WordPress DB values."
         current_dir="$(pwd)"
         cd /var/www/"$site_destination"/htdocs || exit
-        wp search-replace "$site_source" "$site_destination"
+        wp search-replace "$site_source" "$site_destination" --quiet
         cd "$current_dir" || exit
     fi
 
     ## Backends
+    echo "Changing application and web server settings."
     backend="$(yq .backend /var/www/"$site_destination"/conf/qyc-site.yaml)"
 
     # OpenLiteSpeed
@@ -521,6 +524,9 @@ fn_mv() {
     sed "s|$site_source|$site_destination|g" -i /var/www/"$site_destination"/conf/or/names.conf
     domain="$site_destination"
     enable_site
+
+    echo "Moved $site_source to $site_destination."
+    echo "Try: https://$site_destination"
 }
 
 del_site() {
