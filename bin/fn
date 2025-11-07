@@ -489,6 +489,9 @@ fn_mv() {
     ## Delete old DNS entries
     domain_parser "$site_source"
     del_dns_entries
+    if [[ $dns_entries_deleted = "true" ]]; then
+        echo "Deleted old DNS entries."
+    fi
 
     ## Setup things for the new one
     domain_parser "$site_destination"
@@ -537,11 +540,9 @@ fn_mv() {
     sed "s|$site_source|$site_destination|g" -i /var/www/"$site_destination"/conf/or/names.conf
     enable_site
 
-    echo "Moved $site_source to $site_destination."
-    echo "Try: https://$site_destination"
-
     ## DNS entries
     dns_and_infos
+    echo "Moved $site_source to $site_destination."
 }
 
 del_site() {
