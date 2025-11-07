@@ -548,6 +548,15 @@ fn_mv() {
 
     ## DNS entries
     dns_and_infos
+
+    if [[ $site_type = "wp" ]]; then
+        echo "Purging Cloudflare Cache from WordPress plugin Super Page Cache"
+        current_dir="$(pwd)"
+        cd /var/www/"$site_destination"/htdocs || exit
+        wp cfcache purge_cache
+        cd "$current_dir" || exit
+    fi
+
     echo "Moved $site_source to $site_destination"
 }
 
