@@ -228,8 +228,16 @@ wp-login:
   user:     $wpadmin
   email:    $wpemail
   password: $wppw
+
 EOF
-            echo ""
+        else
+            cat <<EOF
+wp-login:
+  user:     $(yq .wp-login.user /var/www/"$domain"/conf/qyc-site.yaml)
+  email:    $(yq .wp-login.email /var/www/"$domain"/conf/qyc-site.yaml)
+  password: $(yq .wp-login.password /var/www/"$domain"/conf/qyc-site.yaml)
+
+EOF
         fi
     fi
 }
@@ -478,6 +486,11 @@ fn_mv() {
 
     [[ ! -d /var/www/$site_source ]] && echo "Source site $site_source doesn't exist." && exit
 
+    ## Delete old DNS entries
+    domain_parser "$site_source"
+    del_dns_entries
+
+    ## Setup things for the new one
     domain_parser "$site_destination"
     [[ $invalid_domain == "1" ]] && exit
 
@@ -522,11 +535,13 @@ fn_mv() {
     [[ -L /etc/uny/openresty/sites-enabled/"$site_source" ]] && rm /etc/uny/openresty/sites-enabled/"$site_source"
     mv /etc/uny/openresty/sites-available/"$site_source" /etc/uny/openresty/sites-available/"$site_destination"
     sed "s|$site_source|$site_destination|g" -i /var/www/"$site_destination"/conf/or/names.conf
-    domain="$site_destination"
     enable_site
 
     echo "Moved $site_source to $site_destination."
     echo "Try: https://$site_destination"
+
+    ## DNS entries
+    dns_and_infos
 }
 
 del_site() {
