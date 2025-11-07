@@ -485,6 +485,7 @@ fn_mv() {
     site_destination="$2"
 
     [[ ! -d /var/www/$site_source ]] && echo "Source site $site_source doesn't exist." && exit
+    [[ -d /var/www/$site_destination ]] && echo "Destination site $site_destination already exist. Doing nothing." && exit
 
     ## Delete old DNS entries
     domain_parser "$site_source"
