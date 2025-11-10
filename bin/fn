@@ -1168,12 +1168,15 @@ EOF
 fn_info_inst() {
     current_branch_name="$(yq .branch_name /var/qyc/cnf.yaml)"
     cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
-    cf_token_accounts_zones_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
-    cf_token_wp_cf_page_cache=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json)
 
-    echo "To install the same qycli version with the same Cloudflare tokens on another server run:"
-    echo
-    echo "wget -qO- qyc.li/i/${current_branch_name} | sh -s cft ${cf_token} cftaz ${cf_token_accounts_zones_dns} cftwp ${cf_token_wp_cf_page_cache}"
+    if [[ $cf_token != "" ]]; then
+        cf_token_accounts_zones_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+        cf_token_wp_cf_page_cache=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json)
+
+        echo "To install the same qycli version with the same Cloudflare tokens on another server run:"
+        echo
+        echo "wget -qO- qyc.li/i/${current_branch_name} | sh -s cft ${cf_token} cftaz ${cf_token_accounts_zones_dns} cftwp ${cf_token_wp_cf_page_cache}"
+    fi
 }
 
 fn_info() {
