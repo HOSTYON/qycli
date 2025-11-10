@@ -22,7 +22,7 @@ domain_parser() {
             root_domain=$(echo "$domain" | sed "s+^[^.]*\.++")
             subdomain=true
         else
-            echo "Subdomains deeper than one level are not supported with Cloudflare Universal SSL. Use bla-sub.domain.com instead of bla.sub.domain.com. Aborting..." && exit
+            echo "Subdomains deeper than one level are not supported with Cloudflare Universal SSL. Use bla-sub.domain.com instead of bla.sub.domain.com. Aborting" && exit
         fi
 
         shift
@@ -195,6 +195,14 @@ print_dns_info_auto() {
 The DNS entry has been made at Cloudflare automatically.
 
 EOF
+    if [[ $(yq .site-type /var/www/"$domain"/conf/qyc-site.yaml) == "wp" ]]; then
+        cat <<EOF
+WordPress site at $domain is ready.
+Login here: https://$domain/wp-login.php
+Homepage at: https://$domain/
+
+EOF
+    fi
 }
 
 print_dns_info_manual_v6() {
@@ -217,19 +225,22 @@ EOF
 
 print_login_info() {
     if [[ $(yq .site-type /var/www/"$domain"/conf/qyc-site.yaml) == "wp" ]]; then
-        cat <<EOF
-$domain is ready.
-Login here: https://$domain/wp-login.php
-
-EOF
         if [[ -n $wpadmin ]]; then
             tee -a /var/www/"$domain"/conf/qyc-site.yaml <<EOF
 wp-login:
   user:     $wpadmin
   email:    $wpemail
   password: $wppw
+
 EOF
-            echo ""
+        else
+            cat <<EOF
+wp-login:
+  user:     $(yq .wp-login.user /var/www/"$domain"/conf/qyc-site.yaml)
+  email:    $(yq .wp-login.email /var/www/"$domain"/conf/qyc-site.yaml)
+  password: $(yq .wp-login.password /var/www/"$domain"/conf/qyc-site.yaml)
+
+EOF
         fi
     fi
 }
@@ -244,9 +255,10 @@ get_public_ips() {
 
 dns_and_infos() {
     cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+    root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
     get_public_ips
     if [[ $ipv6 != "" ]]; then
-        if [[ $cf_token_dns != "" ]]; then
+        if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
             dns_value=$ipv6
             dns_type=AAAA
             echo "Setting DNS record"
@@ -258,7 +270,7 @@ dns_and_infos() {
             print_login_info
         fi
     elif [[ $ipv4 != "" ]]; then
-        if [[ $cf_token_dns != "" ]]; then
+        if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
             dns_value=$ipv4
             dns_type=A
             echo "Setting DNS record"
@@ -279,13 +291,24 @@ wp_cf_page_cache_token_and_plugin_options() {
     if [[ $cf_token_wp_cf_page_cache != "" ]]; then
         root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
         if [[ $root_domain_zone_id != "" ]]; then
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_apitoken_domain "$root_domain"
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_auth_mode 1
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_fallback_cache 1
-            wp --path=/var/www/"$domain"/htdocs option patch update swcfpc_config cf_cache_enabled 1
+            wp option add swcfpc_config []
+
+            echo '{
+  "cf_auth_mode": 1,
+  "cf_apitoken": "'"$cf_token_wp_cf_page_cache"'",
+  "cf_apitoken_domain": "'"$domain"'",
+  "cf_zoneid": "'"$root_domain_zone_id"'",
+  "cf_zoneid_list": {"'"$root_domain"'":"'"$root_domain_zone_id"'"}
+}' | wp option update swcfpc_config --format=json
+
+            wp option add spc_conflicts_notice_dismissed 1
+            # wp option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
+            # wp option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
+            # wp option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
+            # wp option patch update swcfpc_config cf_apitoken_domain "$root_domain"
+            # wp option patch update swcfpc_config cf_auth_mode 1
+            # wp option patch update swcfpc_config cf_fallback_cache 1
+            # wp option patch update swcfpc_config cf_cache_enabled 1
         else
             echo "You are going to need to set up Cloudflare Super Page Cache manually."
         fi
@@ -295,10 +318,10 @@ wp_cf_page_cache_token_and_plugin_options() {
 mk_common() {
     [[ -d /var/www/$domain ]] && printf "\nSite already exists.\n" && exit
 
-    echo "Creating site..."
+    echo "Creating site"
     mk_common_site
 
-    echo "Creating database..."
+    echo "Creating database"
     mk_common_db
 }
 
@@ -343,29 +366,36 @@ mk_wp() {
     mk_common
     shift
 
-    echo "Installing WordPress..."
-    wget -qrO /var/www/"$domain"/htdocs/latest.tar.gz https://wordpress.org/latest.tar.gz
-    tar -xf /var/www/"$domain"/htdocs/latest.tar.gz -C /var/www/"$domain"/
-    mv /var/www/"$domain"/wordpress/* /var/www/"$domain"/htdocs/
-    rm -rf /var/www/"$domain"/wordpress
-    rm /var/www/"$domain"/htdocs/latest.tar.gz
+    echo "Installing WordPress"
+    current_dir="$(pwd)"
+
+    cd /var/www/"$domain" || exit
+
+    wget -qrO latest.tar.gz https://wordpress.org/latest.tar.gz
+    tar -xf latest.tar.gz
+    rm latest.tar.gz
+    mv wordpress/* htdocs/
+    rmdir wordpress
 
     # Must Use Plguins - qycli-plugin disabled at the moment
-    mkdir /var/www/"$domain"/htdocs/wp-content/mu-plugins
-    #ln -s /var/qyc/qycli-plugin/qycli.php /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli.php
-    #ln -s /var/qyc/qycli-plugin/qycli-plugin /var/www/"$domain"/htdocs/wp-content/mu-plugins/qycli-plugin
+    mkdir htdocs/wp-content/mu-plugins
+    #ln -s /var/qyc/qycli-plugin/qycli.php htdocs/wp-content/mu-plugins/qycli.php
+    #ln -s /var/qyc/qycli-plugin/qycli-plugin htdocs/wp-content/mu-plugins/qycli-plugin
 
-    cp /var/www/"$domain"/htdocs/wp-config-sample.php /var/www/"$domain"/conf/wp-config.php
-    sed -e "s|require_once ABSPATH . 'wp-settings.php';||" -e "s|/\*\* Sets up WordPress vars and included files. \*/||" -i /var/www/"$domain"/conf/wp-config.php
-    cp /var/qyc/qycli/cnf/wp/wp-config-redirect.php /var/www/"$domain"/htdocs/wp-config.php
-    #ln -rs /var/www/"$domain"/wp-config.php /var/www/"$domain"/edit-config.php
-    chown unyweb:unyweb -R /var/www/"$domain"/*
-    wp --path=/var/www/"$domain"/htdocs config set DB_NAME "${dbnaming}"
-    wp --path=/var/www/"$domain"/htdocs config set DB_USER "${dbnaming}"
-    wp --path=/var/www/"$domain"/htdocs config set DB_PASSWORD "${dbpassword}"
-    wp --path=/var/www/"$domain"/htdocs config set DB_HOST :/run/mysqld/mysqld.sock
-    wp --path=/var/www/"$domain"/htdocs config shuffle-salts
-    wp --path=/var/www/"$domain"/htdocs config set table_prefix _qyc
+    cp htdocs/wp-config-sample.php conf/wp-config.php
+    sed -e "s|require_once ABSPATH . 'wp-settings.php';||" -e "s|/\*\* Sets up WordPress vars and included files. \*/||" -i conf/wp-config.php
+    cp /var/qyc/qycli/cnf/wp/wp-config-redirect.php htdocs/wp-config.php
+
+    chown unyweb:unyweb -R ./*
+
+    cd htdocs || exit
+
+    wp config set DB_NAME "${dbnaming}"
+    wp config set DB_USER "${dbnaming}"
+    wp config set DB_PASSWORD "${dbpassword}"
+    wp config set DB_HOST :/run/mysqld/mysqld.sock
+    wp config shuffle-salts
+    wp config set table_prefix qyc_
     # shellcheck disable=2016
     #sed -i 's+\$table_prefix = '\''wp_'\'';+\$table_prefix = '\''qyc_'\'';+' /var/www/"$domain"/conf/wp-config.php
 
@@ -378,47 +408,47 @@ mk_wp() {
         wppw=$(openssl rand -base64 18)
     fi
     [[ "$wpemail" == "" ]] && wpemail=info@$domain
-    wp --path=/var/www/"$domain"/htdocs core install --url=https://"$domain" --title="$wptitle" --admin_user="$wpadmin" --admin_password="$wppw" --admin_email="$wpemail"
+    wp core install --url=https://"$domain" --title="$wptitle" --admin_user="$wpadmin" --admin_password="$wppw" --admin_email="$wpemail"
 
-    wp --path=/var/www/"$domain"/htdocs rewrite structure /%postname%/
-    wp --path=/var/www/"$domain"/htdocs plugin uninstall hello akismet
+    wp rewrite structure /%postname%/
+    wp plugin uninstall hello akismet
 
-    for theme in $(wp --path=/var/www/"$domain"/htdocs theme list --status=inactive --format=csv | grep inactive | sed s/,.*//); do
-        wp --path=/var/www/"$domain"/htdocs theme delete "$theme"
+    for theme in $(wp theme list --status=inactive --format=csv | grep inactive | sed s/,.*//); do
+        wp theme delete "$theme"
     done
-    wp --path=/var/www/"$domain"/htdocs theme update --all
+    wp theme update --all
 
     #wp --path=/var/www/$domain/htdocs plugin install --activate cloudflare
     #wp --path=/var/www/$domain/htdocs config set CLOUDFLARE_HTTP2_SERVER_PUSH_ACTIVE true
 
-    wp --path=/var/www/"$domain"/htdocs config set WP_AUTO_UPDATE_CORE minor
-    wp --path=/var/www/"$domain"/htdocs plugin auto-updates enable --all
-    wp --path=/var/www/"$domain"/htdocs theme auto-updates enable --all
+    wp config set WP_AUTO_UPDATE_CORE minor
+    wp plugin auto-updates enable --all
+    wp theme auto-updates enable --all
 
-    wp --path=/var/www/"$domain"/htdocs config set WP_MEMORY_LIMIT 128M
-    wp --path=/var/www/"$domain"/htdocs config set DISABLE_WP_CRON true
+    wp config set WP_MEMORY_LIMIT 128M
+    wp config set DISABLE_WP_CRON true
 
-    #wp --path=/var/www/"$domain"/htdocs login install --activate
+    #wp login install --activate
 
     # Install LiteSpeed Cache Plugin and WP Cloudflare Super Page Cache Setup
-    wp --path=/var/www/"$domain"/htdocs plugin install --activate wp-cloudflare-page-cache litespeed-cache
+    wp plugin install --activate wp-cloudflare-page-cache litespeed-cache
 
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-priv 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-commenter 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-rest 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-page_login 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-resources 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.cache-mobile 0
+    wp option update litespeed.conf.cache 0
+    wp option update litespeed.conf.cache-priv 0
+    wp option update litespeed.conf.cache-commenter 0
+    wp option update litespeed.conf.cache-rest 0
+    wp option update litespeed.conf.cache-page_login 0
+    wp option update litespeed.conf.cache-resources 0
+    wp option update litespeed.conf.cache-mobile 0
 
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-kind 1
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-host /run/valkey/valkey.sock
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object-port 0
-    wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object 1
+    wp option update litespeed.conf.object-kind 1
+    wp option update litespeed.conf.object-host /run/valkey/valkey.sock
+    wp option update litespeed.conf.object-port 0
+    wp option update litespeed.conf.object 1
 
     while [[ $(wget -S --spider --header="Host:$domain" http://localhost:8088/wp-json/ 2>&1 | grep -o "HTTP/.*" | cut -f2 -d" ") != "200" ]]; do
-        #wp --path=/var/www/"$domain"/htdocs rewrite structure "$(wp --path=/var/www/"$domain"/htdocs option get permalink_structure)"
-        wp --path=/var/www/"$domain"/htdocs rewrite flush --hard
+        #wp rewrite structure "$(wp option get permalink_structure)"
+        wp rewrite flush --hard
         systemctl restart uny-openlitespeed
     done
 
@@ -429,6 +459,8 @@ mk_wp() {
     dns_and_infos
 
     #systemctl restart uny-openlitespeed
+
+    cd "$current_dir" || exit
 }
 
 mk_site() {
@@ -450,6 +482,82 @@ fn_mk() {
     else
         print_help_mk
     fi
+}
+
+fn_mv() {
+    site_source="$1"
+    site_destination="$2"
+
+    [[ ! -d /var/www/$site_source ]] && echo "Source site $site_source doesn't exist." && exit
+    [[ -d /var/www/$site_destination ]] && echo "Destination site $site_destination already exist. Doing nothing." && exit
+
+    ## Delete old DNS entries
+    domain_parser "$site_source"
+    cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+    del_dns_entries
+    if [[ $dns_entries_deleted = "true" ]]; then
+        echo "Deleted old DNS entries"
+    fi
+
+    ## Setup things for the new one
+    domain_parser "$site_destination"
+    [[ $invalid_domain == "1" ]] && exit
+
+    url_root="$(yq .url_root /var/www/"$site_source"/conf/qyc-site.yaml)"
+    location="${url_root//$site_source/}"
+
+    ## Move the files
+    echo "Moving site files"
+    mv /var/www/"$site_source" /var/www/"$site_destination"
+
+    sed "s|$site_source|$site_destination|g" -i /var/www/"$site_destination"/conf/qyc-site.yaml
+
+    ## Site type specific
+    site_type="$(yq .site-type /var/www/"$site_destination"/conf/qyc-site.yaml)"
+
+    # WordPress
+    if [[ $site_type = "wp" ]]; then
+        echo "Changing WordPress DB values"
+        current_dir="$(pwd)"
+        cd /var/www/"$site_destination"/htdocs || exit
+        wp search-replace "$site_source" "$site_destination" --quiet
+        cd "$current_dir" || exit
+    fi
+
+    ## Backends
+    echo "Changing application and web server settings"
+    backend="$(yq .backend /var/www/"$site_destination"/conf/qyc-site.yaml)"
+
+    # OpenLiteSpeed
+    if [[ $backend = "openlitespeed" ]]; then
+        mv /etc/uny/openlitespeed/conf/vhosts/"$site_source" /etc/uny/openlitespeed/conf/vhosts/"$site_destination"
+        sed "s|$site_source|$site_destination|g" -i /etc/uny/openlitespeed/conf/vhosts/"$site_destination"/vhconf.conf
+        sed -e "s| $site_source | $site_destination |g" \
+            -e "s| $site_source| $site_destination|g" \
+            -e "s|/$site_source/|/$site_destination/|g" \
+            -e "s| www.$site_source| www.$site_destination|g" \
+            -i /etc/uny/openlitespeed/conf/httpd_config.conf
+        systemctl restart openlitespeed
+    fi
+
+    ## Reverse Proxy - OpenResty
+    [[ -L /etc/uny/openresty/sites-enabled/"$site_source" ]] && rm /etc/uny/openresty/sites-enabled/"$site_source"
+    mv /etc/uny/openresty/sites-available/"$site_source" /etc/uny/openresty/sites-available/"$site_destination"
+    sed "s|$site_source|$site_destination|g" -i /var/www/"$site_destination"/conf/or/names.conf
+    enable_site
+
+    ## DNS entries
+    dns_and_infos
+
+    if [[ $site_type = "wp" ]]; then
+        echo "Purging Cloudflare Cache from WordPress plugin Super Page Cache"
+        current_dir="$(pwd)"
+        cd /var/www/"$site_destination"/htdocs || exit
+        wp cfcache purge_cache
+        cd "$current_dir" || exit
+    fi
+
+    echo "Moved $site_source to $site_destination"
 }
 
 del_site() {
@@ -704,7 +812,7 @@ set_php_version() {
         sed "s|lsphp[0-9][0-9]|lsphp${php_ver_short}|" -i /etc/uny/openlitespeed/conf/vhosts/"$domain"/vhconf.conf
         systemctl restart uny-openlitespeed
     else
-        echo "PHP version not in OpenLitespeed. Aborting..."
+        echo "PHP version not in OpenLitespeed. Aborting"
         exit 1
     fi
 }
@@ -773,40 +881,46 @@ clone_site() {
     domain=$cloneto
     site_type="$(yq .site-type /var/www/"$clonefrom"/conf/qyc-site.yaml)"
 
-    if [[ -f /var/www/$clonefrom/htdocs/wp-content/object-cache.php ]]; then
-        echo "Disabling object cache for cloning..."
-        qyc set "$clonefrom" cache o off
-        reenable_clonefrom_object_cache=1
-    fi
+    # if [[ -f /var/www/$clonefrom/htdocs/wp-content/object-cache.php ]]; then
+    #     echo "Disabling object cache for cloning"
+    #     qyc set "$clonefrom" cache o off
+    #     reenable_clonefrom_object_cache=1
+    # fi
 
-    echo "Making new site..."
+    echo "Making new site"
     mk_common_site
-    echo "Copying files..."
+    echo "Copying files"
     rsync -ar --exclude 'conf/or/names.conf' /var/www/"$clonefrom"/ /var/www/"$cloneto"/
 
-    echo "Copying the database..."
+    echo "Copying the database"
 
     local snakedomain=${clonefrom//[^0-9A-Za-z]/_}
-    local dbfrom="qyc_$snakedomain"
+    local dbfrom
+    dbfrom="$(yq .backend-login.user /var/www/"$clonefrom"/conf/qyc-site.yaml)"
     mariadb-dump "$dbfrom" | tee /var/www/"$cloneto"/db.sql >/dev/null
     sed -i "s+${clonefrom}+${cloneto}+g" /var/www/"$cloneto"/db.sql
     mk_common_db
     mariadb "$dbnaming" </var/www/"$cloneto"/db.sql
     rm /var/www/"$cloneto"/db.sql
 
-    echo "Updating the WP config..."
-    wp --path=/var/www/"$cloneto"/htdocs config set DB_NAME "${dbnaming}"
-    wp --path=/var/www/"$cloneto"/htdocs config set DB_USER "${dbnaming}"
-    wp --path=/var/www/"$cloneto"/htdocs config set DB_PASSWORD "${dbpassword}"
-    wp --path=/var/www/"$cloneto"/htdocs config set WP_CACHE_KEY_SALT "qyc_$cloneto"
+    echo "Updating the WP config"
+    current_dir="$(pwd)"
+    cd /var/www/"$cloneto"/htdocs || exit
+
+    wp config set DB_NAME "${dbnaming}"
+    wp config set DB_USER "${dbnaming}"
+    wp config set DB_PASSWORD "${dbpassword}"
+    wp config set WP_CACHE_KEY_SALT "qyc_$cloneto"
 
     wp_cf_page_cache_token_and_plugin_options
 
-    if [[ $reenable_clonefrom_object_cache == 1 ]]; then
-        echo "Reenabling object cache for $clonefrom"
-        qyc set "$clonefrom" cache o on
-        qyc set "$cloneto" cache o on
-    fi
+    cd "$current_dir" || exit
+
+    # if [[ $reenable_clonefrom_object_cache == 1 ]]; then
+    #     echo "Reenabling object cache for $clonefrom"
+    #     qyc set "$clonefrom" cache o on
+    #     qyc set "$cloneto" cache o on
+    # fi
 
     systemctl reload uny-openresty
     systemctl reload uny-openlitespeed
@@ -903,12 +1017,12 @@ cnf_cloudflare_token() {
 
 cnf_opcache() {
     if [[ "$1" == "off" ]]; then
-        grep -q "opcache.enable = 0" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing..." && exit
+        grep -q "opcache.enable = 0" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing" && exit
         sed "s+opcache.enable = 1+opcache.enable = 0+" -i /etc/qyc/php/fpm/php.ini
         sed "s+opcache.enable_cli = 1+opcache.enable_cli = 0+" -i /etc/qyc/php/fpm/php.ini
         systemctl reload uny-openlitespeed
     elif [[ "$1" == "on" ]]; then
-        grep -q "opcache.enable = 1" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing..." && exit
+        grep -q "opcache.enable = 1" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing" && exit
         sed "s+opcache.enable = 0+opcache.enable = 1+" -i /etc/qyc/php/fpm/php.ini
         sed "s+opcache.enable_cli = 0+opcache.enable_cli = 1+" -i /etc/qyc/php/fpm/php.ini
         systemctl reload uny-openlitespeed

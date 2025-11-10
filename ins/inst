@@ -1,12 +1,20 @@
 #!/usr/bin/env sh
 # shellcheck disable=1091,2016,2154,2034
 
-## Install qycli dev version and stack with "wget -qO- qyc.li/i/stable | bash -s cft YOURTOKENHERE" or the dev version with "wget -qO- qyc.li/i/dev | bash -s cft YOURTOKENHERE"
-## or wget -qO- qyc.li/i/stable | bash -s php 8.4,8.3,8.2
+## Install qycli dev version and stack with "wget -qO- qyc.li/i/stable | bash -s cft YOURTOKENHERE"
+## or the dev version with "wget -qO- qyc.li/i/dev | bash -s cft YOURTOKENHERE"
+##
+## For installation with already generated Cloudflare tokens run:
+## wget -qO- qyc.li/i/dev | bash -s cft YOURTOKENHERE cftaz CLOUDFLARE_ACCOUNTS_ZONES_TOKEN cftwp CLOUDFLARE_WORDPRESS_TOKEN
+## You can get the info for this running 'qyc info inst' on your current server
+##
+## or "bash <(wget -qO- qyc.li/inst) v dev k no phpv 7.4"
 ## To install without Cloudflare token do the following: wget -qO- qyc.li/i/stable | bash -s no-cft
 
 [ "$(whoami)" != "root" ] && echo "qycli has to be installed as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 [ -f /bin/qyc ] && echo "qycli is already installed, stopping. Just type qyc to get the help message or go to qycli.org to learn." && exit
+
+branch_name="${branch_name:-stable}"
 
 kernel_tweaks=yes
 php_versions=8.4
@@ -146,3 +154,4 @@ if ! systemd-detect-virt --container --quiet && [ "$kernel_tweaks" = "yes" ]; th
 fi
 
 printf "\nqycli was installed.\n\n"
+qyc info inst

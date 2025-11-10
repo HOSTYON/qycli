@@ -411,10 +411,10 @@ upd_qycli() {
     qycli_branch="$(yq .branch_name /var/qyc/cnf.yaml)"
     git -C /var/qyc/qycli checkout "$qycli_branch"
     git -C /var/qyc/qycli reset --hard HEAD
-    git -C /var/qyc/qycli pull
+    git -C /var/qyc/qycli pull -f
 
     git -C /var/qyc/qycli-plugin reset --hard HEAD
-    git -C /var/qyc/qycli-plugin pull
+    git -C /var/qyc/qycli-plugin pull -f
 
     ln -sf /var/qyc/qycli/bin/qyc /bin/qyc
 
