@@ -500,10 +500,12 @@ fn_mv() {
 
     ## Delete old DNS entries
     domain_parser "$site_source"
-    cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
-    del_dns_entries
-    if [[ $dns_entries_deleted = "true" ]]; then
-        echo "Deleted old DNS entries"
+    if [[ -s /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ]]; then
+        cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+        del_dns_entries
+        if [[ $dns_entries_deleted = "true" ]]; then
+            echo "Deleted old DNS entries"
+        fi
     fi
 
     ## Setup things for the new one
