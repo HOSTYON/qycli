@@ -288,12 +288,11 @@ dns_and_infos() {
 
 wp_cf_page_cache_token_and_plugin_options() {
     cf_token_wp_cf_page_cache=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json)
-    if [[ $cf_token_wp_cf_page_cache != "" ]]; then
-        root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
-        if [[ $root_domain_zone_id != "" ]]; then
-            wp option add swcfpc_config []
+    root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
+    if [[ $cf_token_wp_cf_page_cache != "" && $root_domain_zone_id != "" ]]; then
+        wp option add swcfpc_config []
 
-            echo '{
+        echo '{
   "cf_auth_mode": 1,
   "cf_apitoken": "'"$cf_token_wp_cf_page_cache"'",
   "cf_apitoken_domain": "'"$domain"'",
@@ -301,17 +300,16 @@ wp_cf_page_cache_token_and_plugin_options() {
   "cf_zoneid_list": {"'"$root_domain"'":"'"$root_domain_zone_id"'"}
 }' | wp option update swcfpc_config --format=json
 
-            wp option add spc_conflicts_notice_dismissed 1
-            # wp option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
-            # wp option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
-            # wp option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
-            # wp option patch update swcfpc_config cf_apitoken_domain "$root_domain"
-            # wp option patch update swcfpc_config cf_auth_mode 1
-            # wp option patch update swcfpc_config cf_fallback_cache 1
-            # wp option patch update swcfpc_config cf_cache_enabled 1
-        else
-            echo "You are going to need to set up Cloudflare Super Page Cache manually."
-        fi
+        wp option add spc_conflicts_notice_dismissed 1
+        # wp option patch update swcfpc_config cf_apitoken "$cf_token_wp_cf_page_cache"
+        # wp option patch update swcfpc_config cf_zoneid "$root_domain_zone_id"
+        # wp option patch update swcfpc_config cf_zoneid_list '{"'"$root_domain"'":"'"$root_domain_zone_id"'"}' --format=json
+        # wp option patch update swcfpc_config cf_apitoken_domain "$root_domain"
+        # wp option patch update swcfpc_config cf_auth_mode 1
+        # wp option patch update swcfpc_config cf_fallback_cache 1
+        # wp option patch update swcfpc_config cf_cache_enabled 1
+    else
+        echo "You are going to need to set up Cloudflare Super Page Cache manually."
     fi
 }
 
@@ -446,17 +444,28 @@ mk_wp() {
     wp option update litespeed.conf.object-port 0
     wp option update litespeed.conf.object 1
 
-    while [[ $(wget -S --spider --header="Host:$domain" http://localhost:8088/wp-json/ 2>&1 | grep -o "HTTP/.*" | cut -f2 -d" ") != "200" ]]; do
-        #wp rewrite structure "$(wp option get permalink_structure)"
-        wp rewrite flush --hard
-        systemctl restart uny-openlitespeed
-    done
-
     wp_cf_page_cache_token_and_plugin_options
 
     systemctl reload uny-openresty
 
     dns_and_infos
+
+    check_wp_json_api() {
+        while [[ $(wget -S --spider "$header" http://localhost:8088/wp-json/ 2>&1 | grep -o "HTTP/.*" | cut -f2 -d" ") != "200" ]]; do
+            #wp rewrite structure "$(wp option get permalink_structure)"
+            echo "Checking"
+            wp rewrite flush --hard
+            systemctl restart uny-openlitespeed
+        done
+    }
+
+    if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
+        header="--header=\"Host:$domain\""
+    else
+        header=""
+    fi
+    echo "Checking wp-json API"
+    check_wp_json_api
 
     #systemctl restart uny-openlitespeed
 
