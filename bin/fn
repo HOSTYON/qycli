@@ -448,24 +448,14 @@ mk_wp() {
 
     systemctl reload uny-openresty
 
-    dns_and_infos
-
-    check_wp_json_api() {
-        while [[ $(wget -S --spider "$header" http://localhost:8088/wp-json/ 2>&1 | grep -o "HTTP/.*" | cut -f2 -d" ") != "200" ]]; do
-            #wp rewrite structure "$(wp option get permalink_structure)"
-            echo "Checking"
-            wp rewrite flush --hard
-            systemctl restart uny-openlitespeed
-        done
-    }
-
-    if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
-        header="--header=\"Host:$domain\""
-    else
-        header=""
-    fi
     echo "Checking wp-json API"
-    check_wp_json_api
+    while [[ $(wget -S --spider --header="Host:$domain" http://localhost:8088/wp-json/ 2>&1 | grep -o "HTTP/.*" | cut -f2 -d" ") != "200" ]]; do
+        #wp rewrite structure "$(wp option get permalink_structure)"
+        wp rewrite flush --hard
+        systemctl restart uny-openlitespeed
+    done
+
+    dns_and_infos
 
     #systemctl restart uny-openlitespeed
 
