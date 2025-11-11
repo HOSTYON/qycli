@@ -37,7 +37,6 @@ while [ "$#" -gt 0 ]; do
             exit 1
         fi
         php_versions="$(echo "$php_versions" | tr "," "\n")"
-        php_default_version="$(echo "$php_versions" | head -n1)"
         shift
         ;;
     no-cft | no-cloudflare-token)
@@ -90,6 +89,8 @@ fi
 if [ ! -d /var/qyc ]; then
     mkdir -p /var/qyc/qycli /var/qyc/cloudflare/dns /var/qyc/cache/git /var/qyc/bin
 fi
+
+php_default_version="$(echo "$php_versions" | head -n1)"
 
 tee /var/qyc/cnf.yaml <<EOF
 branch_name: $branch_name
