@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 
-upd_get_cpus() {
-    grep -c processor /proc/cpuinfo
-}
-
 upd_get_ram_mb() {
     rammb=$(($(grep MemTotal /proc/meminfo | tr -d 'MemTotal: kB') / 1000))
     echo $rammb
@@ -41,6 +37,14 @@ upd_openresty_conf_renew_cf_ips() {
     systemctl reload uny-openresty
 }
 
+upd_openresty_conf_workers() {
+    cp /var/qyc/qycli/cnf/openresty/perf.conf /etc/uny/openresty/
+    worker_processes=$(grep -c processor /proc/cpuinfo)                # 1 worker per CPU
+    worker_connections=$(($(grep -c processor /proc/cpuinfo) * 10000)) # 10000 per CPU
+    sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/uny/openresty/perf.conf
+    sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/uny/openresty/perf.conf
+}
+
 upd_openresty_conf() {
     for inode in /var/qyc/qycli/cnf/openresty/*; do
         if [[ ! $(basename "$inode") =~ (perf\.conf|conf\.d) ]]; then
@@ -53,11 +57,7 @@ upd_openresty_conf() {
         ln -sfn "$inode" /etc/uny/openresty/conf.d/"$(basename "$inode")"
     done
 
-    cp /var/qyc/qycli/cnf/openresty/perf.conf /etc/uny/openresty/
-    worker_processes=$(upd_get_cpus)                # 1 worker per CPU
-    worker_connections=$(($(upd_get_cpus) * 10000)) # 10000 per CPU
-    sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/uny/openresty/perf.conf
-    sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/uny/openresty/perf.conf
+    upd_openresty_conf_workers
 
     cp /var/qyc/qycli/cnf/openresty/qyc-openresty-logrotate /etc/logrotate.d/qyc-openresty-logrotate
 
@@ -79,12 +79,11 @@ upd_mariadb_conf_ram_based() {
         -e "s/.*innodb_log_file_size.*/innodb_log_file_size = ${innodb_log_file_size}M/" \
         -e "s/.*tmp_table_size.*/tmp_table_size = ${tmp_table_size}M/" \
         -e "s/.*max_heap_table_size.*/max_heap_table_size = ${tmp_table_size}M/" -i /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
-
 }
 
 upd_mariadb_conf_cpu_based() {
-    local max_connections=$(($(upd_get_cpus) * 512))   # 512 times CPU cores
-    local query_cache_size=$(($(upd_get_cpus) * 1024)) # 1024 times CPU cores
+    local max_connections=$(($(grep -c processor /proc/cpuinfo) * 512))   # 512 times CPU cores
+    local query_cache_size=$(($(grep -c processor /proc/cpuinfo) * 1024)) # 1024 times CPU cores
     sed -e "s/.*max_connections.*/max_connections = ${max_connections}/" \
         -e "s/.*query_cache_size.*/query_cache_size = ${query_cache_size}M/" -i /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
 }
@@ -101,6 +100,25 @@ upd_mariadb() {
     unyp si mariadb
 
     systemctl reenable uny-mariadb
+}
+
+upd_php_conf_ram() {
+    if [[ $phpv == "$php_default_version" ]]; then
+        local opmem=$(($(upd_get_ram_mb) * 5 / 100)) # 5% of all memory in MB
+        sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
+            -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/uny/php/"$phpv"/php.ini
+
+        sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|#(\s*env\s*LSAPI_AVOID_FORK=)|\1|; s|#(\s*env\s*PHP_LSAPI_CHILDREN=)|\1|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+
+        local php_children=$(($(upd_get_ram_mb) * 50 / 130 / 100)) # pm.max_children = 50% Total Memory / 130MB
+        sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(PHP_LSAPI_CHILDREN=).*|\1${php_children}|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+
+        if [[ $(upd_get_ram_mb) -lt 1050 ]]; then
+            sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(LSAPI_AVOID_FORK=).*|\1200M|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+        else
+            sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(LSAPI_AVOID_FORK=).*|\11|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+        fi
+    fi
 }
 
 upd_php_conf() {
@@ -126,22 +144,7 @@ upd_php_conf() {
     )"
     sed -zEn "s|(ext[pP]rocessor lsphp\s*\{[^\}]*})|&\n\n${ols_extproc}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
 
-    if [[ $phpv == "$php_default_version" ]]; then
-        local opmem=$(($(upd_get_ram_mb) * 5 / 100)) # 5% of all memory in MB
-        sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
-            -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${opmem}M/" -i /etc/uny/php/"$phpv"/php.ini
-
-        sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|#(\s*env\s*LSAPI_AVOID_FORK=)|\1|; s|#(\s*env\s*PHP_LSAPI_CHILDREN=)|\1|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-
-        local php_children=$(($(upd_get_ram_mb) * 50 / 130 / 100)) # pm.max_children = 50% Total Memory / 130MB
-        sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(PHP_LSAPI_CHILDREN=).*|\1${php_children}|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-
-        if [[ $(upd_get_ram_mb) -lt 1050 ]]; then
-            sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(LSAPI_AVOID_FORK=).*|\1200M|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-        else
-            sed -E "/ext[pP]rocessor lsphp${phpv_short}\s*\{/,/\}/ s|(LSAPI_AVOID_FORK=).*|\11|" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-        fi
-    fi
+    upd_php_conf_ram
 }
 
 upd_php() {
@@ -441,6 +444,20 @@ upd_fn() {
     #upd_filebrowser
 }
 
+upd_resource_limits() {
+    upd_openresty_conf_workers
+    systemctl restart uny-openresty
+
+    upd_mariadb_conf_cpu_based
+    upd_mariadb_conf_ram_based
+    systemctl restart uny-mariadb
+
+    phpv="$(yq -ot .php_default_version /var/qyc/cnf.yaml)"
+    upd_php_conf_ram
+
+    upd_valkey_conf
+}
+
 upd_parser() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
@@ -452,6 +469,10 @@ upd_parser() {
             shift
             upd_get_cf_tokens
             upd_get_cf_accounts_and_zones
+            ;;
+        limits | resources)
+            shift
+            upd_resource_limits
             ;;
         *)
             echo "Invalid option: $1"
