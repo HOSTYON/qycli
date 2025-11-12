@@ -762,10 +762,15 @@ set_alias() {
 }
 
 fn_ls_sites() {
-    for site in /var/www/*; do
-        yq "$site"/conf/qyc-site.yaml
-        echo
-    done
+    site_array=(/var/www/*)
+    if [[ ${site_array[0]} != "" ]]; then
+        for site in "${site_array[@]}"; do
+            yq "$site"/conf/qyc-site.yaml
+            echo
+        done
+    else
+        echo "No sites available."
+    fi
 }
 
 fn_ls() {
