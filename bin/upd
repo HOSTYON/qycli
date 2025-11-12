@@ -456,6 +456,8 @@ upd_resource_limits() {
     upd_php_conf_ram
 
     upd_valkey_conf
+
+    echo "Updated resource limits."
 }
 
 upd_parser() {
