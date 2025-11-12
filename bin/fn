@@ -782,7 +782,11 @@ fn_ls() {
             ;;
         domains)
             shift
-            yq -oy .result[].name /var/qyc/cloudflare/cfzones.json
+            if [[ -s /var/qyc/cloudflare/cfzones.json ]]; then
+                yq -oy .result[].name /var/qyc/cloudflare/cfzones.json
+            else
+                echo "No Cloudflare domain information available."
+            fi
             ;;
         *)
             echo "Invalid option: $1"
