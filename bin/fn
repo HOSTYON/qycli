@@ -262,7 +262,7 @@ dns_and_infos() {
     get_public_ips
 
     if [[ $ipv6 != "" ]]; then
-        if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
+        if [[ $NO_AUTO_DNS != "yes" && $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
             dns_value=$ipv6
             dns_type=AAAA
             echo "Setting DNS record"
@@ -274,7 +274,7 @@ dns_and_infos() {
             print_login_info
         fi
     elif [[ $ipv4 != "" ]]; then
-        if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
+        if [[ $NO_AUTO_DNS != "yes" && $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
             dns_value=$ipv4
             dns_type=A
             echo "Setting DNS record"
