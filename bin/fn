@@ -406,7 +406,7 @@ mk_wp() {
     #sed -i 's+\$table_prefix = '\''wp_'\'';+\$table_prefix = '\''qyc_'\'';+' /var/www/"$domain"/conf/wp-config.php
 
     [[ "$wptitle" == "" ]] && wptitle=$domain
-    [[ "$wpadmin" == "" ]] && wpadmin=qycli
+    [[ "$wpadmin" == "" ]] && wpadmin=qycli_$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 4)
     if [[ "$wppw" == "" ]]; then
         wppw=$(openssl rand -base64 18)
     elif [[ ! $(echo "$wppw" | pwscore) ]]; then
@@ -415,6 +415,7 @@ mk_wp() {
     fi
     [[ "$wpemail" == "" ]] && wpemail=info@$domain
     wp core install --url=https://"$domain" --title="$wptitle" --admin_user="$wpadmin" --admin_password="$wppw" --admin_email="$wpemail"
+    wp user update "$wpadmin" --display_name="$domain" --nickname="$domain"
 
     wp rewrite structure /%postname%/
     wp plugin uninstall hello akismet
