@@ -5,5 +5,5 @@ branch_name=dev
 
 # Run installer with options
 wget -q https://raw.githubusercontent.com/HOSTYON/qycli/refs/heads/"$branch_name"/ins/inst
-. inst
-rm -f inst
+. ./inst
+rm -f ./inst
