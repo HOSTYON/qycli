@@ -1192,8 +1192,7 @@ fn_info_inst() {
 
     echo "To install the same qycli version with the same Cloudflare tokens on another server run:"
     echo
-    echo "wget -qO- qyc.li/i/${current_branch_name} | sh -s \\
-    cft ${cf_token} \\
+    echo "wget -qO- qyc.li/i/${current_branch_name} | sh -s cft ${cf_token} \\
     cftaz ${cf_token_accounts_zones_dns} \\
     cftwp ${cf_token_wp_cf_page_cache}"
 }
