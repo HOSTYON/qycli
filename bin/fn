@@ -1201,6 +1201,8 @@ fn_info_inst() {
 fn_info() {
     if [[ -z $1 ]]; then
         yq /var/qyc/cnf.yaml
+        echo
+        qyc info inst
     elif [[ $1 =~ (db|database|dbadmin) ]]; then
         fn_info_db
     elif [[ $1 =~ (inst|installation) ]]; then
