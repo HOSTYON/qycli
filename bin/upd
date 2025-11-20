@@ -186,7 +186,7 @@ upd_get_new_cf_ips() {
 }
 
 upd_get_cf_accounts_and_zones() {
-    cf_token_accounts_zones=$(yq -py -oy .result.value </var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+    cf_token_accounts_zones=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
 
     if [[ $cf_token_accounts_zones != "" ]]; then
         # Get all accounts
@@ -360,7 +360,7 @@ upd_get_cf_tokens() {
 }
 
 upd_dns_entry() {
-    cf_token_dns=$(yq -py -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+    cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
     # Check if dns file exists
     # shellcheck disable=SC2154
     if [[ -f ${domain}_cf_dns.json ]]; then

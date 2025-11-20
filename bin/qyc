@@ -39,6 +39,9 @@ elif [[ $1 =~ (cnf|conf|configure) ]]; then
 elif [[ $1 == "info" ]]; then
     shift
     fn_info "$@"
+elif [[ $1 == "point-dns-here" ]]; then
+    shift
+    point_dns_here "$@"
 else
     print_help_qyc
 fi

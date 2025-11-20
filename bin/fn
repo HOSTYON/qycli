@@ -146,7 +146,9 @@ EOF
 }
 
 del_dns_entries() {
-    root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
+    if [[ $root_domain_zone_id == "" ]]; then
+        root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
+    fi
     if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
 
         # List DNS records for a Zone
@@ -245,6 +247,15 @@ EOF
     fi
 }
 
+get_cf_token_dns() {
+    if [[ ! $(yq .cf_accounts_zones_dns_token /var/www/"$domain"/conf/qyc-site.yaml 2>/dev/null) =~ (null|) ]]; then
+        cf_token_dns=$(yq .cf_accounts_zones_dns_token /var/www/"$domain"/conf/qyc-site.yaml)
+    elif [ -s /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ]; then
+        cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+    fi
+    root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
+}
+
 get_public_ips() {
     ipv4_dev=$(ip r | awk '/default via/ {print $5}' | head -n1)
     ipv4=$(ip -4 a show dev "$ipv4_dev" scope global | grep inet | awk -F '[ \t]+|/' '{print $3}' | grep -Ev "10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" |
@@ -254,18 +265,14 @@ get_public_ips() {
 }
 
 dns_and_infos() {
-    if [ -s /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ]; then
-        cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
-        root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
-    fi
-
+    get_cf_token_dns
     get_public_ips
 
     if [[ $ipv6 != "" ]]; then
         if [[ $NO_AUTO_DNS != "yes" && $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
             dns_value=$ipv6
             dns_type=AAAA
-            echo "Setting DNS record"
+            echo "Setting DNS record ($dns_type)"
             cf_dns_entry
             print_dns_info_auto
             print_login_info
@@ -277,7 +284,7 @@ dns_and_infos() {
         if [[ $NO_AUTO_DNS != "yes" && $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
             dns_value=$ipv4
             dns_type=A
-            echo "Setting DNS record"
+            echo "Setting DNS record ($dns_type)"
             cf_dns_entry
             print_dns_info_auto
             print_login_info
@@ -502,7 +509,7 @@ fn_mv() {
     ## Delete old DNS entries
     domain_parser "$site_source"
     if [[ -s /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ]]; then
-        cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+        get_cf_token_dns
         del_dns_entries
         if [[ $dns_entries_deleted = "true" ]]; then
             echo "Deleted old DNS entries"
@@ -571,7 +578,7 @@ fn_mv() {
 }
 
 del_site() {
-    cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+    get_cf_token_dns
     if [[ $cf_token_dns != "" ]]; then
         del_dns_entries
     fi
@@ -1209,5 +1216,48 @@ fn_info() {
         fn_info_inst
     else
         print_help_info
+    fi
+}
+
+# point_dns_here_check_dns_token_and_get_zones() {
+#     get_cf_token_dns
+#     if [[ $cf_token_dns != "" ]]; then
+#         # Check token
+#         cf_token="$cf_token_dns"
+#         verify_cloudflare_token
+
+#         upd_get_cf_accounts_and_zones
+#     else
+#         echo "No Cloudflare token available for DNS management. Aborting!" && exit
+#     fi
+# }
+
+point_dns_here_do_the_pointing() {
+    domain_parser "$1"
+    get_cf_token_dns
+
+    zone_answer="$(curl https://api.cloudflare.com/client/v4/zones?name="$root_domain" \
+        -H "Authorization: Bearer $cf_token_dns")"
+
+    if [[ $(echo "$zone_answer" | yq -oj .success) = "true" && $(echo "$zone_answer" | yq -oj .result_info.total_count) != 0 ]]; then
+        root_domain_zone_id="$(echo "$zone_answer" | yq -oy .result[].id)"
+        dns_and_infos
+    else
+        echo "Root domain $root_domain is not accessible with the current Cloudflare token. Couldn't point DNS here!"
+    fi
+}
+
+point_dns_here() {
+    if [[ $# = 0 ]]; then
+        echo "Pointing DNS of all domains to this server's IP."
+        for domain in /var/www/*; do
+            point_dns_here_do_the_pointing "${domain##*/}"
+        done
+    elif [[ $# = 1 ]]; then
+        echo "Pointing DNS of domain $1 to this server's IP."
+        point_dns_here_do_the_pointing "$1"
+    else
+        echo "Too many arguments given. Aborting!"
+        exit
     fi
 }
