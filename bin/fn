@@ -653,8 +653,17 @@ set_cache_object() {
         if [[ $(wp --path=/var/www/"$domain"/htdocs option get litespeed.conf.object) == 1 ]]; then
             echo "Object cache is already enabled."
         else
-            #usermod -aG valkey unyweb
-            # Check in valkey.conf to set the socket permissions correctly
+            # Check and set subsettings first
+            if [[ $(wp --path=/var/www/"$domain"/htdocs option get litespeed.conf.object-kind) != 1 ]]; then
+                wp --path=/var/www/"$domain"/htdocs option set litespeed.conf.object-kind 1
+            fi
+            if [[ $(wp --path=/var/www/"$domain"/htdocs option get litespeed.conf.object-host) != "/run/valkey/valkey.sock" ]]; then
+                wp --path=/var/www/"$domain"/htdocs option set litespeed.conf.object-host "/run/valkey/valkey.sock"
+            fi
+            if [[ $(wp --path=/var/www/"$domain"/htdocs option get litespeed.conf.object-port) != 0 ]]; then
+                wp --path=/var/www/"$domain"/htdocs option set litespeed.conf.object-port 0
+            fi
+
             wp --path=/var/www/"$domain"/htdocs option update litespeed.conf.object 1
             wp --path=/var/www/"$domain"/htdocs transient delete-all
             systemctl restart uny-openlitespeed
