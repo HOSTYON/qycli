@@ -31,6 +31,7 @@ elif [[ $1 =~ (upd|update) ]]; then
     shift
     source /var/qyc/qycli/bin/upd
     upd_qycli
+    echo
     source /var/qyc/qycli/bin/upd
     upd_parser "$@"
 elif [[ $1 =~ (cnf|conf|configure) ]]; then
