@@ -1,27 +1,42 @@
 [mysqld]
-#skip-networking
+
+# --- Basics ---
 bind-address = 127.0.0.1
-#skip-name-resolve
+skip-name-resolve = 1
 innodb_file_per_table = 1
-innodb_buffer_pool_size = innodbbpsM
-innodb_log_file_size = innodblfsM
-max_connections = dbmaxconn
-tmp_table_size = tmpsizesM
-max_heap_table_size = tmpsizesM
-wait_timeout = 900
-max_allowed_packet = 512M
+
+# --- RAM Allocation ---
+innodb_buffer_pool_size = 512M      # Default value will be overridden
+innodb_log_file_size = 128M         # Default value will be overridden
+
+# --- Connections ---
+max_connections = 100               # Default value will be overridden
+thread_cache_size = 16              # Default value will be overridden
+wait_timeout = 120                  # Reclaim RAM from idle connections after 120 seconds
+interactive_timeout = 120           # Reclaim RAM from idle connections after 120 seconds
+connect_timeout = 10                # Prevents "zombie" connections during the initial handshake
+
+# --- Query Cache ---
 query_cache_type = 1
-query_cache_limit = 1M
-query_cache_size = querycachesizeM
-read_rnd_buffer_size = 192K    # from 256K to reduce handler_read_rnd_next RPS of 1,683,707
-read_buffer_size = 256K        # from 128K to reduce handler_read_next RPS of 21,522
-thread_cache_size = 100        # from 13 to reduce threads_created of 2,763 in 15 days
-innodb_io_capacity = 2000      # from 200 to allow higher IOPS on your SSD storage devices
-key_cache_age_threshold = 7200 # from 300 seconds to reduce key_reads RPS of 16+
-key_buffer_size = 64M          # from 8M to reduce key_reads RPS of 16+
-# For ZFS https://www.percona.com/blog/mysql-zfs-performance-update/
-innodb_flush_method = fsync
-innodb_doublewrite = 0 # ZFS is transactional
-innodb_use_native_aio = 0
-innodb_read_io_threads = 10
-innodb_write_io_threads = 10
+query_cache_size = 48M              # Never exceed 128M; large caches cause "Waiting for query cache lock"
+query_cache_limit = 2M
+
+# --- Per-Thread Buffers ---
+tmp_table_size = 16M                # Default value will be overridden
+max_heap_table_size = 16M           # Default value will be overridden
+read_rnd_buffer_size = 256K
+read_buffer_size = 256K
+max_allowed_packet = 64M
+
+# --- IOPS & Reliability ---
+innodb_io_capacity = 2000           # Balanced for modern SSD/NVMe
+innodb_io_capacity_max = 4000       # Burst handling for modern SSD/NVMe
+innodb_flush_neighbors = 0          # Prevents unnecessary writes on SSD hardware
+innodb_flush_log_at_trx_commit = 2  # Optimizes write frequency for web traffic
+innodb_read_io_threads = 4          # Universal I/O Thread Defaults optimized for stability across all hardware sizes
+innodb_write_io_threads = 4         # Universal I/O Thread Defaults optimized for stability across all hardware sizes
+
+# --- MyISAM ---
+key_cache_age_threshold = 7200
+key_buffer_size = 64M               # Key cache for MyISAM (internal tables)
+key_cache_block_size = 1024

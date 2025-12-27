@@ -1,0 +1,10 @@
+[mysqld]
+# --- ZFS Core Optimization ---
+# Mandatory for ZFS to avoid performance degradation and allow write-batching
+innodb_flush_method = fsync
+
+# Mandatory for ZFS: CoW makes torn pages impossible; disabling this saves 50% I/O overhead
+innodb_doublewrite = 0
+
+# ZFS performs better with InnoDB's internal AIO simulation than Linux Native AIO
+innodb_use_native_aio = 0
