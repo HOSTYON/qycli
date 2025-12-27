@@ -71,27 +71,73 @@ upd_openresty() {
     systemctl reenable uny-openresty
 }
 
-upd_mariadb_conf_ram_based() {
-    local innodb_buffer_pool_size=$(($(upd_get_ram_mb) * 20 / 100)) # 20% of all memory in MB
-    local innodb_log_file_size=$(($(upd_get_ram_mb) * 10 / 100))    # 10% of all memory in MB
-    local tmp_table_size=$(($(upd_get_ram_mb) * 64 / 1000))         # Per GB RAM 64MB
-    sed -e "s/.*innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${innodb_buffer_pool_size}M/" \
-        -e "s/.*innodb_log_file_size.*/innodb_log_file_size = ${innodb_log_file_size}M/" \
-        -e "s/.*tmp_table_size.*/tmp_table_size = ${tmp_table_size}M/" \
-        -e "s/.*max_heap_table_size.*/max_heap_table_size = ${tmp_table_size}M/" -i /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
-}
+upd_mariadb_conf_values() {
+    local ram_mb
+    ram_mb=$(upd_get_ram_mb)
 
-upd_mariadb_conf_cpu_based() {
-    local max_connections=$(($(grep -c processor /proc/cpuinfo) * 512))   # 512 times CPU cores
-    local query_cache_size=$(($(grep -c processor /proc/cpuinfo) * 1024)) # 1024 times CPU cores
-    sed -e "s/.*max_connections.*/max_connections = ${max_connections}/" \
-        -e "s/.*query_cache_size.*/query_cache_size = ${query_cache_size}M/" -i /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
+    # innodb_buffer_pool_size
+    local innodb_buffer_pool_size=$((ram_mb * 45 / 100)) # 45% of all memory in MB
+
+    # innodb_log_file_size
+    local innodb_log_file_size=$((ram_mb * 10 / 100)) # Default to 10%
+    if [[ $ram_mb -lt 1280 ]]; then
+        innodb_log_file_size=128 # Floor for very small servers
+    elif [[ $ram_mb -gt 32000 ]]; then
+        innodb_log_file_size=2048 # Max Ceiling (Fast recovery)
+    elif [[ $ram_mb -ge 16000 ]]; then
+        innodb_log_file_size=1024 # Balanced for 16GB-32GB
+    elif [[ $ram_mb -ge 5120 ]]; then
+        innodb_log_file_size=512 # Balanced for 5GB-16GB
+    fi
+
+    # max_connections
+    local max_connections=$((ram_mb * 60 / 1000))       # 60 Connections per GB RAM
+    [[ $max_connections -lt 50 ]] && max_connections=50 # Floor for stability
+
+    # tmp_table_size and max_heap_table_size
+    local tmp_table_size=$((ram_mb * 1 / 100)) # 1% of all memory in MB
+    if [[ $tmp_table_size -lt 16 ]]; then
+        tmp_table_size=16 # Minimum 16MB
+    elif [[ $tmp_table_size -gt 128 ]]; then
+        tmp_table_size=128 # Maximum 128MB
+    fi
+
+    # thread_cache_size
+    local thread_cache_size
+    if [[ $ram_mb -gt 32000 ]]; then
+        thread_cache_size=100 # Max
+    elif [[ $ram_mb -ge 8000 ]]; then
+        thread_cache_size=64
+    elif [[ $ram_mb -ge 4000 ]]; then
+        thread_cache_size=32
+    elif [[ $ram_mb -ge 2000 ]]; then
+        thread_cache_size=24
+    else
+        thread_cache_size=16 # Floor
+    fi
+
+    sed -e "s/^[#[:space:]]*innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${innodb_buffer_pool_size}M/" \
+        -e "s/^[#[:space:]]*innodb_log_file_size.*/innodb_log_file_size = ${innodb_log_file_size}M/" \
+        -e "s/^[#[:space:]]*max_connections.*/max_connections = ${max_connections}/" \
+        -e "s/^[#[:space:]]*tmp_table_size.*/tmp_table_size = ${tmp_table_size}M/" \
+        -e "s/^[#[:space:]]*max_heap_table_size.*/max_heap_table_size = ${tmp_table_size}M/" \
+        -e "s/^[#[:space:]]*thread_cache_size.*/thread_cache_size = ${thread_cache_size}/" \
+        -i /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
+
+    if mount | grep -q "type zfs"; then
+        cp /var/qyc/qycli/cnf/mariadb/my.cnf.d/99-fs-zfs.cnf /etc/uny/mariadb/my.cnf.d/99-fs-zfs.cnf
+        [[ -s /etc/uny/mariadb/my.cnf.d/99-fs-standard.cnf ]] && rm /etc/uny/mariadb/my.cnf.d/99-fs-standard.cnf
+        echo "Using ZFS Optimizations for MariaDB."
+    else
+        cp /var/qyc/qycli/cnf/mariadb/my.cnf.d/99-fs-standard.cnf /etc/uny/mariadb/my.cnf.d/99-fs-standard.cnf
+        [[ -s /etc/uny/mariadb/my.cnf.d/99-fs-zfs.cnf ]] && rm /etc/uny/mariadb/my.cnf.d/99-fs-zfs.cnf
+        echo "Using Standard Filesystem Optimizations for MariaDB."
+    fi
 }
 
 upd_mariadb_conf() {
     cp /var/qyc/qycli/cnf/mariadb/my.cnf.d/99-qyc.cnf /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
-    upd_mariadb_conf_ram_based
-    upd_mariadb_conf_cpu_based
+    upd_mariadb_conf_values
     systemctl restart uny-mariadb
 }
 
@@ -448,8 +494,7 @@ upd_resource_limits() {
     upd_openresty_conf_workers
     systemctl restart uny-openresty
 
-    upd_mariadb_conf_cpu_based
-    upd_mariadb_conf_ram_based
+    upd_mariadb_conf_values
     systemctl restart uny-mariadb
 
     phpv="$(yq -ot .php_default_version /var/qyc/cnf.yaml)"

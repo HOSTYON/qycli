@@ -1,0 +1,10 @@
+[mysqld]
+# --- Standard FS Optimization (Ext4/XFS) ---
+# Direct I/O bypasses OS page cache to prevent "double buffering" and save RAM
+innodb_flush_method = O_DIRECT
+
+# Mandatory on non-CoW filesystems to prevent data corruption from power loss
+innodb_doublewrite = 1
+
+# Performance winner for Ext4/XFS: offloads I/O management to the Linux Kernel
+innodb_use_native_aio = 1
