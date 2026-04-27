@@ -232,9 +232,6 @@ upd_get_new_cf_ips() {
 }
 
 upd_get_cf_accounts_and_zones() {
-    if [ -s /var/qyc/cloudflare/cf_token_accounts_zones.json ] && [ "$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones.json)" != "" ]; then
-        mv /var/qyc/cloudflare/cf_token_accounts_zones.json /var/qyc/cloudflare/cf_token_accounts_zones_dns.json
-    fi
     cf_token_accounts_zones=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
 
     if [[ $cf_token_accounts_zones != "" ]]; then
@@ -256,7 +253,24 @@ upd_get_cf_accounts_and_zones() {
     fi
 }
 
+get_cftaz() {
+    if [ -s /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ] && [ "$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)" != "" ]; then
+        cftaz=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+    elif [ -s /var/qyc/cloudflare/cf_token_accounts_zones.json ] && [ "$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones.json)" != "" ]; then
+        cftaz=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones.json)
+    fi
+}
+
+get_cftwp() {
+    if [ -s /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json ] && [ "$(yq -oy .result.value /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json)" != "" ]; then
+        cftwp=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json)
+    fi
+}
+
 upd_get_cf_tokens() {
+    get_cftaz
+    get_cftwp
+
     cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
     cf_token_accounts_zones_dns="$cftaz"
     cf_token_wp_cf_page_cache="$cftwp"
