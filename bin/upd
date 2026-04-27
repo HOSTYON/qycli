@@ -232,6 +232,9 @@ upd_get_new_cf_ips() {
 }
 
 upd_get_cf_accounts_and_zones() {
+    if [ -s /var/qyc/cloudflare/cf_token_accounts_zones.json ] && [ "$(yq .result.value /var/qyc/cloudflare/cf_token_accounts_zones.json)" != "" ]; then
+        mv /var/qyc/cloudflare/cf_token_accounts_zones.json /var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+    fi
     cf_token_accounts_zones=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
 
     if [[ $cf_token_accounts_zones != "" ]]; then
