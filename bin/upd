@@ -253,7 +253,15 @@ upd_get_cf_accounts_and_zones() {
     fi
 }
 
+get_legacy_cftaz() {
+    if [ -s /var/qyc/cloudflare/cf_token_accounts_zones.json ] && [ "$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones.json)" != "" ]; then
+        cftaz=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones.json)
+    fi
+}
+
 upd_get_cf_tokens() {
+    get_legacy_cftaz
+
     cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
     cf_token_accounts_zones_dns="$cftaz"
     cf_token_wp_cf_page_cache="$cftwp"
