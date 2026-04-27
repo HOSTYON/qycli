@@ -147,16 +147,18 @@ Usage:
   qyc cnf [option] [option] [value] [option] [value] ...
 
 Available options:
-  php                       values: 8.4|8.3|8.2|8.1|7.4    Change the installed php versions, the first one will be the default
-  cft|cloudflaretoken       value:  <CloudflareToken>      Change the Cloudflare Token to be used
-  aupd|autoupd|autoupdate   values: on|yes|off|no          Turn automatic updates for the server and qycli on or off
-  opc | opcache             values: on|off                 Turn Zend OPCache for PHP on or off
+  php                           values: 8.4|8.3|8.2|8.1|7.4    Change the installed php versions, the first one will be the default
+  cft | cloudflaretoken         value:  <CloudflareToken>      Change the Cloudflare Token to be used
+  aupd | autoupd | autoupdate   values: on|yes|off|no          Turn automatic updates for the server and qycli on or off
+  opc | opcache                 values: on|off                 Turn Zend OPCache for PHP on or off
+  qycv | qycliversion           value: stable|beta|dev         Sets the qycli version
 
 Examples:
   qyc cnf php 8.4,8.3
   qyc cnf cft sdflsnef843nkfs8hdfsknslfijei9
   qyc cnf aupd on
   qyc cnf opcache off
+  qyc cnf qycv stable
 
 EOF
 }
