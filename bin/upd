@@ -275,6 +275,16 @@ upd_get_cf_tokens() {
     cf_token_accounts_zones_dns="$cftaz"
     cf_token_wp_cf_page_cache="$cftwp"
 
+    cf_token_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+        -H "Authorization: Bearer $cf_token" \
+        -H "Content-Type: application/json")"
+    if [[ $(yq .success <<<"$cf_token_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_verify_answer") == "active" ]]; then
+        echo "Cloudflare Token Creation token is valid and active."
+    else
+        echo "Cloudflare Token Creation token is not valid or not active. Aborting."
+        exit 1
+    fi
+
     if [[ $cf_token_accounts_zones_dns != "" ]]; then
         cf_token_accounts_zones_dns_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
             -H "Authorization: Bearer $cf_token_accounts_zones_dns" \
