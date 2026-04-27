@@ -236,6 +236,7 @@ upd_get_cf_accounts_and_zones() {
 
     if [[ $cf_token_accounts_zones != "" ]]; then
         # Get all accounts
+        echo "Getting Cloudflare accounts and zones with token for accounts, zones and DNS."
         curl -s -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=1000" \
             -H "Authorization: Bearer $cf_token_accounts_zones" \
             -H "Content-Type: application/json" >/var/qyc/cloudflare/cfaccounts.json
