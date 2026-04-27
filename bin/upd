@@ -294,6 +294,7 @@ upd_get_cf_tokens() {
             -H "Authorization: Bearer $cf_token_accounts_zones_dns" \
             -H "Content-Type: application/json")"
         if [[ $(yq .success <<<"$cf_token_accounts_zones_dns_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_accounts_zones_dns_verify_answer") == "active" ]]; then
+            echo "Cloudflare Accounts and Zones DNS token is valid and active."
             if [ -z "$cftaz_id" ]; then
                 cf_token_accounts_zones_dns_id="$(yq .result.id <<<"$cf_token_accounts_zones_dns_verify_answer")"
                 # Restore API result
@@ -306,7 +307,7 @@ upd_get_cf_tokens() {
                 mv /var/qyc/cloudflare/cf_token_accounts_zones.json /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null
             fi
         else
-            echo "Cloudflare Accounts and Zones DNS token was given but appears to not be functional anymore. Generating new token."
+            echo "Cloudflare Accounts and Zones DNS token appears to not be functional anymore. Generating new token."
             cftaz_gen=yes
         fi
 
@@ -319,6 +320,7 @@ upd_get_cf_tokens() {
             -H "Authorization: Bearer $cf_token_wp_cf_page_cache" \
             -H "Content-Type: application/json")"
         if [[ $(yq .success <<<"$cf_token_wp_cf_page_cache_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_wp_cf_page_cache_verify_answer") == "active" ]]; then
+            echo "Cloudflare WordPress Page Cache token is valid and active."
             if [ -z "$cftwp_id" ]; then
                 cf_token_wp_cf_page_cache_id="$(yq .result.id <<<"$cf_token_wp_cf_page_cache_verify_answer")"
                 # Restore API result
@@ -329,7 +331,7 @@ upd_get_cf_tokens() {
                 yq ".result.value = '$cf_token_wp_cf_page_cache'" -i /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json
             fi
         else
-            echo "Cloudflare WordPress Page Cache token was given but appears to not be functional anymore. Generating new token."
+            echo "Cloudflare WordPress Page Cache token appears to not be functional anymore. Generating new token."
             cftwp_gen=yes
         fi
     else
@@ -340,6 +342,7 @@ upd_get_cf_tokens() {
 
     if [[ $cf_token != "" && $cftaz_gen == "yes" ]]; then
         # Create Accounts Zones and DNS Token
+        echo "Creating new Cloudflare Token for Accounts, Zones and DNS."
         curl -sS -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
             -H "Authorization: Bearer $cf_token" \
             -H "Content-Type: application/json" \
@@ -384,6 +387,7 @@ upd_get_cf_tokens() {
 
     if [[ $cf_token != "" && $cftwp_gen == "yes" ]]; then
         # Create WP Cloudflare Super Page Cache Token
+        echo "Creating new Cloudflare Token for WordPress Super Page Cache."
         curl -sS -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
             -H "Authorization: Bearer $cf_token" \
             -H "Content-Type: application/json" \
