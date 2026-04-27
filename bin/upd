@@ -232,6 +232,9 @@ upd_get_new_cf_ips() {
 }
 
 upd_get_cf_accounts_and_zones() {
+    if [ -s /var/qyc/cloudflare/cf_token_accounts_zones.json ] && [ "$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones.json)" != "" ]; then
+        mv /var/qyc/cloudflare/cf_token_accounts_zones.json /var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+    fi
     cf_token_accounts_zones=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
 
     if [[ $cf_token_accounts_zones != "" ]]; then
@@ -491,10 +494,18 @@ upd_fn() {
 }
 
 upd_resource_limits() {
+    if echo "$@" | grep -qE "^(force|overwrite|\-f)$"; then
+        force=yes
+    fi
+
     upd_openresty_conf_workers
     systemctl restart uny-openresty
 
-    upd_mariadb_conf_values
+    if [[ $force == "yes" ]]; then
+        upd_mariadb_conf
+    else
+        upd_mariadb_conf_values
+    fi
     systemctl restart uny-mariadb
 
     phpv="$(yq -ot .php_default_version /var/qyc/cnf.yaml)"
@@ -519,7 +530,7 @@ upd_parser() {
             ;;
         limits | resources)
             shift
-            upd_resource_limits
+            upd_resource_limits "$@"
             ;;
         *)
             echo "Invalid option: $1"
