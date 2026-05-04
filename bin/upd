@@ -510,7 +510,7 @@ upd_qycli() {
 
     ln -sf /var/qyc/qycli/bin/qyc /bin/qyc
 
-    chmod 755 /bin/qyc
+    chmod 755 /var/qyc/qycli/bin/qyc
     chmod 755 /var/qyc/qycli/ins/kernel
 
     upd_qycli_wp_cron
