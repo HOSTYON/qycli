@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 
+# upd_openlitespeed_conf() {
+#     sed -E "s/(.*address\s*)\*/\1[::1]/" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+#     sed -zEn "/(listener Default\s*\{[^\}]*})/{s//\1/; :a s/\s*map.*Example\s*\*\n/\n/;ta;p }" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+#     sed "/module cache {/a storagePath /run/openlitespeed/cache/" -i /etc/uny/openlitespeed/conf/httpd_config.conf
+# }
+
+# upd_openlitespeed() {
+#     unyp install openlitespeed
+#     unyp si openlitespeed
+
+#     systemctl reenable uny-openlitespeed
+# }
+
 upd_get_ram_mb() {
     rammb=$(($(grep MemTotal /proc/meminfo | tr -d 'MemTotal: kB') / 1000))
     echo $rammb
-}
-
-upd_openlitespeed_conf() {
-    sed -E "s/(.*address\s*)\*/\1[::1]/" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-    sed -zEn "/(listener Default\s*\{[^\}]*})/{s//\1/; :a s/\s*map.*Example\s*\*\n/\n/;ta;p }" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-    sed "/module cache {/a storagePath /run/openlitespeed/cache/" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-}
-
-upd_openlitespeed() {
-    unyp install openlitespeed
-    unyp si openlitespeed
-
-    systemctl reenable uny-openlitespeed
 }
 
 upd_openresty_conf_renew_cf_ips() {
@@ -206,20 +206,20 @@ upd_php() {
     cp /var/qyc/qycli/cnf/php/qyc-php-logrotate /etc/logrotate.d/qyc-php-logrotate
 }
 
-upd_valkey_conf() {
-    cp /var/qyc/qycli/cnf/valkey/valkey.conf /etc/uny/valkey/valkey.conf
-    local valkeymem=$(($(upd_get_ram_mb) * 20 / 100)) # 20% of all memory in MB
-    sed -i "s+maxmemory[[:space:]].*+maxmemory ${valkeymem}mb+g" /etc/uny/valkey/valkey.conf
+# upd_valkey_conf() {
+#     cp /var/qyc/qycli/cnf/valkey/valkey.conf /etc/uny/valkey/valkey.conf
+#     local valkeymem=$(($(upd_get_ram_mb) * 20 / 100)) # 20% of all memory in MB
+#     sed -i "s+maxmemory[[:space:]].*+maxmemory ${valkeymem}mb+g" /etc/uny/valkey/valkey.conf
 
-    systemctl restart uny-valkey
-}
+#     systemctl restart uny-valkey
+# }
 
-upd_valkey() {
-    unyp install valkey
-    unyp si valkey
+# upd_valkey() {
+#     unyp install valkey
+#     unyp si valkey
 
-    systemctl reenable uny-valkey
-}
+#     systemctl reenable uny-valkey
+# }
 
 upd_get_new_cf_ips() {
     curl -s https://www.cloudflare.com/ips-v4 -o /var/qyc/cache/cloudflare_ipv4_ips_new
@@ -517,7 +517,7 @@ upd_qycli() {
     upd_openresty_conf
 }
 
-upd_fn() {
+upd_stack() {
     upd_get_new_cf_ips
     upd_mariadb
     upd_mariadb_conf
@@ -525,11 +525,11 @@ upd_fn() {
     upd_openresty_conf
     upd_php
     upd_php_conf
-    upd_openlitespeed
-    upd_openlitespeed_conf
-    upd_valkey_conf
-    upd_valkey_service
     upd_psl
+    # upd_openlitespeed
+    # upd_openlitespeed_conf
+    # upd_valkey_conf
+    # upd_valkey_service
     #upd_filebrowser
 }
 
@@ -561,7 +561,7 @@ upd_parser() {
         case "$1" in
         stk | stack)
             shift
-            upd_fn
+            upd_stack
             ;;
         cf | cloudflareinfo)
             shift

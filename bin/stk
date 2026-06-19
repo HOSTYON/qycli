@@ -22,9 +22,9 @@ stk_utility_and_repos() {
     upd_psl
 
     # qycli user
-    groupadd qycli
-    useradd -c "qycli Stack User" -d /var/www -g qycli \
-        -s /bin/false qycli
+    # groupadd qycli
+    # useradd -c "qycli Stack User" -d /var/www -g qycli \
+    #     -s /bin/false qycli
 
     # admin user password
     echo "admin_password: $(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)" >>/var/qyc/cnf.yaml
@@ -56,10 +56,10 @@ stk_tls_cert() {
     chown qycli:qycli /etc/ssl/qycli.crt /etc/ssl/qycli.key
 }
 
-stk_openlitespeed_install() {
-    upd_openlitespeed
-    upd_openlitespeed_conf
-}
+# stk_openlitespeed_install() {
+#     upd_openlitespeed
+#     upd_openlitespeed_conf
+# }
 
 stk_openresty_install() {
     upd_openresty
@@ -89,19 +89,19 @@ stk_mariadb_install() {
 stk_php_install() {
     unyp si imagemagick ghostscript
 
-    mkdir /var/log/php/
-    chown -R qycli:qycli /var/log/php/
-
     upd_php
     upd_php_conf
+
+    mkdir /var/log/php/
+    chown -R unyphp:unyweb /var/log/php/
 }
 
-stk_valkey_install() {
-    upd_valkey
-    upd_valkey_conf
+# stk_valkey_install() {
+#     upd_valkey
+#     upd_valkey_conf
 
-    usermod -g unyweb valkey
-}
+#     usermod -g unyweb valkey
+# }
 
 stk_wpcli_install() {
     wget -qO /var/qyc/bin/wp-cli https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
@@ -170,13 +170,13 @@ stk_crowdsec_install() {
 stk_install() {
     stk_utility_and_repos
     stk_postfix_install
-    stk_openlitespeed_install
     stk_openresty_install
     stk_php_install
     stk_mariadb_install
-    stk_valkey_install
     stk_wpcli_install
     stk_crowdsec_install
-    #stk_filebrowser_install
+    # stk_openlitespeed_install
+    # stk_valkey_install
+    # stk_filebrowser_install
     printf "\nqycli stack was installed.\n\n"
 }
