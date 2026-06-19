@@ -499,6 +499,19 @@ upd_qycli_wp_cron() {
     fi
 }
 
+upd_qycli_changes() {
+    for pkg in valkey openlitespeed; do
+        if systemctl list-unit-files --type=service | grep -q uny-"$pkg"; then
+            systemctl stop uny-"$pkg"
+            systemctl disable uny-"$pkg"
+            rm -f /etc/systemd/system/uny-"$pkg".service
+            systemctl daemon-reload
+
+            unyp rm "$pkg"
+        fi
+    done
+}
+
 upd_qycli() {
     qycli_branch="$(yq .branch_name /var/qyc/cnf.yaml)"
     git -C /var/qyc/qycli checkout "$qycli_branch"
@@ -515,6 +528,8 @@ upd_qycli() {
 
     upd_qycli_wp_cron
     upd_openresty_conf
+
+    # upd_qycli_changes
 }
 
 upd_stack() {
