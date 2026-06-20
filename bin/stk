@@ -93,7 +93,6 @@ stk_php_install() {
     echo "# PHP-FPM Upstreams" >/etc/uny/openresty/local/php-fpm.conf
 
     upd_php
-    upd_php_conf
 
     mkdir /var/log/php/
     chown -R unyphp:unyweb /var/log/php/

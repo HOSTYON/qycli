@@ -183,7 +183,9 @@ upd_php_conf() {
 
     upd_php_default_version_conf_ram
 
-    chown -R unyphp:unyweb /uny/etc/php/"$phpv"
+    mkdir -p /var/log/php/"$phpv"
+
+    chown -R unyphp:unyweb /uny/etc/php/"$phpv" /var/log/php/"$phpv"
 
     systemctl reenable uny-php"$phpv"-fpm
     systemctl restart uny-php"$phpv"-fpm
