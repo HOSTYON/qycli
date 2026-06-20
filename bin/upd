@@ -148,7 +148,9 @@ upd_mariadb() {
     systemctl reenable uny-mariadb
 }
 
-upd_php_conf_ram() {
+upd_php_default_version_conf_ram() {
+    # To-Do: Subtract the other php version max children values from the default ones
+
     if [[ $phpv == "$php_default_version" ]]; then
         local total_ram
         total_ram=$(upd_get_ram_mb)
@@ -200,6 +202,13 @@ upd_php_conf() {
     cp /var/qyc/qycli/cnf/php/php-fpm.conf /uny/etc/php/"$phpv"/php-fpm.conf
     [[ -f /etc/uny/php/${phpv}/php-fpm.d/www.conf ]] && rm -f /uny/etc/php/"$phpv"/php-fpm.d/www.conf # Delete standard package config
     cp /var/qyc/qycli/cnf/php/php-fpm.d/qycli.conf /uny/etc/php/"$phpv"/php-fpm.d/qycli.conf
+    cp /var/qyc/qycli/cnf/php/php-fpm.service /etc/systemd/system/uny-php"$phpv"-fpm.service
+
+    sed -e "s|SHORTVER|$phpv|g" -e "s|LONGVER|$phpv_long|g" -e "s|MICROVER|$phpv_micro|g" /var/qyc/qycli/cnf/openresty/templates/php-fpm.conf >>/etc/uny/openresty/local/php-fpm.conf
+
+    for file in /uny/etc/php/"$phpv"/php-fpm.conf /uny/etc/php/"$phpv"/php-fpm.d/qycli.conf /etc/systemd/system/uny-php"$phpv"-fpm.service; do
+        sed -e "s|SHORTVER|$phpv|g" -e "s|LONGVER|$phpv_long|g" -e "s|MICROVER|$phpv_micro|g" -i "$file"
+    done
 
     # if grep -q "ext[pP]rocessor lsphp${phpv_micro}" /etc/uny/openlitespeed/conf/httpd_config.conf; then
     #     sed -E "/ext[pP]rocessor lsphp${phpv_micro}\s*\{/,/\}/d" -i /etc/uny/openlitespeed/conf/httpd_config.conf
@@ -211,13 +220,12 @@ upd_php_conf() {
     # )"
     # sed -zEn "s|(ext[pP]rocessor lsphp\s*\{[^\}]*})|&\n\n${ols_extproc}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
 
-    upd_php_conf_ram
-
-    # Install custom systemd service file for PHP-FPM
-    cp /var/qyc/qycli/cnf/php/php-fpm.service /etc/systemd/system/uny-php"$phpv"-fpm.service
-    sed -e "s|SHORTVER|$phpv|g" -e "s|LONGVER|$phpv_long|g" -e "s|MICROVER|$phpv_micro|g" -i /etc/systemd/system/uny-php"$phpv"-fpm.service
+    upd_php_default_version_conf_ram
 
     chown -R unyphp:unyweb /uny/etc/php/"$phpv"
+
+    systemctl reenable uny-php"$phpv"-fpm
+    systemctl restart uny-php"$phpv"-fpm
 }
 
 upd_php() {
@@ -230,8 +238,8 @@ upd_php() {
 
     unyp system-install php/"$php_default_version"
 
-    systemctl reenable uny-php"$php_default_version"-fpm
-    systemctl restart uny-php"$php_default_version"-fpm
+    # systemctl reenable uny-php"$php_default_version"-fpm
+    # systemctl restart uny-php"$php_default_version"-fpm
 
     # systemctl restart uny-openlitespeed
     cp /var/qyc/qycli/cnf/php/qyc-php-logrotate /etc/logrotate.d/qyc-php-logrotate

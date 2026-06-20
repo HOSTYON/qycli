@@ -89,6 +89,9 @@ stk_mariadb_install() {
 stk_php_install() {
     unyp si imagemagick ghostscript
 
+    mkdir -p /etc/uny/openresty/local
+    echo "# PHP-FPM Upstreams" >/etc/uny/openresty/local/php-fpm.conf
+
     upd_php
     upd_php_conf
 

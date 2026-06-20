@@ -77,8 +77,8 @@ mk_common_site() {
 
     [[ ! -d /var/qyc/cloudflare/"$root_domain" ]] && mkdir /var/qyc/cloudflare/"$root_domain"
 
-    cp /var/qyc/qycli/cnf/openresty/"$site_type"-template.conf /etc/uny/openresty/sites-available/"$domain"
-    sed -e "s|dmn\.tld|$domain|g" -e "s|LOCATION|$location|g" -i /etc/uny/openresty/sites-available/"$domain"
+    cp /var/qyc/qycli/cnf/openresty/templates/"$site_type".conf /etc/uny/openresty/sites-available/"$domain"
+    sed -e "s|DOMAIN|$domain|g" -e "s|LOCATION|$location|g" -i /etc/uny/openresty/sites-available/"$domain"
     if [[ $subdomain == true ]]; then
         domainlist=$domain
     else
