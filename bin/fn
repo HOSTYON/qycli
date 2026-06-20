@@ -69,7 +69,7 @@ EOF
 mk_common_site() {
     url_root="$domain""$location"
 
-    mkdir -p /var/www/"$domain"/{htdocs,conf/{or,ols}}
+    mkdir -p /var/www/"$domain"/{htdocs,conf/{or,php}}
 
     echo "url_root: $url_root" >/var/www/"$domain"/conf/qyc-site.yaml
     echo "site-type: $site_type" >>/var/www/"$domain"/conf/qyc-site.yaml
@@ -79,6 +79,8 @@ mk_common_site() {
 
     cp /var/qyc/qycli/cnf/openresty/templates/"$site_type".conf /etc/uny/openresty/sites-available/"$domain"
     sed -e "s|DOMAIN|$domain|g" -e "s|LOCATION|$location|g" -i /etc/uny/openresty/sites-available/"$domain"
+
+    # Site specific server_name entries for OpenResty
     if [[ $subdomain == true ]]; then
         domainlist=$domain
     else
@@ -92,8 +94,8 @@ $domainlist
 ;
 EOF
 
-    if [[ $backend == "openlitespeed" ]]; then
-        mkdir -p /etc/uny/openlitespeed/conf/vhosts/"$domain"
+    # PHP-FPM Backend for WP and generic sites
+    if [[ $backend == "php-fpm" ]]; then
 
         if [[ $php_site_version == "" ]]; then
             php_site_version="$(yq .php_default_version /var/qyc/cnf.yaml)"
@@ -105,8 +107,8 @@ EOF
                 exit 1
             fi
         fi
-        php_site_version_short="${php_site_version//\./}"
 
+        # Install PHP version if missing
         for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
             if [[ $php_site_version == "$phpv" ]]; then
                 already_installed=yes
@@ -118,25 +120,10 @@ EOF
         fi
         unset already_installed
 
-        sed -e "s|HTDOCS|/var/www/${domain}/htdocs|g" -e "s|SHORTVER|$php_site_version_short|g" \
-            /var/qyc/qycli/cnf/openlitespeed/"$site_type"-vhostconf-template.conf >/etc/uny/openlitespeed/conf/vhosts/"$domain"/vhconf.conf
+        # Configure PHP-FPM version for the site
+        php_site_version_micro="${php_site_version//\./}"
+        sed "s|MICROVER|$php_site_version_micro|g" -i /etc/uny/openresty/sites-available/"$domain"
 
-        ols_vhost="$(
-            sed -e "s|DOMAIN|$domain|g" -e "s|HTDOCS|/var/www/${domain}/htdocs|g" -e "s|VHOSTCONF|\$SERVER_ROOT/conf/vhosts/${domain}/vhconf.conf|g" \
-                /var/qyc/qycli/cnf/openlitespeed/"$site_type"-vhost-template.conf
-        )"
-        sed -zEn "s|(listener Default\s*\{[^\}]*})|&\n\n${ols_vhost}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-
-        for name in $domainlist; do
-            if [[ $commalist == "" ]]; then
-                commalist="$name"
-            else
-                commalist+=", $name"
-            fi
-        done
-        sed -E "/secure\s*0/a\    map $domain $commalist" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-
-        systemctl reload uny-openlitespeed
     fi
 
     enable_site
@@ -502,11 +489,11 @@ fn_mk() {
     location="/"
     if [[ $site_type == "wp" ]]; then
         shift
-        backend=openlitespeed
+        backend=php-fpm
         mk_wp "$@"
     elif [[ $site_type == "site" ]]; then
         shift
-        backend=openlitespeed
+        backend=php-fpm
         mk_site "$@"
     else
         print_help_mk

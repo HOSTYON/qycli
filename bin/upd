@@ -205,6 +205,7 @@ upd_php_conf() {
     cp /var/qyc/qycli/cnf/php/php-fpm.service /etc/systemd/system/uny-php"$phpv"-fpm.service
 
     sed -e "s|SHORTVER|$phpv|g" -e "s|LONGVER|$phpv_long|g" -e "s|MICROVER|$phpv_micro|g" /var/qyc/qycli/cnf/openresty/templates/php-fpm.conf >>/etc/uny/openresty/local/php-fpm.conf
+    sed -e "s|SHORTVER|$phpv|g" -e "s|LONGVER|$phpv_long|g" -e "s|MICROVER|$phpv_micro|g" /var/qyc/qycli/cnf/openresty/templates/php.conf >>/etc/uny/openresty/local/php"$phpv_micro"-fpm.conf
 
     for file in /uny/etc/php/"$phpv"/php-fpm.conf /uny/etc/php/"$phpv"/php-fpm.d/qycli.conf /etc/systemd/system/uny-php"$phpv"-fpm.service; do
         sed -e "s|SHORTVER|$phpv|g" -e "s|LONGVER|$phpv_long|g" -e "s|MICROVER|$phpv_micro|g" -i "$file"
