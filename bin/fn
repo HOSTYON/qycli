@@ -126,10 +126,9 @@ EOF
 
     fi
 
+    chown unyweb:unyweb -R /var/www/"$domain"/*
     enable_site
 
-    chown unyweb:unyweb -R /var/www/"$domain"/*
-    systemctl reload uny-openresty
 }
 
 del_dns_entries() {
