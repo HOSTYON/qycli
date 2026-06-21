@@ -174,13 +174,15 @@ upd_php_conf() {
     cp /var/qyc/qycli/cnf/php/php-fpm.d/qycli.conf /uny/etc/php/"$phpv"/php-fpm.d/qycli.conf
     cp /var/qyc/qycli/cnf/php/php-fpm.service /etc/systemd/system/uny-php"$phpv"-fpm.service
 
-    if ! grep -q "php${phpv_micro}-fpm" /etc/uny/openresty/local/php-fpm.conf; then
+    if ! grep -q "php${phpv_micro}-fpm" /etc/uny/openresty/conf.d/php-fpm.conf; then
+        touch /etc/uny/openresty/conf.d/php-fpm.conf
         sed -e "s|SHORTVER|$phpv|g" \
             -e "s|LONGVER|$phpv_long|g" \
             -e "s|MICROVER|$phpv_micro|g" \
-            /var/qyc/qycli/cnf/openresty/templates/php-fpm.conf >>/etc/uny/openresty/local/php-fpm.conf
+            /var/qyc/qycli/cnf/openresty/templates/php-fpm.conf >>/etc/uny/openresty/conf.d/php-fpm.conf
     fi
     if ! [[ -s /etc/uny/openresty/local/php"$phpv_micro"-fpm.conf ]]; then
+        touch /etc/uny/openresty/local/php"$phpv_micro"-fpm.conf
         sed -e "s|SHORTVER|$phpv|g" \
             -e "s|LONGVER|$phpv_long|g" \
             -e "s|MICROVER|$phpv_micro|g" \
