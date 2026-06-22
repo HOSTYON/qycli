@@ -517,6 +517,29 @@ upd_qycli_changes() {
 
     systemctl restart uny-openresty
 
+    current_dir="$(pwd)"
+    for htdocs_folder in /var/www/*/htdocs; do
+        cd "$htdocs_folder" || continue
+        if ! wp plugin is-installed sqlite-object-cache; then
+            wp plugin install sqlite-object-cache
+            wp config set WP_CACHE_KEY_SALT "$(openssl rand -base64 12)"
+            wp plugin activate sqlite-object-cache
+            wp sqlite-object-cache size 32
+            wp config set --raw WP_SQLITE_OBJECT_CACHE_APCU true
+        fi
+        if wp plugin is-installed litespeed-cache; then
+            wp plugin deactivate litespeed-cache
+            wp plugin uninstall litespeed-cache
+        fi
+        if [ -f "$htdocs_folder"/wp-content/object-cache.php ]; then
+            rm "$htdocs_folder"/wp-content/object-cache.php
+        fi
+        if [ -f "$htdocs_folder"/wp-content/mu-plugins/qycli.php ]; then
+            rm "$htdocs_folder"/wp-content/mu-plugins/qycli.php
+        fi
+    done
+    cd "$current_dir" || exit
+
     for pkg in valkey openlitespeed; do
         if systemctl list-unit-files --type=service | grep -q uny-"$pkg"; then
             systemctl stop uny-"$pkg"
