@@ -146,12 +146,9 @@ upd_php_default_version_conf_ram() {
         local opmem=$((total_ram * 15 / 100)) # 15% of all memory in MB
         # Interned Strings allocation (15% of OPcache memory, minimum 32MB)
         local opstrings=$((opmem * 15 / 100))
-        if [ "$opstrings" -lt 24 ]; then opstrings=24; fi
-        # Keep JIT balanced (e.g., 20% of OPcache memory)
-        local jitmem=$((opmem * 15 / 100))
         sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
             -e "s/.*opcache.interned_strings_buffer.*/opcache.interned_strings_buffer = ${opstrings}/" \
-            -e "s/.*opcache.jit_buffer_size.*/opcache.jit_buffer_size = ${jitmem}M/" -i /etc/uny/php/"$phpv"/php.ini
+            -i /etc/uny/php/"$phpv"/php.ini
 
         # FPM Children calculation
         local max_children=$((total_ram * 45 / 130 / 100)) # 45% of all memory in MB divided by 130MB per child
