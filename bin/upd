@@ -484,6 +484,33 @@ upd_qycli_wp_cron() {
 
 upd_qycli_changes() {
     unyp uu
+    upd_php
+
+    for www_folder in /var/www/*; do
+        if [[ -d "$www_folder" ]]; then
+            domain=$(basename "$www_folder")
+
+            chown unyphp:unyweb -R "$www_folder"/*
+            # Set directories to 775 (Allows the unyweb group to create files/folders)
+            #find "$www_folder" -type d -exec chmod 755 {} \;
+            # Set files to 664 (Allows the unyweb group to modify files)
+            #find "$www_folder" -type f -exec chmod 644 {} \;
+
+            php_micro_ver="$(yq .php_default_version /var/qyc/cnf.yaml | tr -d '.')"
+            sed -z \
+                -e "s|#include common.*microcache.conf;\n[ ]*}|include local/php${php_micro_ver}-fpm.conf;\n    include common/development.conf;\n    include common/wp.conf;|" \
+                -i /etc/uny/openresty/sites-available/"$domain"
+
+            if ! grep -q "root /var/www/${domain}/htdocs;" /etc/uny/openresty/sites-available/"$domain"; then
+                sed "\|include /var/www/${domain}/conf/or/\*.conf.*|a\    root /var/www/${domain}/htdocs;" -i /etc/uny/openresty/sites-available/"$domain"
+            fi
+            sed '\|#add_header Cache-Control "public, stale-while-revalidate=60s";|d' -i /etc/uny/openresty/sites-available/"$domain"
+
+        fi
+    done
+
+    systemctl restart uny-openresty
+
     for pkg in valkey openlitespeed; do
         if systemctl list-unit-files --type=service | grep -q uny-"$pkg"; then
             systemctl stop uny-"$pkg"
@@ -494,6 +521,7 @@ upd_qycli_changes() {
             unyp rm "$pkg"
         fi
     done
+
 }
 
 upd_qycli() {
@@ -523,7 +551,6 @@ upd_stack() {
     upd_openresty
     upd_openresty_conf
     upd_php
-    upd_php_conf
     upd_psl
     # upd_openlitespeed
     # upd_openlitespeed_conf

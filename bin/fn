@@ -124,9 +124,9 @@ EOF
         php_site_version_micro="${php_site_version//\./}"
         sed "s|MICROVER|$php_site_version_micro|g" -i /etc/uny/openresty/sites-available/"$domain"
 
+        chown unyphp:unyweb -R /var/www/"$domain"/*
     fi
 
-    chown unyweb:unyweb -R /var/www/"$domain"/*
     enable_site
 
 }
