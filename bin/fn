@@ -432,21 +432,15 @@ mk_wp() {
 
     #wp login install --activate
 
-    # Install LiteSpeed Cache Plugin and WP Cloudflare Super Page Cache Setup
-    wp plugin install --activate wp-cloudflare-page-cache litespeed-cache
+    # Install SQLite Object Cache and WP Cloudflare Super Page Cache Setup
 
-    wp option update litespeed.conf.cache 0
-    wp option update litespeed.conf.cache-priv 0
-    wp option update litespeed.conf.cache-commenter 0
-    wp option update litespeed.conf.cache-rest 0
-    wp option update litespeed.conf.cache-page_login 0
-    wp option update litespeed.conf.cache-resources 0
-    wp option update litespeed.conf.cache-mobile 0
+    wp plugin install sqlite-object-cache
+    wp config set WP_CACHE_KEY_SALT "$(openssl rand -base64 12)"
+    wp plugin activate sqlite-object-cache
+    wp sqlite-object-cache size 32
+    wp config set --raw WP_SQLITE_OBJECT_CACHE_APCU true
 
-    wp option update litespeed.conf.object-kind 1
-    wp option update litespeed.conf.object-host /run/valkey/valkey.sock
-    wp option update litespeed.conf.object-port 0
-    wp option update litespeed.conf.object 1
+    wp plugin install --activate wp-cloudflare-page-cache
 
     wp_cf_page_cache_token_and_plugin_options
 

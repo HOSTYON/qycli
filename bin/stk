@@ -112,25 +112,25 @@ stk_wpcli_install() {
 #!/usr/bin/env bash
 if [[ $1 =~ config || $@ =~ \ config\  ]]; then
     if [[ $(pwd) =~ /var/www/.*/htdocs ]]; then
-    runuser -u unyweb -- /var/qyc/bin/wp-cli --config-file=../conf/wp-config.php $@
+    runuser -u unyphp -- /var/qyc/bin/wp-cli --config-file=../conf/wp-config.php $@
     fi
     if [[ $@ =~ .*--path=/var/www/.*/htdocs.* ]]; then
     config_file="$(echo "$@" | grep -o "path=/.*htdocs" | sed -e "s|path=||" -e "s|htdocs|conf|")/wp-config.php"
-    runuser -u unyweb -- /var/qyc/bin/wp-cli --config-file="$config_file" $@
+    runuser -u unyphp -- /var/qyc/bin/wp-cli --config-file="$config_file" $@
     fi
 else
-runuser -u unyweb -- /var/qyc/bin/wp-cli $@
+runuser -u unyphp -- /var/qyc/bin/wp-cli $@
 fi
 EOF
     chmod +x /bin/wp
 
     # Create dir and config for wp-cli
-    mkdir -p /uny/home/unyweb/.wp-cli
-    tee /uny/home/unyweb/.wp-cli/config.yml >/dev/null <<EOF
+    mkdir -p /uny/home/unyphp/.wp-cli
+    tee /uny/home/unyphp/.wp-cli/config.yml >/dev/null <<EOF
 apache_modules:
   - mod_rewrite
 EOF
-    chown -R unyweb:unyweb /uny/home/unyweb
+    chown -R unyphp:unyweb /uny/home/unyphp
 }
 
 stk_crowdsec_install() {
