@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2154
+
+calculate_ram_distribution() {
+    # INPUTS (Raw hardware data)
+    ram=$(($(grep MemTotal /proc/meminfo | awk '{print $2}') / 1024))
+    cpus=$(nproc)
+
+    # THE MASTER BLUEPRINT (1/8 OS + Reverse Proxy, 3/8 Databases, 1/2 Application Servers)
+    os_mb=$((ram * 1 / 8))
+    db_mb=$((ram * 3 / 8))
+    app_mb=$((ram * 1 / 2))
+
+    ### Start PHP-FPM CONFIGURATION (1/2 of total RAM) ###
+    # THE UNCEILINGED PHP SUB-DISTRIBUTION (40% OPcache / 60% Workers)
+    # Boundless scaling: more total RAM = massive OPcache bucket for infinite site paths
+    opc_mb=$((app_mb * 40 / 100))
+    wrk_mb=$((app_mb * 60 / 100))
+
+    # WORKER CONCURRENCY TRACKS
+    children=$((wrk_mb / 60)) # One worker should max out at 60MB of RAM usage (including overhead)
+    cpu_max=$((cpus * 5))
+
+    # CPU GOVERNOR (Only applies to high-RAM configurations to avoid thread thrashing)
+    if [ $children -gt $cpu_max ] && [ $ram -gt 1500 ]; then
+        children=$cpu_max
+    fi
+
+    # Fallback floor protection for ultra-low resource nodes
+    [ $children -lt 1 ] && children=1
+    ### End PHP-FPM CONFIGURATION (1/2 of total RAM) ###
+}

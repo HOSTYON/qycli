@@ -10,6 +10,11 @@ source /var/qyc/qycli/bin/help
 source /var/qyc/qycli/bin/stk
 source /var/qyc/qycli/bin/fn
 
+for fn in /var/qyc/qycli/fn/*; do
+    # shellcheck source=fn/*
+    [ -f "$fn" ] && . "$fn"
+done
+
 if [[ $1 =~ (mk|make) ]]; then
     shift
     fn_mk "$@"
