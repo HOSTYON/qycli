@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2154
+
+upd_get_new_cf_ips() {
+    curl -s https://www.cloudflare.com/ips-v4 -o /var/qyc/cache/cloudflare_ipv4_ips_new
+    curl -s https://www.cloudflare.com/ips-v6 -o /var/qyc/cache/cloudflare_ipv6_ips_new
+    if ! cmp -s /var/qyc/cache/cloudflare_ipv4_ips_new /var/qyc/cache/cloudflare_ipv4_ips || ! cmp -s /var/qyc/cache/cloudflare_ipv6_ips_new /var/qyc/cache/cloudflare_ipv6_ips; then
+        cp /var/qyc/cache/cloudflare_ipv4_ips_new /var/qyc/cache/cloudflare_ipv4_ips
+        cp /var/qyc/cache/cloudflare_ipv6_ips_new /var/qyc/cache/cloudflare_ipv6_ips
+        upd_openresty_conf_renew_cf_ips
+    fi
+}
+
+upd_get_cf_accounts_and_zones() {
+    cf_token_accounts_zones=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+
+    if [[ $cf_token_accounts_zones != "" ]]; then
+        # Get all accounts
+        echo "Getting Cloudflare accounts and zones with token for accounts, zones and DNS."
+        curl -s -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=1000" \
+            -H "Authorization: Bearer $cf_token_accounts_zones" \
+            -H "Content-Type: application/json" >/var/qyc/cloudflare/cfaccounts.json
+
+        # Get all zones of all accounts
+        [[ -f /var/qyc/cloudflare/cfzones.json ]] && rm /var/qyc/cloudflare/cfzones.json
+        touch /var/qyc/cloudflare/cfzones.json
+        for id in $(yq '.result[].id' </var/qyc/cloudflare/cfaccounts.json); do
+            curl -sS -X GET "https://api.cloudflare.com/client/v4/zones?status=active&account.id=$id&page=1&per_page=500" \
+                -H "Authorization: Bearer $cf_token_accounts_zones" \
+                -H "Content-Type: application/json" | yq -oj ea -i /var/qyc/cloudflare/cfzones.json -
+        done
+    else
+        echo "Cloudflare token for getting accounts and zones is missing. Doing nothing."
+    fi
+}
+
+get_cftaz() {
+    if [ -s /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ] &&
+        [ "$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)" != "" ]; then
+        cftaz=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+        cftaz_id=$(yq -oy .result.id /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+    elif [ -s /var/qyc/cloudflare/cf_token_accounts_zones.json ] && [ "$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones.json)" != "" ]; then
+        cftaz=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones.json)
+        cftaz_id=$(yq -oy .result.id /var/qyc/cloudflare/cf_token_accounts_zones.json)
+    fi
+}
+
+get_cftwp() {
+    if [ -s /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json ] && [ "$(yq -oy .result.value /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json)" != "" ]; then
+        cftwp=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json)
+        cftwp_id=$(yq -oy .result.id /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json)
+    fi
+}
+
+upd_get_cf_tokens() {
+    get_cftaz
+    get_cftwp
+
+    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
+    cf_token_accounts_zones_dns="$cftaz"
+    cf_token_wp_cf_page_cache="$cftwp"
+
+    cf_token_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+        -H "Authorization: Bearer $cf_token" \
+        -H "Content-Type: application/json")"
+    if [[ $(yq .success <<<"$cf_token_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_verify_answer") == "active" ]]; then
+        echo "Cloudflare Token Creation token is valid and active."
+    else
+        echo "Cloudflare Token Creation token is not valid or not active. Aborting."
+        exit 1
+    fi
+
+    if [[ $cf_token_accounts_zones_dns != "" ]]; then
+        cf_token_accounts_zones_dns_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+            -H "Authorization: Bearer $cf_token_accounts_zones_dns" \
+            -H "Content-Type: application/json")"
+        if [[ $(yq .success <<<"$cf_token_accounts_zones_dns_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_accounts_zones_dns_verify_answer") == "active" ]]; then
+            echo "Cloudflare Accounts and Zones DNS token is valid and active."
+            if [ -z "$cftaz_id" ]; then
+                cf_token_accounts_zones_dns_id="$(yq .result.id <<<"$cf_token_accounts_zones_dns_verify_answer")"
+                # Restore API result
+                curl -sS -X GET https://api.cloudflare.com/client/v4/user/tokens/"$cf_token_accounts_zones_dns_id" \
+                    -H "Authorization: Bearer $cf_token" \
+                    -H "Content-Type: application/json" \
+                    >/var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+                yq '.result.value = '\""$cf_token_accounts_zones_dns"\"'' -i /var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+            else
+                mv /var/qyc/cloudflare/cf_token_accounts_zones.json /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null
+            fi
+        else
+            echo "Cloudflare Accounts and Zones DNS token appears to not be functional anymore. Generating new token."
+            cftaz_gen=yes
+        fi
+
+    else
+        cftaz_gen=yes
+    fi
+
+    if [[ $cf_token_wp_cf_page_cache != "" ]]; then
+        cf_token_wp_cf_page_cache_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+            -H "Authorization: Bearer $cf_token_wp_cf_page_cache" \
+            -H "Content-Type: application/json")"
+        if [[ $(yq .success <<<"$cf_token_wp_cf_page_cache_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_wp_cf_page_cache_verify_answer") == "active" ]]; then
+            echo "Cloudflare WordPress Page Cache token is valid and active."
+            if [ -z "$cftwp_id" ]; then
+                cf_token_wp_cf_page_cache_id="$(yq .result.id <<<"$cf_token_wp_cf_page_cache_verify_answer")"
+                # Restore API result
+                curl -sS -X GET https://api.cloudflare.com/client/v4/user/tokens/"$cf_token_wp_cf_page_cache_id" \
+                    -H "Authorization: Bearer $cf_token" \
+                    -H "Content-Type: application/json" \
+                    >/var/qyc/cloudflare/cf_token_wp_cf_page_cache.json
+                yq ".result.value = '$cf_token_wp_cf_page_cache'" -i /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json
+            fi
+        else
+            echo "Cloudflare WordPress Page Cache token appears to not be functional anymore. Generating new token."
+            cftwp_gen=yes
+        fi
+    else
+        cftwp_gen=yes
+    fi
+
+    time="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+    if [[ $cf_token != "" && $cftaz_gen == "yes" ]]; then
+        # Create Accounts Zones and DNS Token
+        echo "Creating new Cloudflare Token for Accounts, Zones and DNS."
+        curl -sS -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
+            -H "Authorization: Bearer $cf_token" \
+            -H "Content-Type: application/json" \
+            --data '{
+    "name": "qycli main - '"$time"'",
+    "policies": [
+        {
+            "effect": "allow",
+            "resources": {
+                "com.cloudflare.api.account.*": "*"
+            },
+            "permission_groups": [
+                {
+                    "id": "c1fde68c7bcc44588cbb6ddbc16d6480",
+                    "name": "Account Settings Read"
+                }
+            ]
+        },
+        {
+            "effect": "allow",
+            "resources": {
+                "com.cloudflare.api.account.zone.*": "*"
+            },
+            "permission_groups": [
+                {
+                    "id": "3030687196b94b638145a3953da2b699",
+                    "name": "Zone Settings Write"
+                },
+                {
+                    "id": "c8fed203ed3043cba015a93ad1616f1f",
+                    "name": "Zone Read"
+                },
+                {
+                    "id": "4755a26eedb94da69e1066d98aa820be",
+                    "name": "DNS Write"
+                }
+            ]
+        }
+    ]
+}' >/var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+    fi
+
+    if [[ $cf_token != "" && $cftwp_gen == "yes" ]]; then
+        # Create WP Cloudflare Super Page Cache Token
+        echo "Creating new Cloudflare Token for WordPress Super Page Cache."
+        curl -sS -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
+            -H "Authorization: Bearer $cf_token" \
+            -H "Content-Type: application/json" \
+            --data '{
+    "name": "qycli WPCSP-Cache - '"$time"'",
+    "policies": [
+        {
+            "effect": "allow",
+            "resources": {
+                "com.cloudflare.api.account.zone.*": "*"
+            },
+            "permission_groups": [
+                {
+                    "id": "9ff81cbbe65c400b97d92c3c1033cab6",
+                    "name": "Cache Settings Write"
+                },
+                {
+                    "id": "0ac90a90249747bca6b047d97f0803e9",
+                    "name": "Zone Transform Rules Write"
+                },
+                {
+                    "id": "3030687196b94b638145a3953da2b699",
+                    "name": "Zone Settings Write"
+                },
+                {
+                    "id": "c8fed203ed3043cba015a93ad1616f1f",
+                    "name": "Zone Read"
+                },
+                {
+                    "id": "82e64a83756745bbbb1c9c2701bf816b",
+                    "name": "DNS Read"
+                },
+                {
+                    "id": "e17beae8b8cb423a99b1730f21238bed",
+                    "name": "Cache Purge"
+                },
+                {
+                    "id": "9c88f9c5bce24ce7af9a958ba9c504db",
+                    "name": "Analytics Read"
+                }
+            ]
+        },
+        {
+            "effect": "allow",
+            "resources": {
+                "com.cloudflare.api.account.*": "*"
+            },
+            "permission_groups": [
+                {
+                    "id": "c1fde68c7bcc44588cbb6ddbc16d6480",
+                    "name": "Account Settings Read"
+                }
+            ]
+        }
+    ]
+}' >/var/qyc/cloudflare/cf_token_wp_cf_page_cache.json
+    fi
+}
+
+upd_dns_entry() {
+    cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
+    # Check if dns file exists
+    # shellcheck disable=SC2154
+    if [[ -f ${domain}_cf_dns.json ]]; then
+        dns_update_id=$(yq .result.id "$domain"_cf_dns.json)
+        curl -X PUT "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$dns_update_id" \
+            -H "Authorization: Bearer $cf_token_dns" \
+            -H "Content-Type: application/json" \
+            --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' >"$domain"_cf_dns.json
+    fi
+}

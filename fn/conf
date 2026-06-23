@@ -30,3 +30,220 @@ calculate_ram_distribution() {
     [ $children -lt 1 ] && children=1
     ### End PHP-FPM CONFIGURATION (1/2 of total RAM) ###
 }
+
+upd_get_ram_mb() {
+    rammb=$(($(grep MemTotal /proc/meminfo | tr -d 'MemTotal: kB') / 1000))
+    echo $rammb
+}
+
+upd_openresty_conf_renew_cf_ips() {
+    # shellcheck disable=SC2013
+    for cfip in $(
+        cat /var/qyc/cache/cloudflare_ipv6_ips
+        echo ""
+        cat /var/qyc/cache/cloudflare_ipv4_ips
+    ); do
+        echo "set_real_ip_from $cfip;" | tee -a /etc/uny/openresty/conf.d/cloudflare_new >/dev/null
+    done
+
+    echo 'real_ip_header CF-Connecting-IP;' | tee -a /etc/uny/openresty/conf.d/cloudflare_new >/dev/null
+    echo 'real_ip_recursive on;' | tee -a /etc/uny/openresty/conf.d/cloudflare_new >/dev/null
+
+    cp -f /etc/uny/openresty/conf.d/cloudflare_new /etc/uny/openresty/conf.d/cloudflare.conf
+
+    systemctl reload uny-openresty
+}
+
+upd_openresty_conf_workers() {
+    cp /var/qyc/qycli/cnf/openresty/perf.conf /etc/uny/openresty/
+    worker_processes=$(grep -c processor /proc/cpuinfo)                # 1 worker per CPU
+    worker_connections=$(($(grep -c processor /proc/cpuinfo) * 10000)) # 10000 per CPU
+    sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/uny/openresty/perf.conf
+    sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/uny/openresty/perf.conf
+}
+
+upd_openresty_conf() {
+    for inode in /var/qyc/qycli/cnf/openresty/*; do
+        if [[ ! $(basename "$inode") =~ (perf\.conf|conf\.d) ]]; then
+            ln -sfn "$inode" /etc/uny/openresty/"$(basename "$inode")"
+        fi
+    done
+
+    mkdir -p /etc/uny/openresty/conf.d
+    for inode in /var/qyc/qycli/cnf/openresty/conf.d/*; do
+        ln -sfn "$inode" /etc/uny/openresty/conf.d/"$(basename "$inode")"
+    done
+
+    upd_openresty_conf_workers
+
+    cp /var/qyc/qycli/cnf/openresty/qyc-openresty-logrotate /etc/logrotate.d/qyc-openresty-logrotate
+
+    systemctl restart uny-openresty
+}
+
+upd_mariadb_conf_values() {
+    local ram_mb
+    ram_mb=$(upd_get_ram_mb)
+
+    # innodb_buffer_pool_size
+    local innodb_buffer_pool_size=$((ram_mb * 45 / 100)) # 45% of all memory in MB
+
+    # innodb_log_file_size
+    local innodb_log_file_size=$((ram_mb * 10 / 100)) # Default to 10%
+    if [[ $ram_mb -lt 1280 ]]; then
+        innodb_log_file_size=128 # Floor for very small servers
+    elif [[ $ram_mb -gt 32000 ]]; then
+        innodb_log_file_size=2048 # Max Ceiling (Fast recovery)
+    elif [[ $ram_mb -ge 16000 ]]; then
+        innodb_log_file_size=1024 # Balanced for 16GB-32GB
+    elif [[ $ram_mb -ge 5120 ]]; then
+        innodb_log_file_size=512 # Balanced for 5GB-16GB
+    fi
+
+    # max_connections
+    local max_connections=$((ram_mb * 60 / 1000))       # 60 Connections per GB RAM
+    [[ $max_connections -lt 50 ]] && max_connections=50 # Floor for stability
+
+    # tmp_table_size and max_heap_table_size
+    local tmp_table_size=$((ram_mb * 1 / 100)) # 1% of all memory in MB
+    if [[ $tmp_table_size -lt 16 ]]; then
+        tmp_table_size=16 # Minimum 16MB
+    elif [[ $tmp_table_size -gt 128 ]]; then
+        tmp_table_size=128 # Maximum 128MB
+    fi
+
+    # thread_cache_size
+    local thread_cache_size
+    if [[ $ram_mb -gt 32000 ]]; then
+        thread_cache_size=100 # Max
+    elif [[ $ram_mb -ge 8000 ]]; then
+        thread_cache_size=64
+    elif [[ $ram_mb -ge 4000 ]]; then
+        thread_cache_size=32
+    elif [[ $ram_mb -ge 2000 ]]; then
+        thread_cache_size=24
+    else
+        thread_cache_size=16 # Floor
+    fi
+
+    sed -e "s/^[#[:space:]]*innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${innodb_buffer_pool_size}M/" \
+        -e "s/^[#[:space:]]*innodb_log_file_size.*/innodb_log_file_size = ${innodb_log_file_size}M/" \
+        -e "s/^[#[:space:]]*max_connections.*/max_connections = ${max_connections}/" \
+        -e "s/^[#[:space:]]*tmp_table_size.*/tmp_table_size = ${tmp_table_size}M/" \
+        -e "s/^[#[:space:]]*max_heap_table_size.*/max_heap_table_size = ${tmp_table_size}M/" \
+        -e "s/^[#[:space:]]*thread_cache_size.*/thread_cache_size = ${thread_cache_size}/" \
+        -i /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
+
+    if mount | grep -q "type zfs"; then
+        cp /var/qyc/qycli/cnf/mariadb/my.cnf.d/99-fs-zfs.cnf /etc/uny/mariadb/my.cnf.d/99-fs-zfs.cnf
+        [[ -s /etc/uny/mariadb/my.cnf.d/99-fs-standard.cnf ]] && rm /etc/uny/mariadb/my.cnf.d/99-fs-standard.cnf
+        echo "Using ZFS Optimizations for MariaDB."
+    else
+        cp /var/qyc/qycli/cnf/mariadb/my.cnf.d/99-fs-standard.cnf /etc/uny/mariadb/my.cnf.d/99-fs-standard.cnf
+        [[ -s /etc/uny/mariadb/my.cnf.d/99-fs-zfs.cnf ]] && rm /etc/uny/mariadb/my.cnf.d/99-fs-zfs.cnf
+        echo "Using Standard Filesystem Optimizations for MariaDB."
+    fi
+}
+
+upd_mariadb_conf() {
+    cp /var/qyc/qycli/cnf/mariadb/my.cnf.d/99-qyc.cnf /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
+    upd_mariadb_conf_values
+    systemctl restart uny-mariadb
+}
+
+upd_php_default_version_conf_ram() {
+    # To-Do: Subtract the other php version max children values from the default ones
+
+    if [[ $phpv == "$php_default_version" ]]; then
+        local total_ram
+        total_ram=$(upd_get_ram_mb)
+
+        # OPcache allocations
+        local opmem=$((total_ram * 15 / 100)) # 15% of all memory in MB
+        # Interned Strings allocation (15% of OPcache memory, minimum 32MB)
+        local opstrings=$((opmem * 15 / 100))
+        sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
+            -e "s/.*opcache.interned_strings_buffer.*/opcache.interned_strings_buffer = ${opstrings}/" \
+            -i /etc/uny/php/"$phpv"/php.ini
+
+        # FPM Children calculation
+        local max_children=$((total_ram * 45 / 130 / 100)) # 45% of all memory in MB divided by 130MB per child
+        if [ "$max_children" -lt 2 ]; then max_children=2; fi
+
+        # Dynamic Backlog & Request cycling
+        local backlog=$((max_children * 128))
+
+        local max_reqs=1024
+        if [ "$max_children" -le 4 ]; then max_reqs=512; fi
+
+        sed -e "s/.*pm.max_children.*/pm.max_children = ${max_children}/" \
+            -e "s/.*pm.max_requests.*/pm.max_requests = ${max_reqs}/" \
+            -e "s/.*listen.backlog.*/listen.backlog = ${backlog}/" -i /uny/etc/php/"$phpv"/php-fpm.d/qycli.conf
+
+    fi
+}
+
+upd_php_conf() {
+    phpv_micro="${phpv//\./}"
+    phpv_long="$(find /uny/pkg/php -maxdepth 1 -name "$phpv*" -printf "%f\n" | sort -V | tail -n1)"
+
+    cp /var/qyc/qycli/cnf/php/php.ini /uny/etc/php/"$phpv"/php.ini
+    cp /var/qyc/qycli/cnf/php/php-fpm.conf /uny/etc/php/"$phpv"/php-fpm.conf
+    [[ -f /etc/uny/php/${phpv}/php-fpm.d/www.conf ]] && rm -f /uny/etc/php/"$phpv"/php-fpm.d/www.conf # Delete standard package config
+    cp /var/qyc/qycli/cnf/php/php-fpm.d/qycli.conf /uny/etc/php/"$phpv"/php-fpm.d/qycli.conf
+    cp /var/qyc/qycli/cnf/php/php-fpm.service /etc/systemd/system/uny-php"$phpv"-fpm.service
+
+    if ! grep -q "php${phpv_micro}-fpm" /etc/uny/openresty/conf.d/php-fpm.conf; then
+        touch /etc/uny/openresty/conf.d/php-fpm.conf
+        sed -e "s|SHORTVER|$phpv|g" \
+            -e "s|LONGVER|$phpv_long|g" \
+            -e "s|MICROVER|$phpv_micro|g" \
+            /var/qyc/qycli/cnf/openresty/templates/php-fpm.conf >>/etc/uny/openresty/conf.d/php-fpm.conf
+    fi
+    if ! [[ -s /etc/uny/openresty/local/php"$phpv_micro"-fpm.conf ]]; then
+        touch /etc/uny/openresty/local/php"$phpv_micro"-fpm.conf
+        sed -e "s|SHORTVER|$phpv|g" \
+            -e "s|LONGVER|$phpv_long|g" \
+            -e "s|MICROVER|$phpv_micro|g" \
+            /var/qyc/qycli/cnf/openresty/templates/php.conf >/etc/uny/openresty/local/php"$phpv_micro"-fpm.conf
+    fi
+
+    for file in /uny/etc/php/"$phpv"/php-fpm.conf /uny/etc/php/"$phpv"/php-fpm.d/qycli.conf /etc/systemd/system/uny-php"$phpv"-fpm.service; do
+        sed -e "s|SHORTVER|$phpv|g" \
+            -e "s|LONGVER|$phpv_long|g" \
+            -e "s|MICROVER|$phpv_micro|g" \
+            -i "$file"
+    done
+
+    upd_php_default_version_conf_ram
+
+    mkdir -p /var/log/php/"$phpv"
+
+    chown -R unyphp:unyweb /uny/etc/php/"$phpv" /var/log/php/"$phpv"
+
+    systemctl reenable uny-php"$phpv"-fpm
+    systemctl restart uny-php"$phpv"-fpm
+}
+
+upd_resource_limits() {
+    if echo "$@" | grep -qE "^(force|overwrite|\-f)$"; then
+        force=yes
+    fi
+
+    upd_openresty_conf_workers
+    systemctl restart uny-openresty
+
+    if [[ $force == "yes" ]]; then
+        upd_mariadb_conf
+    else
+        upd_mariadb_conf_values
+    fi
+    systemctl restart uny-mariadb
+
+    phpv="$(yq -ot .php_default_version /var/qyc/cnf.yaml)"
+    upd_php_conf_ram
+
+    upd_valkey_conf
+
+    echo "Updated resource limits."
+}
