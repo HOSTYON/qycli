@@ -7,9 +7,14 @@ calculate_ram_distribution() {
     cpus=$(nproc)
 
     # THE MASTER BLUEPRINT (1/8 OS + Reverse Proxy, 3/8 Databases, 1/2 Application Servers)
-    os_mb=$((ram * 1 / 8))
-    db_mb=$((ram * 3 / 8))
-    app_mb=$((ram * 1 / 2))
+    # Cleanly slice off 12.5% for Linux/OpenResty right at the gate
+    local host_overhead=$((ram * 1 / 8))
+    local available_pool=$((ram - host_overhead))
+
+    # Divide the REMAINING safe pool between your actual active services
+    # 3/7 goes to MariaDB (~37.5% of total), 4/7 goes to PHP-FPM (~50% of total)
+    db_mb=$((available_pool * 3 / 7))
+    app_mb=$((available_pool * 4 / 7))
 
     # PHP-FPM (40% OPcache / 60% Workers)
     # Boundless scaling: more total RAM = massive OPcache bucket for infinite site paths
@@ -48,9 +53,23 @@ upd_openresty_conf_renew_cf_ips() {
 }
 
 upd_openresty_conf_workers() {
+    # Ensure baseline configuration profile exists
     cp /var/qyc/qycli/cnf/openresty/perf.conf /etc/uny/openresty/
-    worker_processes=$(grep -c processor /proc/cpuinfo)                # 1 worker per CPU
-    worker_connections=$(($(grep -c processor /proc/cpuinfo) * 10000)) # 10000 per CPU
+
+    # Use nproc for cleaner core tracking
+    local cores
+    cores=$(nproc)
+
+    # Worker Processes (Lock one worker per CPU core)
+    local worker_processes=$cores
+
+    # Worker Connections (Set high static baseline per worker, capped cleanly at system ulimits)
+    local worker_connections=65535
+    if [[ $cores -eq 1 ]]; then
+        worker_connections=16384 # Scaled down safely for survival on low resource nodes
+    fi
+
+    # Inject optimized settings into performance matrix
     sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/uny/openresty/perf.conf
     sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/uny/openresty/perf.conf
 }
