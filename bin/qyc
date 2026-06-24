@@ -6,9 +6,9 @@
 
 [[ $(whoami) != "root" ]] && echo "qycli has to be run as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 
-source /var/qyc/qycli/bin/help
-source /var/qyc/qycli/bin/stk
-source /var/qyc/qycli/bin/fn
+# source /var/qyc/qycli/bin/help
+# source /var/qyc/qycli/bin/stk
+# source /var/qyc/qycli/bin/fn
 
 for fn in /var/qyc/qycli/fn/*; do
     # shellcheck source=fn/*
