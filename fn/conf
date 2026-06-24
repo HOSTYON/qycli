@@ -97,35 +97,38 @@ upd_mariadb_conf_values() {
     # Execute resource distribution blueprint to populate $ram, $db_mb, and $children
     calculate_ram_distribution
 
-    # InnoDB Buffer Pool (Use 80% of the isolated database memory budget)
-    local innodb_buffer_pool_size=$((db_mb * 80 / 100))
-
-    # Floor safety rule for ultra-low resource setups (256MB/512MB)
-    if [[ $innodb_buffer_pool_size -lt 64 ]]; then
-        innodb_buffer_pool_size=64
-    fi
-
-    # InnoDB Log File Size (25% of the buffer pool, capped at 2GB for fast crash recovery)
-    local innodb_log_file_size=$((innodb_buffer_pool_size * 25 / 100))
-    if [[ $innodb_log_file_size -gt 2048 ]]; then
-        innodb_log_file_size=2048
-    elif [[ $innodb_log_file_size -lt 32 ]]; then
-        innodb_log_file_size=32 # Minimum threshold for survival nodes
-    fi
-
-    # Max Connections (Tethered directly to Max PHP Workers + 30 for CLI/cron overhead)
-    # This prevents MariaDB from spawning more threads than PHP can physically request
+    # Establish Max Connections first (Tethered to PHP capacity)
     local max_connections=$((children * 2 + 30))
     if [[ $max_connections -lt 50 ]]; then
         max_connections=50 # Floor for standard administration stability
     fi
 
-    # Internal Temporary Memory Tables (1% of database memory budget)
+    # Calculate connection thread overhead memory footprint (6MB per thread)
+    local thread_overhead_mb=$((max_connections * 6))
+
+    # Internal Temporary Memory Tables (1% of database memory budget with floor/ceil caps)
     local tmp_table_size=$((db_mb * 1 / 100))
     if [[ $tmp_table_size -lt 16 ]]; then
         tmp_table_size=16
     elif [[ $tmp_table_size -gt 64 ]]; then
         tmp_table_size=64 # Hard optimized cap; massive sorts belong on disk/SSD tmpfs
+    fi
+
+    # Hand the TRUE absolute rest of the database allocation to the Buffer Pool
+    # We subtract both the thread cushion AND the temp table memory ceiling
+    local innodb_buffer_pool_size=$((db_mb - thread_overhead_mb - tmp_table_size))
+
+    # Enforce floor safety rule for ultra-low resource setups
+    if [[ $innodb_buffer_pool_size -lt 64 ]]; then
+        innodb_buffer_pool_size=64
+    fi
+
+    # InnoDB Log File Size (25% of the calculated buffer pool)
+    local innodb_log_file_size=$((innodb_buffer_pool_size * 25 / 100))
+    if [[ $innodb_log_file_size -gt 2048 ]]; then
+        innodb_log_file_size=2048
+    elif [[ $innodb_log_file_size -lt 32 ]]; then
+        innodb_log_file_size=32
     fi
 
     # Thread Cache Size (Scales smoothly alongside max connections)
