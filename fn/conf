@@ -184,16 +184,14 @@ upd_php_default_version_conf_ram() {
     php_default_version=$(yq .php_default_version /var/qyc/cnf.yaml)
 
     if [[ $phpv == "$php_default_version" ]]; then
-        # Ingest directly from the master blueprint global variables
-        local opmem=$opc_mb
-
         # Interned Strings calculation (15% of OPcache memory, minimum 32MB floor)
-        local opstrings=$((opmem * 15 / 100))
+        local opstrings=$((opc_mb * 15 / 100))
         if [ "$opstrings" -lt 32 ]; then opstrings=32; fi
 
         # Update php.ini configuration mappings
-        sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
+        sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opc_mem}/" \
             -e "s/.*opcache.interned_strings_buffer.*/opcache.interned_strings_buffer = ${opstrings}/" \
+            -e "s/.*apc.shm_size.*/apc.shm_size = ${apc_mb}M/" \
             -i /etc/uny/php/"$phpv"/php.ini
 
         # Dynamic Backlog & Request cycling limits based on master children metric
