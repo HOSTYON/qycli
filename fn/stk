@@ -2,10 +2,6 @@
 
 # qycli stack install functions
 
-# shellcheck disable=SC1091
-source /var/qyc/qycli/bin/upd
-source /var/qyc/qycli/bin/fn
-
 stk_utility_and_repos() {
     # Utilities
     for bin in zip unzip rsync curl gettext; do

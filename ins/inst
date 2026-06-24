@@ -134,9 +134,10 @@ git -C /var/qyc clone -b "$branch_name" https://github.com/HOSTYON/qycli-plugin
 ln -sfv /var/qyc/qycli/bin/qyc /bin/qyc
 chmod 755 /bin/qyc
 
-. /var/qyc/qycli/bin/stk
-. /var/qyc/qycli/bin/help
-. /var/qyc/qycli/bin/upd
+for fn in /var/qyc/qycli/fn/*; do
+    # shellcheck source=fn/*
+    [ -f "$fn" ] && . "$fn"
+done
 
 printf "\nqycli (%s) script was installed.\n\n" "$branch_name"
 
