@@ -10,10 +10,13 @@
 # source /var/qyc/qycli/bin/stk
 # source /var/qyc/qycli/bin/fn
 
-for fn in /var/qyc/qycli/fn/*; do
-    # shellcheck source=fn/*
-    [ -f "$fn" ] && . "$fn"
-done
+source_functions() {
+    for fn in /var/qyc/qycli/fn/*; do
+        # shellcheck source=fn/*
+        [ -f "$fn" ] && . "$fn"
+    done
+}
+source_functions
 
 if [[ $1 =~ (mk|make) ]]; then
     shift
@@ -34,10 +37,9 @@ elif [[ $1 =~ (del|delete) ]]; then
     fn_del "$@"
 elif [[ $1 =~ (upd|update) ]]; then
     shift
-    source /var/qyc/qycli/bin/upd
     upd_qycli
     echo
-    source /var/qyc/qycli/bin/upd
+    source_functions
     upd_parser "$@"
 elif [[ $1 =~ (cnf|conf|configure) ]]; then
     shift
