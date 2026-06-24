@@ -257,6 +257,7 @@ upd_resource_limits() {
 
     phpv="$(yq -ot .php_default_version /var/qyc/cnf.yaml)"
     upd_php_default_version_conf_ram
+    systemctl restart uny-php"$phpv"-fpm
 
     echo "Updated resource limits."
 }
