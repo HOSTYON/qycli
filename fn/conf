@@ -165,33 +165,33 @@ upd_mariadb_conf() {
 
 upd_php_default_version_conf_ram() {
     # To-Do: Subtract the other php version max children values from the default ones
+    calculate_ram_distribution
+    php_default_version=$(yq .php_default_version /var/qyc/cnf.yaml)
 
     if [[ $phpv == "$php_default_version" ]]; then
-        local total_ram
-        total_ram=$(upd_get_ram_mb)
+        # Ingest directly from the master blueprint global variables
+        local opmem=$opc_mb
 
-        # OPcache allocations
-        local opmem=$((total_ram * 15 / 100)) # 15% of all memory in MB
-        # Interned Strings allocation (15% of OPcache memory, minimum 32MB)
+        # Interned Strings calculation (15% of OPcache memory, minimum 32MB floor)
         local opstrings=$((opmem * 15 / 100))
+        if [ "$opstrings" -lt 32 ]; then opstrings=32; fi
+
+        # Update php.ini configuration mappings
         sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opmem}M/" \
             -e "s/.*opcache.interned_strings_buffer.*/opcache.interned_strings_buffer = ${opstrings}/" \
             -i /etc/uny/php/"$phpv"/php.ini
 
-        # FPM Children calculation
-        local max_children=$((total_ram * 45 / 130 / 100)) # 45% of all memory in MB divided by 130MB per child
-        if [ "$max_children" -lt 2 ]; then max_children=2; fi
-
-        # Dynamic Backlog & Request cycling
-        local backlog=$((max_children * 128))
+        # Dynamic Backlog & Request cycling limits based on master children metric
+        local backlog=$((children * 128))
 
         local max_reqs=1024
-        if [ "$max_children" -le 4 ]; then max_reqs=512; fi
+        if [ "$children" -le 4 ]; then max_reqs=512; fi
 
-        sed -e "s/.*pm.max_children.*/pm.max_children = ${max_children}/" \
+        # Inject resource boundaries directly to your default pool config
+        sed -e "s/.*pm.max_children.*/pm.max_children = ${children}/" \
             -e "s/.*pm.max_requests.*/pm.max_requests = ${max_reqs}/" \
-            -e "s/.*listen.backlog.*/listen.backlog = ${backlog}/" -i /uny/etc/php/"$phpv"/php-fpm.d/qycli.conf
-
+            -e "s/.*listen.backlog.*/listen.backlog = ${backlog}/" \
+            -i /uny/etc/php/"$phpv"/php-fpm.d/qycli.conf
     fi
 }
 
@@ -253,7 +253,7 @@ upd_resource_limits() {
     systemctl restart uny-mariadb
 
     phpv="$(yq -ot .php_default_version /var/qyc/cnf.yaml)"
-    upd_php_conf_ram
+    upd_php_default_version_conf_ram
 
     echo "Updated resource limits."
 }

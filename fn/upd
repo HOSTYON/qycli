@@ -16,8 +16,6 @@ upd_mariadb() {
 }
 
 upd_php() {
-    php_default_version=$(yq .php_default_version /var/qyc/cnf.yaml)
-
     for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
         unyp install php/"$phpv"
         upd_php_conf
