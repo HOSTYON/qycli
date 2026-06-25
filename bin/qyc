@@ -39,7 +39,7 @@ elif [[ $1 =~ (upd|update) ]]; then
     upd_parser "$@"
 elif [[ $1 =~ (cnf|conf|configure) ]]; then
     shift
-    fn_cnf "$@"
+    conf_parser "$@"
 elif [[ $1 == "info" ]]; then
     shift
     fn_info "$@"

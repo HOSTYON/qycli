@@ -275,3 +275,145 @@ conf_update_resource_limits() {
 
     echo "Updated resource limits."
 }
+
+conf_php_versions() {
+    invalid_versions="$(echo "$1" | tr "," "\n" | grep -v "[7-9]\.[0-9]")"
+    if [ "$invalid_versions" != "" ]; then
+        for ver in $invalid_versions; do
+            echo "$ver is not a valid PHP version."
+        done
+        echo "Aborting PHP config change due to invalid PHP version(s)."
+        exit 1
+    fi
+    php_versions="$(echo "$1" | tr "," "\n")"
+
+    php_default_version="$(echo "$php_versions" | head -n1)"
+    yq ".php_default_version = $php_default_version" -i /var/qyc/cnf.yaml
+
+    yq 'del(.php_versions)' -i /var/qyc/cnf.yaml
+    for ver in $php_versions; do
+        yq ".php_versions += [$ver]" -i /var/qyc/cnf.yaml
+    done
+
+    upd_php
+}
+
+conf_cloudflare_token() {
+    if [[ -z $cf_token ]]; then
+        echo "No Cloudflare token was given."
+        print_help_cnf
+    else
+        verify_cloudflare_token
+        sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/qyc/cnf.yaml
+        upd_get_cf_tokens
+        upd_get_cf_accounts_and_zones
+    fi
+}
+
+conf_opcache() {
+    if [[ "$1" == "off" ]]; then
+        grep -q "opcache.enable = 0" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing" && exit
+        sed "s+opcache.enable = 1+opcache.enable = 0+" -i /etc/qyc/php/fpm/php.ini
+        sed "s+opcache.enable_cli = 1+opcache.enable_cli = 0+" -i /etc/qyc/php/fpm/php.ini
+        systemctl reload uny-openlitespeed
+    elif [[ "$1" == "on" ]]; then
+        grep -q "opcache.enable = 1" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing" && exit
+        sed "s+opcache.enable = 0+opcache.enable = 1+" -i /etc/qyc/php/fpm/php.ini
+        sed "s+opcache.enable_cli = 0+opcache.enable_cli = 1+" -i /etc/qyc/php/fpm/php.ini
+        systemctl reload uny-openlitespeed
+    else
+        echo 'Missing "on" or "off"'
+        print_help_set
+        exit
+    fi
+}
+
+conf_admin_users() {
+    if [[ $1 == "add" && ! $2 == "" && ! $(yq '.admin_users.[].user | select(. == "'"$2"'")' /var/qyc/cnf.yaml) ]]; then
+        admin_user="$2"
+        admin_password=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
+        runuser -u mysql -- mariadb --user=mysql <<EOF
+CREATE USER '${admin_user}'@'localhost' IDENTIFIED BY '${admin_password}';
+GRANT ALL PRIVILEGES ON *.* TO '${admin_user}'@'localhost';
+FLUSH PRIVILEGES;
+EOF
+
+        yq '.admin_users += [{"user": "'"$admin_user"'", "password": "'"$admin_password"'"}]' -i /var/qyc/cnf.yaml
+
+        echo "Admin user $admin_user added."
+        echo "All currently active admin users having database and file managing access:"
+        yq '.admin_users' /var/qyc/cnf.yaml
+    elif [[ $1 =~ (rm|remove) && ! $2 == "" && $(yq '.admin_users.[].user | select(. == "'"$2"'")' /var/qyc/cnf.yaml) ]]; then
+        admin_user="$2"
+        mariadb <<EOF
+DROP USER ${admin_user}@localhost;
+EOF
+
+        yq 'del(.admin_users.[] | select(.user == "'"$admin_user"'"))' -i /var/qyc/cnf.yaml
+
+        echo "Admin user $admin_user deleted."
+        echo "All currently active admin users having database and file managing access:"
+        yq '.admin_users' /var/qyc/cnf.yaml
+    else
+        echo "You have to specify qyc cnf admin add <user> or qyc cnf admin remove <user>. Something wasn't right."
+    fi
+}
+
+conf_qycli_version() {
+    current_branch="$(yq .branch_name /var/qyc/cnf.yaml)"
+
+    if [[ "$1" == "$current_branch" ]]; then
+        echo "qycli is already in the $current_branch branch."
+        exit
+    fi
+
+    if [[ $1 =~ (stable|beta|dev) ]]; then
+        yq '.branch_name = "'"$1"'"' -i /var/qyc/cnf.yaml
+        upd_qycli
+    else
+        echo 'Possible qycli verions are: "stable", "beta" and "dev"'
+        print_help_cnf
+        exit
+    fi
+}
+
+conf_parser() {
+    if [[ "$#" -gt 0 ]]; then
+        while [[ "$#" -gt 0 ]]; do
+            case "$1" in
+            limits | resources)
+                shift
+                conf_update_resource_limits "$@"
+                ;;
+            php)
+                shift
+                conf_php_versions "$@"
+                ;;
+            cft | cloudflaretoken)
+                shift
+                cf_token=$1
+                conf_cloudflare_token
+                ;;
+            opc | opcache)
+                shift
+                conf_opcache "$@"
+                ;;
+            a | admin)
+                shift
+                conf_admin_users "$@"
+                ;;
+            qycv | qycliversion)
+                shift
+                conf_qycli_version "$@"
+                ;;
+            *)
+                echo "Invalid option: $1"
+                print_help_cnf
+                ;;
+            esac
+            shift
+        done
+    else
+        print_help_cnf
+    fi
+}
