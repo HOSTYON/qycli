@@ -193,8 +193,8 @@ conf_php_default_version_resources() {
         if [ "$opstrings" -lt 32 ]; then opstrings=32; fi
 
         # Update php.ini configuration mappings
-        sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opc_mem}/" \
-            -e "s/.*opcache.interned_strings_buffer.*/opcache.interned_strings_buffer = ${opstrings}/" \
+        sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opc_mem}M/" \
+            -e "s/.*opcache.interned_strings_buffer.*/opcache.interned_strings_buffer = ${opstrings}M/" \
             -e "s/.*apc.shm_size.*/apc.shm_size = ${apc_mb}M/" \
             -i /etc/uny/php/"$phpv"/php.ini
 
