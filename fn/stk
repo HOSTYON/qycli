@@ -59,7 +59,7 @@ stk_tls_cert() {
 
 stk_openresty_install() {
     upd_openresty
-    conf_openresty
+    conf_openresty_complete
     stk_tls_cert
     upd_get_new_cf_ips
 }

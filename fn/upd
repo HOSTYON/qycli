@@ -18,7 +18,7 @@ upd_mariadb() {
 upd_php() {
     for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
         unyp install php/"$phpv"
-        conf_php
+        conf_php_complete
     done
 
     unyp system-install php/"$php_default_version"
@@ -130,7 +130,7 @@ upd_qycli() {
     chmod 755 /var/qyc/qycli/ins/kernel
 
     upd_qycli_wp_cron
-    conf_openresty
+    conf_openresty_complete
 
     # upd_qycli_changes
 }
@@ -140,7 +140,7 @@ upd_stack() {
     upd_mariadb
     conf_mariadb
     upd_openresty
-    conf_openresty
+    conf_openresty_complete
     upd_php
     upd_psl
     # upd_openlitespeed

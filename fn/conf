@@ -86,7 +86,7 @@ conf_openresty_resources() {
     sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/uny/openresty/perf.conf
 }
 
-conf_openresty() {
+conf_openresty_complete() {
     for inode in /var/qyc/qycli/cnf/openresty/*; do
         if [[ ! $(basename "$inode") =~ (perf\.conf|conf\.d) ]]; then
             ln -sfn "$inode" /etc/uny/openresty/"$(basename "$inode")"
@@ -212,7 +212,7 @@ conf_php_default_version_resources() {
     fi
 }
 
-conf_php() {
+conf_php_complete() {
     phpv_micro="${phpv//\./}"
     phpv_long="$(find /uny/pkg/php -maxdepth 1 -name "$phpv*" -printf "%f\n" | sort -V | tail -n1)"
 
