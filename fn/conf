@@ -264,15 +264,21 @@ conf_update_resource_limits() {
     systemctl restart uny-openresty
 
     if [[ $force == "yes" ]]; then
+        # MariaDB
         conf_mariadb_complete
+        # PHP-FPM
+        for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
+            conf_php_complete
+        done
     else
+        # MariaDB
         conf_mariadb_resources
+        # PHP-FPM
+        phpv="$(yq -ot .php_default_version /var/qyc/cnf.yaml)"
+        conf_php_default_version_resources
+        systemctl restart uny-php"$phpv"-fpm
     fi
     systemctl restart uny-mariadb
-
-    phpv="$(yq -ot .php_default_version /var/qyc/cnf.yaml)"
-    conf_php_default_version_resources
-    systemctl restart uny-php"$phpv"-fpm
 
     echo "Updated resource limits."
 }
