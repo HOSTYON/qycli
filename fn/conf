@@ -260,20 +260,25 @@ conf_update_resource_limits() {
         force=yes
     fi
 
+    echo "Updating OpenResty limits."
     conf_openresty_resources
     systemctl restart uny-openresty
 
     if [[ $force == "yes" ]]; then
         # MariaDB
+        echo "Updating MariaDB limits."
         conf_mariadb_complete
         # PHP-FPM
+        echo "Updating PHP-FPM limits."
         for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
             conf_php_complete
         done
     else
         # MariaDB
+        echo "Updating MariaDB limits."
         conf_mariadb_resources
         # PHP-FPM
+        echo "Updating default PHP-FPM limits."
         phpv="$(yq -ot .php_default_version /var/qyc/cnf.yaml)"
         conf_php_default_version_resources
         systemctl restart uny-php"$phpv"-fpm
