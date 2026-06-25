@@ -266,10 +266,10 @@ conf_update_resource_limits() {
 
     if [[ $force == "yes" ]]; then
         # MariaDB
-        echo "Updating MariaDB limits."
+        echo "Updating MariaDB limits. Overwriting existing configuration files."
         conf_mariadb_complete
         # PHP-FPM
-        echo "Updating PHP-FPM limits."
+        echo "Updating PHP-FPM limits. Overwriting existing configuration files."
         for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
             conf_php_complete
         done
