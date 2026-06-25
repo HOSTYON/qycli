@@ -172,7 +172,7 @@ conf_mariadb_resources() {
     fi
 }
 
-conf_mariadb() {
+conf_mariadb_complete() {
     cp /var/qyc/qycli/cnf/mariadb/my.cnf.d/99-qyc.cnf /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
     conf_mariadb_resources
     systemctl restart uny-mariadb
@@ -263,7 +263,7 @@ conf_update_resource_limits() {
     systemctl restart uny-openresty
 
     if [[ $force == "yes" ]]; then
-        conf_mariadb
+        conf_mariadb_complete
     else
         conf_mariadb_resources
     fi

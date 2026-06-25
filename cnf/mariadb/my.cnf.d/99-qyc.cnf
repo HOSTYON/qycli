@@ -1,34 +1,34 @@
 [mysqld]
 
-# --- Basics ---
+# Basics
 bind-address = 127.0.0.1
 skip-name-resolve = 1
 innodb_file_per_table = 1
 
-# --- RAM Allocation ---
+# RAM Allocation
 innodb_buffer_pool_size = 512M      # Default value will be overridden
 innodb_log_file_size = 128M         # Default value will be overridden
 
-# --- Connections ---
+# Connections
 max_connections = 100               # Default value will be overridden
 thread_cache_size = 16              # Default value will be overridden
 wait_timeout = 120                  # Reclaim RAM from idle connections after 120 seconds
 interactive_timeout = 120           # Reclaim RAM from idle connections after 120 seconds
 connect_timeout = 10                # Prevents "zombie" connections during the initial handshake
 
-# --- Query Cache ---
+# Query Cache
 query_cache_type = 1
 query_cache_size = 48M              # Never exceed 128M; large caches cause "Waiting for query cache lock"
 query_cache_limit = 2M
 
-# --- Per-Thread Buffers ---
+# Per-Thread Buffers
 tmp_table_size = 16M                # Default value will be overridden
 max_heap_table_size = 16M           # Default value will be overridden
 read_rnd_buffer_size = 256K
 read_buffer_size = 256K
 max_allowed_packet = 64M
 
-# --- IOPS & Reliability ---
+# IOPS & Reliability
 innodb_io_capacity = 2000           # Balanced for modern SSD/NVMe
 innodb_io_capacity_max = 4000       # Burst handling for modern SSD/NVMe
 innodb_flush_neighbors = 0          # Prevents unnecessary writes on SSD hardware
@@ -36,7 +36,7 @@ innodb_flush_log_at_trx_commit = 2  # Optimizes write frequency for web traffic
 innodb_read_io_threads = 4          # Universal I/O Thread Defaults optimized for stability across all hardware sizes
 innodb_write_io_threads = 4         # Universal I/O Thread Defaults optimized for stability across all hardware sizes
 
-# --- MyISAM ---
+# MyISAM
 key_cache_age_threshold = 7200
 key_buffer_size = 64M               # Key cache for MyISAM (internal tables)
 key_cache_block_size = 1024
