@@ -7,7 +7,7 @@ upd_get_new_cf_ips() {
     if ! cmp -s /var/qyc/cache/cloudflare_ipv4_ips_new /var/qyc/cache/cloudflare_ipv4_ips || ! cmp -s /var/qyc/cache/cloudflare_ipv6_ips_new /var/qyc/cache/cloudflare_ipv6_ips; then
         cp /var/qyc/cache/cloudflare_ipv4_ips_new /var/qyc/cache/cloudflare_ipv4_ips
         cp /var/qyc/cache/cloudflare_ipv6_ips_new /var/qyc/cache/cloudflare_ipv6_ips
-        upd_openresty_conf_renew_cf_ips
+        conf_openresty_renew_cf_ips
     fi
 }
 

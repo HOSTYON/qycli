@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 
-calculate_ram_distribution() {
+conf_calculate_resource_distribution() {
     # INPUTS (Raw hardware data)
     ram=$(($(grep MemTotal /proc/meminfo | awk '{print $2}') / 1024))
     cpus=$(nproc)
@@ -46,7 +46,7 @@ calculate_ram_distribution() {
     [ $children -lt 2 ] && children=2
 }
 
-upd_openresty_conf_renew_cf_ips() {
+conf_openresty_renew_cf_ips() {
     # shellcheck disable=SC2013
     for cfip in $(
         cat /var/qyc/cache/cloudflare_ipv6_ips
@@ -64,7 +64,7 @@ upd_openresty_conf_renew_cf_ips() {
     systemctl reload uny-openresty
 }
 
-upd_openresty_conf_workers() {
+conf_openresty_resources() {
     # Ensure baseline configuration profile exists
     cp /var/qyc/qycli/cnf/openresty/perf.conf /etc/uny/openresty/
 
@@ -86,7 +86,7 @@ upd_openresty_conf_workers() {
     sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/uny/openresty/perf.conf
 }
 
-upd_openresty_conf() {
+conf_openresty() {
     for inode in /var/qyc/qycli/cnf/openresty/*; do
         if [[ ! $(basename "$inode") =~ (perf\.conf|conf\.d) ]]; then
             ln -sfn "$inode" /etc/uny/openresty/"$(basename "$inode")"
@@ -98,16 +98,16 @@ upd_openresty_conf() {
         ln -sfn "$inode" /etc/uny/openresty/conf.d/"$(basename "$inode")"
     done
 
-    upd_openresty_conf_workers
+    conf_openresty_resources
 
     cp /var/qyc/qycli/cnf/openresty/qyc-openresty-logrotate /etc/logrotate.d/qyc-openresty-logrotate
 
     systemctl restart uny-openresty
 }
 
-upd_mariadb_conf_values() {
+conf_mariadb_resources() {
     # Execute resource distribution blueprint to populate $ram, $db_mb, and $children
-    calculate_ram_distribution
+    conf_calculate_resource_distribution
 
     # Establish Max Connections first (Tethered to PHP capacity)
     local max_connections=$((children * 2 + 30))
@@ -172,15 +172,15 @@ upd_mariadb_conf_values() {
     fi
 }
 
-upd_mariadb_conf() {
+conf_mariadb() {
     cp /var/qyc/qycli/cnf/mariadb/my.cnf.d/99-qyc.cnf /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
-    upd_mariadb_conf_values
+    conf_mariadb_resources
     systemctl restart uny-mariadb
 }
 
-upd_php_default_version_conf_ram() {
+conf_php_default_version_resources() {
     # To-Do: Subtract the other php version max children values from the default ones
-    calculate_ram_distribution
+    conf_calculate_resource_distribution
     php_default_version=$(yq .php_default_version /var/qyc/cnf.yaml)
 
     if [[ $phpv == "$php_default_version" ]]; then
@@ -208,7 +208,7 @@ upd_php_default_version_conf_ram() {
     fi
 }
 
-upd_php_conf() {
+conf_php() {
     phpv_micro="${phpv//\./}"
     phpv_long="$(find /uny/pkg/php -maxdepth 1 -name "$phpv*" -printf "%f\n" | sort -V | tail -n1)"
 
@@ -240,7 +240,7 @@ upd_php_conf() {
             -i "$file"
     done
 
-    upd_php_default_version_conf_ram
+    conf_php_default_version_resources
 
     mkdir -p /var/log/php/"$phpv"
 
@@ -250,23 +250,23 @@ upd_php_conf() {
     systemctl restart uny-php"$phpv"-fpm
 }
 
-upd_resource_limits() {
+conf_update_resource_limits() {
     if echo "$@" | grep -qE "^(force|overwrite|\-f)$"; then
         force=yes
     fi
 
-    upd_openresty_conf_workers
+    conf_openresty_resources
     systemctl restart uny-openresty
 
     if [[ $force == "yes" ]]; then
-        upd_mariadb_conf
+        conf_mariadb
     else
-        upd_mariadb_conf_values
+        conf_mariadb_resources
     fi
     systemctl restart uny-mariadb
 
     phpv="$(yq -ot .php_default_version /var/qyc/cnf.yaml)"
-    upd_php_default_version_conf_ram
+    conf_php_default_version_resources
     systemctl restart uny-php"$phpv"-fpm
 
     echo "Updated resource limits."

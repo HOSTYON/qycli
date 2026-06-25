@@ -18,7 +18,7 @@ upd_mariadb() {
 upd_php() {
     for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
         unyp install php/"$phpv"
-        upd_php_conf
+        conf_php
     done
 
     unyp system-install php/"$php_default_version"
@@ -130,7 +130,7 @@ upd_qycli() {
     chmod 755 /var/qyc/qycli/ins/kernel
 
     upd_qycli_wp_cron
-    upd_openresty_conf
+    conf_openresty
 
     # upd_qycli_changes
 }
@@ -138,9 +138,9 @@ upd_qycli() {
 upd_stack() {
     upd_get_new_cf_ips
     upd_mariadb
-    upd_mariadb_conf
+    conf_mariadb
     upd_openresty
-    upd_openresty_conf
+    conf_openresty
     upd_php
     upd_psl
     # upd_openlitespeed
@@ -164,7 +164,7 @@ upd_parser() {
             ;;
         limits | resources)
             shift
-            upd_resource_limits "$@"
+            conf_update_resource_limits "$@"
             ;;
         *)
             echo "Invalid option: $1"

@@ -59,7 +59,7 @@ stk_tls_cert() {
 
 stk_openresty_install() {
     upd_openresty
-    upd_openresty_conf
+    conf_openresty
     stk_tls_cert
     upd_get_new_cf_ips
 }
@@ -75,7 +75,7 @@ EOF
 
 stk_mariadb_install() {
     upd_mariadb
-    upd_mariadb_conf
+    conf_mariadb
     stk_mariadb_admin_user
 
     sed 's+# port = 3306+port = 3306+' -i /etc/uny/mariadb/my.cnf
