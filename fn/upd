@@ -51,6 +51,7 @@ upd_qycli_wp_cron() {
 
 upd_qycli_changes() {
     unyp uu
+    qyc upd
     upd_php
 
     for www_folder in /var/www/*; do
@@ -63,19 +64,23 @@ upd_qycli_changes() {
             # Set files to 664 (Allows the unyweb group to modify files)
             #find "$www_folder" -type f -exec chmod 644 {} \;
 
-            php_micro_ver="$(yq .php_default_version /var/qyc/cnf.yaml | tr -d '.')"
-            sed -z \
-                -e "s|#include common.*microcache.conf;\n[ ]*}|include local/php${php_micro_ver}-fpm.conf;\n    include common/development.conf;\n    include common/wp.conf;|" \
-                -i /etc/uny/openresty/sites-available/"$domain"
+            yq '.backend = "php-fpm"' -i /var/www/"$domain"/conf/qyc-site.yaml
 
-            if ! grep -q "root /var/www/${domain}/htdocs;" /etc/uny/openresty/sites-available/"$domain"; then
-                sed "\|include /var/www/${domain}/conf/or/\*.conf.*|a\    root /var/www/${domain}/htdocs;" -i /etc/uny/openresty/sites-available/"$domain"
-            fi
-            sed '\|#add_header Cache-Control "public, stale-while-revalidate=60s";|d' -i /etc/uny/openresty/sites-available/"$domain"
+            php_micro_ver="$(yq .php_default_version /var/qyc/cnf.yaml | tr -d '.')"
+
+            cp /var/qyc/qycli/cnf/openresty/templates/wp.conf /etc/uny/openresty/sites-available/"$domain"
+            sed -e "s|DOMAIN|$domain|g" -e "s|MICROVER|$php_micro_ver|g" -i /etc/uny/openresty/sites-available/"$domain"
+
+            # sed -z \
+            #     -e "s|#include common.*microcache.conf;\n[ ]*}|include local/php${php_micro_ver}-fpm.conf;\n    include common/development.conf;\n    include common/wp.conf;|" \
+            #     -i /etc/uny/openresty/sites-available/"$domain"
+            # if ! grep -q "root /var/www/${domain}/htdocs;" /etc/uny/openresty/sites-available/"$domain"; then
+            #     sed "\|include /var/www/${domain}/conf/or/\*.conf.*|a\    root /var/www/${domain}/htdocs;" -i /etc/uny/openresty/sites-available/"$domain"
+            # fi
+            # sed '\|#add_header Cache-Control "public, stale-while-revalidate=60s";|d' -i /etc/uny/openresty/sites-available/"$domain"
 
         fi
     done
-
     systemctl restart uny-openresty
 
     current_dir="$(pwd)"
@@ -113,6 +118,7 @@ upd_qycli_changes() {
         fi
     done
 
+    qyc conf limits
 }
 
 upd_qycli() {
@@ -143,11 +149,6 @@ upd_stack() {
     conf_openresty_complete
     upd_php
     upd_psl
-    # upd_openlitespeed
-    # upd_openlitespeed_conf
-    # upd_valkey_conf
-    # upd_valkey_service
-    #upd_filebrowser
 }
 
 upd_parser() {
