@@ -66,9 +66,12 @@ mk_common_site() {
 
     mkdir -p /var/www/"$domain"/{htdocs,conf/{or,php}}
 
-    echo "url_root: $url_root" >/var/www/"$domain"/conf/qyc-site.yaml
-    echo "site-type: $site_type" >>/var/www/"$domain"/conf/qyc-site.yaml
-    echo "backend: $backend" >>/var/www/"$domain"/conf/qyc-site.yaml
+    {
+        echo "url_root: $url_root"
+        echo "site-type: $site_type"
+        echo "backend: $backend"
+        echo "profile: dev"
+    } >/var/www/"$domain"/conf/qyc-site.yaml
 
     [[ ! -d /var/qyc/cloudflare/"$root_domain" ]] && mkdir /var/qyc/cloudflare/"$root_domain"
 
