@@ -603,7 +603,7 @@ del_site() {
 DROP USER ${dbnaming}@localhost;    
 DROP DATABASE ${dbnaming};
 EOF
-    systemctl reload uny-openlitespeed
+    systemctl reload uny-openresty
     echo "Database deleted."
     echo "$domain deleted."
 }
@@ -950,7 +950,6 @@ clone_site() {
     # fi
 
     systemctl reload uny-openresty
-    systemctl reload uny-openlitespeed
 
     wpadmin=$(yq .wp-login.user /var/www/"$clonefrom"/conf/qyc-site.yaml)
     wpemail=$(yq .wp-login.email /var/www/"$clonefrom"/conf/qyc-site.yaml)
