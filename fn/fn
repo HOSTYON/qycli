@@ -385,7 +385,7 @@ mk_wp() {
     sed -e "s|require_once ABSPATH . 'wp-settings.php';||" -e "s|/\*\* Sets up WordPress vars and included files. \*/||" -i conf/wp-config.php
     cp /var/qyc/qycli/cnf/wp/wp-config-redirect.php htdocs/wp-config.php
 
-    chown unyweb:unyweb -R ./*
+    chown unyphp:unyweb -R ./*
 
     cd htdocs || exit
 
@@ -448,7 +448,7 @@ mk_wp() {
     attempts=0
     max_attempts=10
 
-    while [[ $(wget -S --spider --header="Host:$domain" http://localhost:8088/wp-json/ 2>&1 | grep -o "HTTP/.*" | cut -f2 -d" ") != "200" ]]; do
+    while [[ $(wget --no-check-certificate -S --spider --header="Host:$domain" https://localhost/wp-json/ 2>&1 | grep -o "HTTP/.*" | cut -f2 -d" ") != "200" ]]; do
         ((attempts++))
         echo "Attempt $attempts of $max_attempts..."
 
@@ -458,7 +458,7 @@ mk_wp() {
         fi
 
         wp rewrite flush --hard
-        systemctl restart uny-openlitespeed
+        systemctl restart uny-openresty
 
         sleep 1
     done
