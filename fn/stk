@@ -106,26 +106,27 @@ stk_wpcli_install() {
     chmod +x /var/qyc/bin/wp-cli
     tee /bin/wp >/dev/null <<'EOF'
 #!/usr/bin/env bash
+export HOME=/uny/home/unyphp
 if [[ $1 =~ config || $@ =~ \ config\  ]]; then
     if [[ $(pwd) =~ /var/www/.*/htdocs ]]; then
-    runuser -u unyphp -- /var/qyc/bin/wp-cli --config-file=../conf/wp-config.php $@
-    fi
-    if [[ $@ =~ .*--path=/var/www/.*/htdocs.* ]]; then
+    runuser -u unyphp -- env HOME=/uny/home/unyphp /var/qyc/bin/wp-cli --config-file=../conf/wp-config.php $@
+    elif [[ $@ =~ .*--path=/var/www/.*/htdocs.* ]]; then
     config_file="$(echo "$@" | grep -o "path=/.*htdocs" | sed -e "s|path=||" -e "s|htdocs|conf|")/wp-config.php"
-    runuser -u unyphp -- /var/qyc/bin/wp-cli --config-file="$config_file" $@
+    runuser -u unyphp -- env HOME=/uny/home/unyphp /var/qyc/bin/wp-cli --config-file="$config_file" $@
     fi
 else
-runuser -u unyphp -- /var/qyc/bin/wp-cli $@
+runuser -u unyphp -- env HOME=/uny/home/unyphp /var/qyc/bin/wp-cli $@
 fi
 EOF
     chmod +x /bin/wp
 
     # Create dir and config for wp-cli
-    mkdir -p /uny/home/unyphp/.wp-cli
+    mkdir -p /uny/home/unyphp/.wp-cli/cache
     tee /uny/home/unyphp/.wp-cli/config.yml >/dev/null <<EOF
 apache_modules:
   - mod_rewrite
 EOF
+    usermod -d /uny/home/unyphp unyphp 2>/dev/null
     chown -R unyphp:unyweb /uny/home/unyphp
 }
 
