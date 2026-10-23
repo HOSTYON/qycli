@@ -159,25 +159,81 @@ del_dns_entries() {
 cf_dns_entry() {
     echo "Setting DNS record ($dns_type) $domain to $dns_value"
 
-    del_dns_entries
-    if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
-        # Create new DNS record in zone
-        curl -sS -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
-            -H "Authorization: Bearer $cf_token_dns" \
-            -H "Content-Type: application/json" \
-            --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' \
-            >/var/qyc/cloudflare/"$root_domain"/"$domain"_cf_dns_record.json
-
-        # Change zone settings #Change this to appropriate tokens
-        curl -sS -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
-            -H "Authorization: Bearer $cf_token_dns" \
-            -H "Content-Type: application/json" \
-            --data '{"items":[{"id":"ssl","value":"full"},{"id":"0rtt","value":"on"},{"id":"minify","value":{"css":"on","html":"on","js":"on"}},{"id":"rocket_loader","value":"off"}]}' 1>/dev/null
-        curl -sS -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/argo/tiered_caching" \
-            -H "Authorization: Bearer $cf_token_dns" \
-            -H "Content-Type: application/json" \
-            --data '{"value":"on"}' 1>/dev/null
+    if [[ -z "$cf_token_dns" || -z "$root_domain_zone_id" ]]; then
+        echo "Cloudflare token or zone ID is missing. Could not set DNS record."
+        return 1
     fi
+
+    mkdir -p /var/qyc/cloudflare/"$root_domain"
+
+    # Query existing A and AAAA DNS records for this domain
+    existing_records_json="$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain" \
+        -H "Authorization: Bearer $cf_token_dns" \
+        -H "Content-Type: application/json")"
+
+    if [[ $(echo "$existing_records_json" | yq -oj .success 2>/dev/null) != "true" ]]; then
+        local err_msg
+        err_msg="$(echo "$existing_records_json" | yq -oy '.errors[].message' 2>/dev/null)"
+        echo "Failed to query Cloudflare DNS records for $domain: ${err_msg:-unknown error}. Keeping existing DNS unchanged."
+        return 1
+    fi
+
+    local matching_record_id
+    matching_record_id="$(echo "$existing_records_json" | yq -oy '.result[] | select(.type == "'"$dns_type"'").id' 2>/dev/null | head -n1)"
+
+    local record_response
+    local new_record_id
+
+    # Update existing record if found of matching type, or create new one
+    if [[ -n "$matching_record_id" ]]; then
+        echo "Updating existing $dns_type record ($matching_record_id) to $dns_value..."
+        record_response="$(curl -sS -X PUT "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$matching_record_id" \
+            -H "Authorization: Bearer $cf_token_dns" \
+            -H "Content-Type: application/json" \
+            --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}')"
+    else
+        echo "Creating new $dns_type record for $domain..."
+        record_response="$(curl -sS -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
+            -H "Authorization: Bearer $cf_token_dns" \
+            -H "Content-Type: application/json" \
+            --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}')"
+    fi
+
+    echo "$record_response" >/var/qyc/cloudflare/"$root_domain"/"$domain"_cf_dns_record.json
+
+    # Only delete anything if the new/updated record was successfully saved
+    if [[ $(echo "$record_response" | yq -oj .success 2>/dev/null) != "true" ]]; then
+        local err_msg
+        err_msg="$(echo "$record_response" | yq -oy '.errors[].message' 2>/dev/null)"
+        echo "Error setting Cloudflare DNS record: ${err_msg:-unknown error}. Existing DNS records were NOT deleted."
+        return 1
+    fi
+
+    new_record_id="$(echo "$record_response" | yq -oy .result.id 2>/dev/null)"
+
+    # Clean up stale records (e.g. old A records or extra duplicate AAAA records) now that new one is verified active
+    local stale_records
+    stale_records="$(echo "$existing_records_json" | yq -oy '.result[] | select(.id != "'"$new_record_id"'" and (.type == "A" or .type == "AAAA")).id' 2>/dev/null)"
+
+    if [[ -n "$stale_records" ]]; then
+        for id in $stale_records; do
+            curl -sS -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
+                -H "Authorization: Bearer $cf_token_dns" \
+                -H "Content-Type: application/json" >/dev/null 2>&1
+        done
+    fi
+
+    # Best-effort update of zone settings (does not fail if token lacks Zone Settings scope)
+    curl -sS -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
+        -H "Authorization: Bearer $cf_token_dns" \
+        -H "Content-Type: application/json" \
+        --data '{"items":[{"id":"ssl","value":"full"},{"id":"0rtt","value":"on"},{"id":"minify","value":{"css":"on","html":"on","js":"on"}},{"id":"rocket_loader","value":"off"}]}' >/dev/null 2>&1
+    curl -sS -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/argo/tiered_caching" \
+        -H "Authorization: Bearer $cf_token_dns" \
+        -H "Content-Type: application/json" \
+        --data '{"value":"on"}' >/dev/null 2>&1
+
+    return 0
 }
 
 print_dns_info_auto() {
@@ -261,9 +317,13 @@ dns_and_infos() {
             dns_value=$ipv6
             dns_type=AAAA
 
-            cf_dns_entry
-            print_dns_info_auto
-            print_login_info
+            if cf_dns_entry; then
+                print_dns_info_auto
+                print_login_info
+            else
+                print_dns_info_manual_v6
+                print_login_info
+            fi
         else
             print_dns_info_manual_v6
             print_login_info
@@ -273,9 +333,13 @@ dns_and_infos() {
             dns_value=$ipv4
             dns_type=A
 
-            cf_dns_entry
-            print_dns_info_auto
-            print_login_info
+            if cf_dns_entry; then
+                print_dns_info_auto
+                print_login_info
+            else
+                print_dns_info_manual_v4
+                print_login_info
+            fi
         else
             print_dns_info_manual_v4
             print_login_info
