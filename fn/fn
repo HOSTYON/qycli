@@ -29,13 +29,13 @@ domain_parser() {
 }
 
 enable_site() {
-    ln -s /etc/uny/openresty/sites-available/"$domain" /etc/uny/openresty/sites-enabled/
+    ln -sf /etc/uny/openresty/sites-available/"$domain" /etc/uny/openresty/sites-enabled/
     yq '.enabled = "yes"' -i /var/www/"$domain"/conf/qyc-site.yaml
     systemctl reload uny-openresty
 }
 
 disable_site() {
-    rm /etc/uny/openresty/sites-enabled/"$domain"
+    rm -f /etc/uny/openresty/sites-enabled/"$domain"
     yq '.enabled = "no"' -i /var/www/"$domain"/conf/qyc-site.yaml
     systemctl reload uny-openresty
 }
@@ -47,7 +47,9 @@ mk_common_db() {
     dbnaming="qyc_$snakedomain"
 
     runuser -u mysql -- mariadb --user=mysql <<EOF
-CREATE USER ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
+CREATE USER IF NOT EXISTS ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
+ALTER USER ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
+DROP DATABASE IF EXISTS ${dbnaming};
 CREATE DATABASE ${dbnaming};
 GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
 FLUSH PRIVILEGES;
@@ -448,7 +450,7 @@ mk_wp() {
     attempts=0
     max_attempts=10
 
-    while [[ $(wget --no-check-certificate -S --spider --header="Host:$domain" https://localhost/wp-json/ 2>&1 | grep -o "HTTP/.*" | cut -f2 -d" ") != "200" ]]; do
+    while [[ $(curl -sk -o /dev/null -w "%{http_code}" -H "Host: $domain" https://localhost/wp-json/) != "200" ]]; do
         ((attempts++))
         echo "Attempt $attempts of $max_attempts..."
 
