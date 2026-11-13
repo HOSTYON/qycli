@@ -94,6 +94,8 @@ conf_openresty_complete() {
     done
 
     mkdir -p /etc/uny/openresty/conf.d
+    rm -f /etc/uny/openresty/conf.d/openlitespeed.conf /var/qyc/qycli/cnf/openresty/conf.d/openlitespeed.conf
+    find /etc/uny/openresty/conf.d -xtype l -delete 2>/dev/null || true
     for inode in /var/qyc/qycli/cnf/openresty/conf.d/*; do
         ln -sfn "$inode" /etc/uny/openresty/conf.d/"$(basename "$inode")"
     done

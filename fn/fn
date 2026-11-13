@@ -1091,6 +1091,8 @@ conf_openresty_listeners() {
     done
 
     mkdir -p /etc/uny/openresty/conf.d
+    rm -f /etc/uny/openresty/conf.d/openlitespeed.conf /var/qyc/qycli/cnf/openresty/conf.d/openlitespeed.conf
+    find /etc/uny/openresty/conf.d -xtype l -delete 2>/dev/null || true
     if [[ $has_dns -eq 1 ]]; then
         cat <<'EOF' >/etc/uny/openresty/conf.d/00-http-redirect.conf
 # HTTP to HTTPS redirect for DNS-mode sites
