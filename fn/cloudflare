@@ -306,8 +306,13 @@ cf_get_or_create_tunnel() {
     fi
 
     local account_id=""
-    if [ -s /var/qyc/cloudflare/cfaccounts.json ]; then
-        account_id=$(yq '.result[0].id' /var/qyc/cloudflare/cfaccounts.json 2>/dev/null | tr -d '"\r\n ')
+    if [ -n "$root_domain" ] && [ -s /var/qyc/cloudflare/cfzones.json ]; then
+        account_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json 2>/dev/null | head -n1 | tr -d '"\r\n ')
+    fi
+    if [ -z "$account_id" ] || [ "$account_id" = "null" ]; then
+        if [ -s /var/qyc/cloudflare/cfaccounts.json ]; then
+            account_id=$(yq '.result[0].id' /var/qyc/cloudflare/cfaccounts.json 2>/dev/null | tr -d '"\r\n ')
+        fi
     fi
 
     if [ -z "$account_id" ] || [ "$account_id" = "null" ]; then
@@ -436,7 +441,6 @@ upd_cloudflared_config() {
     cat <<EOF >/etc/cloudflared/config.yml
 tunnel: $tid
 credentials-file: $tunnel_creds
-protocol: http2
 
 ingress:
 EOF
