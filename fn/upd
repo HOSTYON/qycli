@@ -164,6 +164,10 @@ upd_cloudflared() {
 upd_parser() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
+        qyc | qycli)
+            # Already updated by upd_qycli before upd_parser
+            shift
+            ;;
         stk | stack)
             shift
             upd_stack
