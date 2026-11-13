@@ -436,6 +436,7 @@ upd_cloudflared_config() {
     cat <<EOF >/etc/cloudflared/config.yml
 tunnel: $tid
 credentials-file: $tunnel_creds
+protocol: http2
 
 ingress:
 EOF
