@@ -502,8 +502,19 @@ cf_dns_cname_entry() {
         -H "Authorization: Bearer $cf_token_dns" \
         -H "Content-Type: application/json")"
 
+    local stale_records
+    stale_records="$(echo "$existing_records_json" | yq -oy '.result[] | select(.type == "A" or .type == "AAAA").id' 2>/dev/null)"
+    if [[ -n "$stale_records" ]]; then
+        for id in $stale_records; do
+            id=$(echo "$id" | tr -d '"\r\n ')
+            [ -n "$id" ] && curl -sS -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
+                -H "Authorization: Bearer $cf_token_dns" \
+                -H "Content-Type: application/json" >/dev/null 2>&1
+        done
+    fi
+
     local matching_record_id
-    matching_record_id="$(echo "$existing_records_json" | yq -oy '.result[] | select(.type == "CNAME").id' 2>/dev/null | head -n1)"
+    matching_record_id="$(echo "$existing_records_json" | yq -oy '.result[] | select(.type == "CNAME").id' 2>/dev/null | head -n1 | tr -d '"\r\n ')"
 
     local record_response
     if [[ -n "$matching_record_id" ]]; then
@@ -524,16 +535,8 @@ cf_dns_cname_entry() {
         local err_msg
         err_msg="$(echo "$record_response" | yq -oy '.errors[].message' 2>/dev/null)"
         echo "Failed to set CNAME record for $domain: ${err_msg:-unknown error}" >&2
-    fi
-
-    local stale_records
-    stale_records="$(echo "$existing_records_json" | yq -oy '.result[] | select(.type == "A" or .type == "AAAA").id' 2>/dev/null)"
-    if [[ -n "$stale_records" ]]; then
-        for id in $stale_records; do
-            curl -sS -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
-                -H "Authorization: Bearer $cf_token_dns" \
-                -H "Content-Type: application/json" >/dev/null 2>&1
-        done
+    else
+        echo "CNAME record for $domain set to $target_cname."
     fi
 
     if [[ $subdomain != "true" ]]; then
@@ -542,8 +545,20 @@ cf_dns_cname_entry() {
         existing_www="$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$www_domain" \
             -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json")"
+
+        local stale_www
+        stale_www="$(echo "$existing_www" | yq -oy '.result[] | select(.type == "A" or .type == "AAAA").id' 2>/dev/null)"
+        if [[ -n "$stale_www" ]]; then
+            for id in $stale_www; do
+                id=$(echo "$id" | tr -d '"\r\n ')
+                [ -n "$id" ] && curl -sS -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
+                    -H "Authorization: Bearer $cf_token_dns" \
+                    -H "Content-Type: application/json" >/dev/null 2>&1
+            done
+        fi
+
         local matching_www_id
-        matching_www_id="$(echo "$existing_www" | yq -oy '.result[] | select(.type == "CNAME").id' 2>/dev/null | head -n1)"
+        matching_www_id="$(echo "$existing_www" | yq -oy '.result[] | select(.type == "CNAME").id' 2>/dev/null | head -n1 | tr -d '"\r\n ')"
 
         if [[ -n "$matching_www_id" ]]; then
             curl -sS -X PUT "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$matching_www_id" \
@@ -555,16 +570,6 @@ cf_dns_cname_entry() {
                 -H "Authorization: Bearer $cf_token_dns" \
                 -H "Content-Type: application/json" \
                 --data '{"type":"CNAME","name":"'"$www_domain"'","content":"'"$target_cname"'","ttl":1,"proxied":true}' >/dev/null 2>&1
-        fi
-
-        local stale_www
-        stale_www="$(echo "$existing_www" | yq -oy '.result[] | select(.type == "A" or .type == "AAAA").id' 2>/dev/null)"
-        if [[ -n "$stale_www" ]]; then
-            for id in $stale_www; do
-                curl -sS -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
-                -H "Authorization: Bearer $cf_token_dns" \
-                -H "Content-Type: application/json" >/dev/null 2>&1
-            done
         fi
     fi
 }
