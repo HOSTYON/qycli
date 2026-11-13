@@ -1073,6 +1073,10 @@ conf_openresty_listeners() {
                 yq '.ingress_mode = "dns"' -i "$site_dir/conf/qyc-site.yaml"
             fi
 
+            if [[ $(yq .backend "$site_dir/conf/qyc-site.yaml" 2>/dev/null) == "openlitespeed" ]]; then
+                yq '.backend = "php-fpm"' -i "$site_dir/conf/qyc-site.yaml"
+            fi
+
             conf_site_listen "$dom"
             sed -i '/listen.*443.*ssl;/d' /etc/uny/openresty/sites-available/"$dom" 2>/dev/null || true
 
