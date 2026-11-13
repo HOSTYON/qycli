@@ -56,7 +56,7 @@ upd_get_cf_tokens() {
     get_cftaz
     get_cftwp
 
-    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
+    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml 2>/dev/null | tr -d '"\r\n ')
     cf_token_accounts_zones_dns="$cftaz"
     cf_token_wp_cf_page_cache="$cftwp"
 
@@ -66,9 +66,22 @@ upd_get_cf_tokens() {
     if [[ $(yq .success <<<"$cf_token_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_verify_answer") == "active" ]]; then
         echo "Cloudflare Token Creation token is valid and active."
     else
-        echo "Cloudflare Token Creation token is not valid or not active. Aborting."
-        exit 1
+        echo "Cloudflare Token Creation token is not valid or not active. Aborting." >&2
+        return 1 2>/dev/null || exit 1
     fi
+
+    # Query available permission groups to dynamically discover Cloudflare Tunnel permission group IDs
+    local cf_perm_groups
+    cf_perm_groups="$(curl -sS -X GET "https://api.cloudflare.com/client/v4/user/tokens/permission_groups" \
+        -H "Authorization: Bearer $cf_token" \
+        -H "Content-Type: application/json")"
+
+    local tunnel_write_id
+    tunnel_write_id="$(echo "$cf_perm_groups" | yq '.result[] | select(.name == "Cloudflare Tunnel Write" or .name == "Argo Tunnel Write" or .name == "Cloudflare One Connectors Write").id' 2>/dev/null | head -n1 | tr -d '"\r\n ')"
+    [ -z "$tunnel_write_id" ] && tunnel_write_id="c07321b023e944ff818fec44d8203567"
+
+    local tunnel_read_id
+    tunnel_read_id="$(echo "$cf_perm_groups" | yq '.result[] | select(.name == "Cloudflare Tunnel Read" or .name == "Argo Tunnel Read" or .name == "Cloudflare One Connectors Read").id' 2>/dev/null | head -n1 | tr -d '"\r\n ')"
 
     if [[ $cf_token_accounts_zones_dns != "" ]]; then
         cf_token_accounts_zones_dns_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
@@ -76,7 +89,11 @@ upd_get_cf_tokens() {
             -H "Content-Type: application/json")"
         if [[ $(yq .success <<<"$cf_token_accounts_zones_dns_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_accounts_zones_dns_verify_answer") == "active" ]]; then
             echo "Cloudflare Accounts and Zones DNS token is valid and active."
-            if [ -z "$cftaz_id" ]; then
+            # Check if existing token has Cloudflare Tunnel Write permission
+            if [ -n "$tunnel_write_id" ] && ! grep -q "$tunnel_write_id" /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null; then
+                echo "Cloudflare Accounts and Zones DNS token is missing Cloudflare Tunnel permissions. Regenerating token."
+                cftaz_gen=yes
+            elif [ -z "$cftaz_id" ]; then
                 cf_token_accounts_zones_dns_id="$(yq .result.id <<<"$cf_token_accounts_zones_dns_verify_answer")"
                 # Restore API result
                 curl -sS -X GET https://api.cloudflare.com/client/v4/user/tokens/"$cf_token_accounts_zones_dns_id" \
@@ -122,9 +139,24 @@ upd_get_cf_tokens() {
     time="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
     if [[ $cf_token != "" && $cftaz_gen == "yes" ]]; then
+        if [ -n "$cftaz_id" ]; then
+            curl -sS -X DELETE "https://api.cloudflare.com/client/v4/user/tokens/$cftaz_id" \
+                -H "Authorization: Bearer $cf_token" \
+                -H "Content-Type: application/json" >/dev/null 2>&1 || true
+        fi
+
+        local account_perms='{"id": "c1fde68c7bcc44588cbb6ddbc16d6480", "name": "Account Settings Read"}'
+        if [ -n "$tunnel_write_id" ]; then
+            account_perms="$account_perms, {\"id\": \"$tunnel_write_id\", \"name\": \"Cloudflare Tunnel Write\"}"
+        fi
+        if [ -n "$tunnel_read_id" ]; then
+            account_perms="$account_perms, {\"id\": \"$tunnel_read_id\", \"name\": \"Cloudflare Tunnel Read\"}"
+        fi
+
         # Create Accounts Zones and DNS Token
         echo "Creating new Cloudflare Token for Accounts, Zones and DNS."
-        curl -sS -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
+        local create_token_res
+        create_token_res="$(curl -sS -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
             -H "Authorization: Bearer $cf_token" \
             -H "Content-Type: application/json" \
             --data '{
@@ -136,10 +168,7 @@ upd_get_cf_tokens() {
                 "com.cloudflare.api.account.*": "*"
             },
             "permission_groups": [
-                {
-                    "id": "c1fde68c7bcc44588cbb6ddbc16d6480",
-                    "name": "Account Settings Read"
-                }
+                '"$account_perms"'
             ]
         },
         {
@@ -163,7 +192,15 @@ upd_get_cf_tokens() {
             ]
         }
     ]
-}' >/var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+}')"
+        if [[ $(yq -oj .success <<<"$create_token_res" 2>/dev/null) == "true" ]]; then
+            echo "$create_token_res" >/var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+            get_cftaz
+        else
+            local err_msg
+            err_msg=$(echo "$create_token_res" | yq -oy '.errors[0].message' 2>/dev/null)
+            echo "Failed to create Cloudflare token: ${err_msg:-unknown error}" >&2
+        fi
     fi
 
     if [[ $cf_token != "" && $cftwp_gen == "yes" ]]; then
@@ -251,14 +288,22 @@ get_cf_tunnel_id() {
 
 cf_get_or_create_tunnel() {
     get_cftaz
+    if [ -z "$cftaz" ] || ! grep -q "c07321b023e944ff818fec44d8203567" /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null; then
+        upd_get_cf_tokens >&2
+        get_cftaz
+    fi
     local cf_token_az="$cftaz"
     if [ -z "$cf_token_az" ]; then
         get_cf_token_dns
         cf_token_az="$cf_token_dns"
     fi
-    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml 2>/dev/null)
+    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml 2>/dev/null | tr -d '"\r\n ')
 
-    local api_token="${cf_token:-$cf_token_az}"
+    local api_token="${cf_token_az:-$cf_token}"
+
+    if [ ! -s /var/qyc/cloudflare/cfaccounts.json ]; then
+        upd_get_cf_accounts_and_zones >&2
+    fi
 
     local account_id=""
     if [ -s /var/qyc/cloudflare/cfaccounts.json ]; then
@@ -312,9 +357,9 @@ cf_get_or_create_tunnel() {
 
         tunnel_id=$(echo "$create_res" | yq '.result.id' 2>/dev/null | tr -d '"\r\n ')
         if [ -z "$tunnel_id" ] || [ "$tunnel_id" = "null" ]; then
-            if [ "$api_token" != "$cf_token_az" ] && [ -n "$cf_token_az" ]; then
+            if [ "$api_token" != "$cf_token" ] && [ -n "$cf_token" ]; then
                 create_res=$(curl -sS -X POST "https://api.cloudflare.com/client/v4/accounts/$account_id/cfd_tunnel" \
-                    -H "Authorization: Bearer $cf_token_az" \
+                    -H "Authorization: Bearer $cf_token" \
                     -H "Content-Type: application/json" \
                     --data '{"name":"'"$tunnel_name"'","tunnel_secret":"'"$tunnel_secret"'","config_src":"local"}')
                 tunnel_id=$(echo "$create_res" | yq '.result.id' 2>/dev/null | tr -d '"\r\n ')
