@@ -1074,6 +1074,7 @@ conf_openresty_listeners() {
             fi
 
             conf_site_listen "$dom"
+            sed -i '/listen.*443.*ssl;/d' /etc/uny/openresty/sites-available/"$dom" 2>/dev/null || true
 
             if [[ "$mode" == "dns" ]]; then
                 has_dns=1
