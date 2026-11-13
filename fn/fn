@@ -315,9 +315,8 @@ get_public_ips() {
 tunnel_and_infos() {
     local dom="$1"
     stk_cloudflared_install
-    tunnel_id=$(cf_get_or_create_tunnel)
 
-    if [ $? -eq 0 ] && [ -n "$tunnel_id" ] && [[ ! "$tunnel_id" =~ [[:space:]] ]]; then
+    if tunnel_id=$(cf_get_or_create_tunnel) && [ -n "$tunnel_id" ] && [[ ! "$tunnel_id" =~ [[:space:]] ]]; then
         get_cf_token_dns
         domain_parser "$dom"
         zone_answer="$(curl -s https://api.cloudflare.com/client/v4/zones?name="$root_domain" \
@@ -1059,8 +1058,6 @@ conf_openresty_listeners() {
     chmod 755 /run/openresty
 
     local has_dns=0
-    local has_rproxy=0
-    local has_tunnel=0
 
     for site_dir in /var/www/*; do
         if [[ -d "$site_dir" && -f "$site_dir/conf/qyc-site.yaml" ]]; then
@@ -1082,10 +1079,6 @@ conf_openresty_listeners() {
 
             if [[ "$mode" == "dns" ]]; then
                 has_dns=1
-            elif [[ "$mode" == "rproxy" ]]; then
-                has_rproxy=1
-            elif [[ "$mode" == "tunnel" ]]; then
-                has_tunnel=1
             fi
         fi
     done
@@ -1129,8 +1122,7 @@ fn_migrate_to_tunnel() {
         return 0
     fi
 
-    tunnel_id=$(cf_get_or_create_tunnel)
-    if [ $? -ne 0 ] || [ -z "$tunnel_id" ] || [[ "$tunnel_id" =~ [[:space:]] ]]; then
+    if ! tunnel_id=$(cf_get_or_create_tunnel) || [ -z "$tunnel_id" ] || [[ "$tunnel_id" =~ [[:space:]] ]]; then
         echo "Failed to get or create Cloudflare tunnel. Aborting migration."
         return 1
     fi

@@ -67,7 +67,7 @@ upd_get_cf_tokens() {
         echo "Cloudflare Token Creation token is valid and active."
     else
         echo "Cloudflare Token Creation token is not valid or not active. Aborting." >&2
-        return 1 2>/dev/null || exit 1
+        return 1
     fi
 
     # Query available permission groups to dynamically discover Cloudflare Tunnel permission group IDs
@@ -337,7 +337,8 @@ cf_get_or_create_tunnel() {
         return 0
     fi
 
-    local tunnel_name="qyc-$(cat /etc/hostname 2>/dev/null || hostname)"
+    local tunnel_name
+    tunnel_name="qyc-$(cat /etc/hostname 2>/dev/null || hostname)"
     [ -z "$tunnel_name" ] && tunnel_name="qyc-tunnel"
 
     local existing_tunnels
@@ -517,6 +518,12 @@ cf_dns_cname_entry() {
             -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" \
             --data '{"type":"CNAME","name":"'"$domain"'","content":"'"$target_cname"'","ttl":1,"proxied":true}')"
+    fi
+
+    if [[ $(echo "$record_response" | yq -oj .success 2>/dev/null) != "true" ]]; then
+        local err_msg
+        err_msg="$(echo "$record_response" | yq -oy '.errors[].message' 2>/dev/null)"
+        echo "Failed to set CNAME record for $domain: ${err_msg:-unknown error}" >&2
     fi
 
     local stale_records
