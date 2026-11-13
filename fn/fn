@@ -317,7 +317,7 @@ tunnel_and_infos() {
     stk_cloudflared_install
     tunnel_id=$(cf_get_or_create_tunnel)
 
-    if [[ -n "$tunnel_id" ]]; then
+    if [ $? -eq 0 ] && [ -n "$tunnel_id" ] && [[ ! "$tunnel_id" =~ [[:space:]] ]]; then
         get_cf_token_dns
         domain_parser "$dom"
         zone_answer="$(curl -s https://api.cloudflare.com/client/v4/zones?name="$root_domain" \
@@ -1128,7 +1128,7 @@ fn_migrate_to_tunnel() {
     fi
 
     tunnel_id=$(cf_get_or_create_tunnel)
-    if [ -z "$tunnel_id" ]; then
+    if [ $? -ne 0 ] || [ -z "$tunnel_id" ] || [[ "$tunnel_id" =~ [[:space:]] ]]; then
         echo "Failed to get or create Cloudflare tunnel. Aborting migration."
         return 1
     fi

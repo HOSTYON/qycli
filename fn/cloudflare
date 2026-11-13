@@ -243,9 +243,9 @@ upd_dns_entry() {
 
 get_cf_tunnel_id() {
     if [ -s /var/qyc/cloudflare/tunnel.json ]; then
-        yq -oy .TunnelID /var/qyc/cloudflare/tunnel.json 2>/dev/null
+        yq -oy .TunnelID /var/qyc/cloudflare/tunnel.json 2>/dev/null | tr -d '"\r\n '
     elif [ -s /etc/cloudflared/tunnel.json ]; then
-        yq -oy .TunnelID /etc/cloudflared/tunnel.json 2>/dev/null
+        yq -oy .TunnelID /etc/cloudflared/tunnel.json 2>/dev/null | tr -d '"\r\n '
     fi
 }
 
@@ -262,7 +262,7 @@ cf_get_or_create_tunnel() {
 
     local account_id=""
     if [ -s /var/qyc/cloudflare/cfaccounts.json ]; then
-        account_id=$(yq '.result[0].id' /var/qyc/cloudflare/cfaccounts.json 2>/dev/null)
+        account_id=$(yq '.result[0].id' /var/qyc/cloudflare/cfaccounts.json 2>/dev/null | tr -d '"\r\n ')
     fi
 
     if [ -z "$account_id" ] || [ "$account_id" = "null" ]; then
@@ -270,11 +270,11 @@ cf_get_or_create_tunnel() {
         accounts_json=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=10" \
             -H "Authorization: Bearer $api_token" \
             -H "Content-Type: application/json")
-        account_id=$(echo "$accounts_json" | yq '.result[0].id' 2>/dev/null)
+        account_id=$(echo "$accounts_json" | yq '.result[0].id' 2>/dev/null | tr -d '"\r\n ')
     fi
 
     if [ -z "$account_id" ] || [ "$account_id" = "null" ]; then
-        echo "Could not retrieve Cloudflare Account ID for Tunnel creation."
+        echo "Could not retrieve Cloudflare Account ID for Tunnel creation." >&2
         return 1
     fi
 
@@ -283,8 +283,8 @@ cf_get_or_create_tunnel() {
     local tunnel_id=""
     local tunnel_secret=""
     if [ -s /var/qyc/cloudflare/tunnel.json ]; then
-        tunnel_id=$(yq -oy .TunnelID /var/qyc/cloudflare/tunnel.json 2>/dev/null)
-        tunnel_secret=$(yq -oy .TunnelSecret /var/qyc/cloudflare/tunnel.json 2>/dev/null)
+        tunnel_id=$(yq -oy .TunnelID /var/qyc/cloudflare/tunnel.json 2>/dev/null | tr -d '"\r\n ')
+        tunnel_secret=$(yq -oy .TunnelSecret /var/qyc/cloudflare/tunnel.json 2>/dev/null | tr -d '"\r\n ')
     fi
 
     if [ -n "$tunnel_id" ] && [ "$tunnel_id" != "null" ]; then
@@ -300,7 +300,7 @@ cf_get_or_create_tunnel() {
         -H "Authorization: Bearer $api_token" \
         -H "Content-Type: application/json")
 
-    tunnel_id=$(echo "$existing_tunnels" | yq '.result[] | select(.name == "'"$tunnel_name"'").id' 2>/dev/null | head -n1)
+    tunnel_id=$(echo "$existing_tunnels" | yq '.result[] | select(.name == "'"$tunnel_name"'").id' 2>/dev/null | head -n1 | tr -d '"\r\n ')
 
     if [ -z "$tunnel_id" ] || [ "$tunnel_id" = "null" ]; then
         tunnel_secret=$(openssl rand -base64 32)
@@ -310,21 +310,21 @@ cf_get_or_create_tunnel() {
             -H "Content-Type: application/json" \
             --data '{"name":"'"$tunnel_name"'","tunnel_secret":"'"$tunnel_secret"'","config_src":"local"}')
 
-        tunnel_id=$(echo "$create_res" | yq '.result.id' 2>/dev/null)
+        tunnel_id=$(echo "$create_res" | yq '.result.id' 2>/dev/null | tr -d '"\r\n ')
         if [ -z "$tunnel_id" ] || [ "$tunnel_id" = "null" ]; then
             if [ "$api_token" != "$cf_token_az" ] && [ -n "$cf_token_az" ]; then
                 create_res=$(curl -sS -X POST "https://api.cloudflare.com/client/v4/accounts/$account_id/cfd_tunnel" \
                     -H "Authorization: Bearer $cf_token_az" \
                     -H "Content-Type: application/json" \
                     --data '{"name":"'"$tunnel_name"'","tunnel_secret":"'"$tunnel_secret"'","config_src":"local"}')
-                tunnel_id=$(echo "$create_res" | yq '.result.id' 2>/dev/null)
+                tunnel_id=$(echo "$create_res" | yq '.result.id' 2>/dev/null | tr -d '"\r\n ')
             fi
         fi
 
         if [ -z "$tunnel_id" ] || [ "$tunnel_id" = "null" ]; then
             local err
             err=$(echo "$create_res" | yq '.errors[0].message' 2>/dev/null)
-            echo "Failed to create Cloudflare tunnel: ${err:-unknown error}"
+            echo "Failed to create Cloudflare tunnel: ${err:-unknown error}" >&2
             return 1
         fi
     else
@@ -436,6 +436,11 @@ EOF
 }
 
 cf_dns_cname_entry() {
+    if [[ -z "$tunnel_id" || "$tunnel_id" == "null" || "$tunnel_id" =~ [[:space:]] ]]; then
+        echo "Error: Invalid tunnel ID '$tunnel_id'. Cannot set DNS CNAME record." >&2
+        return 1
+    fi
+
     local target_cname="${tunnel_id}.cfargotunnel.com"
     echo "Setting DNS CNAME record for $domain to $target_cname"
 
