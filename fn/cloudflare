@@ -240,3 +240,274 @@ upd_dns_entry() {
             --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' >"$domain"_cf_dns.json
     fi
 }
+
+get_cf_tunnel_id() {
+    if [ -s /var/qyc/cloudflare/tunnel.json ]; then
+        yq -oy .TunnelID /var/qyc/cloudflare/tunnel.json 2>/dev/null
+    elif [ -s /etc/cloudflared/tunnel.json ]; then
+        yq -oy .TunnelID /etc/cloudflared/tunnel.json 2>/dev/null
+    fi
+}
+
+cf_get_or_create_tunnel() {
+    get_cftaz
+    local cf_token_az="$cftaz"
+    if [ -z "$cf_token_az" ]; then
+        get_cf_token_dns
+        cf_token_az="$cf_token_dns"
+    fi
+    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml 2>/dev/null)
+
+    local api_token="${cf_token:-$cf_token_az}"
+
+    local account_id=""
+    if [ -s /var/qyc/cloudflare/cfaccounts.json ]; then
+        account_id=$(yq '.result[0].id' /var/qyc/cloudflare/cfaccounts.json 2>/dev/null)
+    fi
+
+    if [ -z "$account_id" ] || [ "$account_id" = "null" ]; then
+        local accounts_json
+        accounts_json=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts?page=1&per_page=10" \
+            -H "Authorization: Bearer $api_token" \
+            -H "Content-Type: application/json")
+        account_id=$(echo "$accounts_json" | yq '.result[0].id' 2>/dev/null)
+    fi
+
+    if [ -z "$account_id" ] || [ "$account_id" = "null" ]; then
+        echo "Could not retrieve Cloudflare Account ID for Tunnel creation."
+        return 1
+    fi
+
+    mkdir -p /etc/cloudflared /var/qyc/cloudflare
+
+    local tunnel_id=""
+    local tunnel_secret=""
+    if [ -s /var/qyc/cloudflare/tunnel.json ]; then
+        tunnel_id=$(yq -oy .TunnelID /var/qyc/cloudflare/tunnel.json 2>/dev/null)
+        tunnel_secret=$(yq -oy .TunnelSecret /var/qyc/cloudflare/tunnel.json 2>/dev/null)
+    fi
+
+    if [ -n "$tunnel_id" ] && [ "$tunnel_id" != "null" ]; then
+        echo "$tunnel_id"
+        return 0
+    fi
+
+    local tunnel_name="qyc-$(cat /etc/hostname 2>/dev/null || hostname)"
+    [ -z "$tunnel_name" ] && tunnel_name="qyc-tunnel"
+
+    local existing_tunnels
+    existing_tunnels=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$account_id/cfd_tunnel?name=$tunnel_name&is_deleted=false" \
+        -H "Authorization: Bearer $api_token" \
+        -H "Content-Type: application/json")
+
+    tunnel_id=$(echo "$existing_tunnels" | yq '.result[] | select(.name == "'"$tunnel_name"'").id' 2>/dev/null | head -n1)
+
+    if [ -z "$tunnel_id" ] || [ "$tunnel_id" = "null" ]; then
+        tunnel_secret=$(openssl rand -base64 32)
+        local create_res
+        create_res=$(curl -sS -X POST "https://api.cloudflare.com/client/v4/accounts/$account_id/cfd_tunnel" \
+            -H "Authorization: Bearer $api_token" \
+            -H "Content-Type: application/json" \
+            --data '{"name":"'"$tunnel_name"'","tunnel_secret":"'"$tunnel_secret"'","config_src":"local"}')
+
+        tunnel_id=$(echo "$create_res" | yq '.result.id' 2>/dev/null)
+        if [ -z "$tunnel_id" ] || [ "$tunnel_id" = "null" ]; then
+            if [ "$api_token" != "$cf_token_az" ] && [ -n "$cf_token_az" ]; then
+                create_res=$(curl -sS -X POST "https://api.cloudflare.com/client/v4/accounts/$account_id/cfd_tunnel" \
+                    -H "Authorization: Bearer $cf_token_az" \
+                    -H "Content-Type: application/json" \
+                    --data '{"name":"'"$tunnel_name"'","tunnel_secret":"'"$tunnel_secret"'","config_src":"local"}')
+                tunnel_id=$(echo "$create_res" | yq '.result.id' 2>/dev/null)
+            fi
+        fi
+
+        if [ -z "$tunnel_id" ] || [ "$tunnel_id" = "null" ]; then
+            local err
+            err=$(echo "$create_res" | yq '.errors[0].message' 2>/dev/null)
+            echo "Failed to create Cloudflare tunnel: ${err:-unknown error}"
+            return 1
+        fi
+    else
+        tunnel_secret=$(openssl rand -base64 32)
+        curl -sS -X PATCH "https://api.cloudflare.com/client/v4/accounts/$account_id/cfd_tunnel/$tunnel_id" \
+            -H "Authorization: Bearer $api_token" \
+            -H "Content-Type: application/json" \
+            --data '{"tunnel_secret":"'"$tunnel_secret"'"}' >/dev/null 2>&1
+    fi
+
+    cat <<EOF >/etc/cloudflared/"$tunnel_id".json
+{
+  "AccountTag": "$account_id",
+  "TunnelSecret": "$tunnel_secret",
+  "TunnelID": "$tunnel_id"
+}
+EOF
+    chmod 600 /etc/cloudflared/"$tunnel_id".json
+    cp -f /etc/cloudflared/"$tunnel_id".json /var/qyc/cloudflare/tunnel.json
+    ln -sf /etc/cloudflared/"$tunnel_id".json /etc/cloudflared/tunnel.json 2>/dev/null || true
+
+    echo "$tunnel_id"
+    return 0
+}
+
+upd_cloudflared_config() {
+    local tid
+    tid=$(get_cf_tunnel_id)
+    if [ -z "$tid" ] || [ "$tid" = "null" ]; then
+        return 0
+    fi
+
+    local tunnel_creds="/etc/cloudflared/${tid}.json"
+    if [ ! -f "$tunnel_creds" ] && [ -f /var/qyc/cloudflare/tunnel.json ]; then
+        mkdir -p /etc/cloudflared
+        cp -f /var/qyc/cloudflare/tunnel.json "$tunnel_creds"
+        chmod 600 "$tunnel_creds"
+    fi
+
+    local tunnel_domains=()
+    for site_dir in /var/www/*; do
+        if [ -d "$site_dir" ] && [ -f "$site_dir/conf/qyc-site.yaml" ]; then
+            local mode
+            mode=$(yq .ingress_mode "$site_dir/conf/qyc-site.yaml" 2>/dev/null)
+            if [ "$mode" = "tunnel" ]; then
+                local dom
+                dom=$(basename "$site_dir")
+                tunnel_domains+=("$dom")
+            fi
+        fi
+    done
+
+    if [ ${#tunnel_domains[@]} -eq 0 ]; then
+        echo "No tunnel-mode sites active."
+        if systemctl is-active --quiet cloudflared 2>/dev/null; then
+            systemctl stop cloudflared 2>/dev/null || true
+            systemctl disable cloudflared 2>/dev/null || true
+        fi
+        return 0
+    fi
+
+    mkdir -p /etc/cloudflared
+    cat <<EOF >/etc/cloudflared/config.yml
+tunnel: $tid
+credentials-file: $tunnel_creds
+
+ingress:
+EOF
+    for dom in "${tunnel_domains[@]}"; do
+        if [[ "$dom" != *"."*"."* ]]; then
+            cat <<EOF >>/etc/cloudflared/config.yml
+  - hostname: $dom
+    service: unix:/run/openresty/nginx.sock
+  - hostname: www.$dom
+    service: unix:/run/openresty/nginx.sock
+EOF
+        else
+            cat <<EOF >>/etc/cloudflared/config.yml
+  - hostname: $dom
+    service: unix:/run/openresty/nginx.sock
+EOF
+        fi
+    done
+    cat <<'EOF' >>/etc/cloudflared/config.yml
+  - service: http_status:404
+EOF
+
+    if [ ! -f /etc/systemd/system/cloudflared.service ]; then
+        cat <<'EOF' >/etc/systemd/system/cloudflared.service
+[Unit]
+Description=Cloudflare Tunnel
+After=network.target
+
+[Service]
+TimeoutStartSec=0
+Type=notify
+ExecStart=/var/qyc/bin/cloudflared tunnel --config /etc/cloudflared/config.yml run
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        systemctl daemon-reload 2>/dev/null || true
+    fi
+
+    systemctl enable cloudflared 2>/dev/null || true
+    systemctl restart cloudflared 2>/dev/null || true
+}
+
+cf_dns_cname_entry() {
+    local target_cname="${tunnel_id}.cfargotunnel.com"
+    echo "Setting DNS CNAME record for $domain to $target_cname"
+
+    if [[ -z "$cf_token_dns" || -z "$root_domain_zone_id" ]]; then
+        echo "Cloudflare token or zone ID is missing. Could not set DNS record."
+        return 1
+    fi
+
+    mkdir -p /var/qyc/cloudflare/"$root_domain"
+
+    local existing_records_json
+    existing_records_json="$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain" \
+        -H "Authorization: Bearer $cf_token_dns" \
+        -H "Content-Type: application/json")"
+
+    local matching_record_id
+    matching_record_id="$(echo "$existing_records_json" | yq -oy '.result[] | select(.type == "CNAME").id' 2>/dev/null | head -n1)"
+
+    local record_response
+    if [[ -n "$matching_record_id" ]]; then
+        echo "Updating existing CNAME record ($matching_record_id) to $target_cname..."
+        record_response="$(curl -sS -X PUT "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$matching_record_id" \
+            -H "Authorization: Bearer $cf_token_dns" \
+            -H "Content-Type: application/json" \
+            --data '{"type":"CNAME","name":"'"$domain"'","content":"'"$target_cname"'","ttl":1,"proxied":true}')"
+    else
+        echo "Creating new CNAME record for $domain..."
+        record_response="$(curl -sS -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
+            -H "Authorization: Bearer $cf_token_dns" \
+            -H "Content-Type: application/json" \
+            --data '{"type":"CNAME","name":"'"$domain"'","content":"'"$target_cname"'","ttl":1,"proxied":true}')"
+    fi
+
+    local stale_records
+    stale_records="$(echo "$existing_records_json" | yq -oy '.result[] | select(.type == "A" or .type == "AAAA").id' 2>/dev/null)"
+    if [[ -n "$stale_records" ]]; then
+        for id in $stale_records; do
+            curl -sS -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
+                -H "Authorization: Bearer $cf_token_dns" \
+                -H "Content-Type: application/json" >/dev/null 2>&1
+        done
+    fi
+
+    if [[ $subdomain != "true" ]]; then
+        local www_domain="www.$domain"
+        local existing_www
+        existing_www="$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$www_domain" \
+            -H "Authorization: Bearer $cf_token_dns" \
+            -H "Content-Type: application/json")"
+        local matching_www_id
+        matching_www_id="$(echo "$existing_www" | yq -oy '.result[] | select(.type == "CNAME").id' 2>/dev/null | head -n1)"
+
+        if [[ -n "$matching_www_id" ]]; then
+            curl -sS -X PUT "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$matching_www_id" \
+                -H "Authorization: Bearer $cf_token_dns" \
+                -H "Content-Type: application/json" \
+                --data '{"type":"CNAME","name":"'"$www_domain"'","content":"'"$target_cname"'","ttl":1,"proxied":true}' >/dev/null 2>&1
+        else
+            curl -sS -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
+                -H "Authorization: Bearer $cf_token_dns" \
+                -H "Content-Type: application/json" \
+                --data '{"type":"CNAME","name":"'"$www_domain"'","content":"'"$target_cname"'","ttl":1,"proxied":true}' >/dev/null 2>&1
+        fi
+
+        local stale_www
+        stale_www="$(echo "$existing_www" | yq -oy '.result[] | select(.type == "A" or .type == "AAAA").id' 2>/dev/null)"
+        if [[ -n "$stale_www" ]]; then
+            for id in $stale_www; do
+                curl -sS -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
+                -H "Authorization: Bearer $cf_token_dns" \
+                -H "Content-Type: application/json" >/dev/null 2>&1
+            done
+        fi
+    fi
+}

@@ -149,6 +149,16 @@ upd_stack() {
     conf_openresty_complete
     upd_php
     upd_psl
+    upd_cloudflared
+}
+
+upd_cloudflared() {
+    echo "Updating cloudflared..."
+    mkdir -p /var/qyc/bin
+    wget -qO /var/qyc/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+    chmod +x /var/qyc/bin/cloudflared
+    ln -sf /var/qyc/bin/cloudflared /usr/local/bin/cloudflared
+    ln -sf /var/qyc/bin/cloudflared /bin/cloudflared
 }
 
 upd_parser() {
@@ -157,6 +167,10 @@ upd_parser() {
         stk | stack)
             shift
             upd_stack
+            ;;
+        cloudflared)
+            shift
+            upd_cloudflared
             ;;
         cf | cloudflareinfo)
             shift

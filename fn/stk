@@ -166,6 +166,17 @@ stk_crowdsec_install() {
 #    chown -R qycli:qycli /var/qyc/lib/filebrowser
 #}
 
+stk_cloudflared_install() {
+    if ! command -v cloudflared >/dev/null 2>&1; then
+        echo "Installing cloudflared from binary release..."
+        mkdir -p /var/qyc/bin
+        wget -qO /var/qyc/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+        chmod +x /var/qyc/bin/cloudflared
+        ln -sf /var/qyc/bin/cloudflared /usr/local/bin/cloudflared
+        ln -sf /var/qyc/bin/cloudflared /bin/cloudflared
+    fi
+}
+
 stk_install() {
     stk_utility_and_repos
     stk_postfix_install
@@ -174,6 +185,7 @@ stk_install() {
     stk_mariadb_install
     stk_wpcli_install
     stk_crowdsec_install
+    stk_cloudflared_install
     # stk_openlitespeed_install
     # stk_valkey_install
     # stk_filebrowser_install

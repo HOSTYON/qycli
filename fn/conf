@@ -102,7 +102,11 @@ conf_openresty_complete() {
 
     cp /var/qyc/qycli/cnf/openresty/qyc-openresty-logrotate /etc/logrotate.d/qyc-openresty-logrotate
 
-    systemctl restart uny-openresty
+    if command -v conf_openresty_listeners >/dev/null 2>&1; then
+        conf_openresty_listeners
+    else
+        systemctl restart uny-openresty
+    fi
 }
 
 conf_mariadb_resources() {

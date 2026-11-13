@@ -68,12 +68,13 @@ mk_common_site() {
 
     mkdir -p /var/www/"$domain"/{htdocs,conf/{or,php}}
 
-    {
-        echo "url_root: $url_root"
-        echo "site-type: $site_type"
-        echo "backend: $backend"
-        echo "profile: dev"
-    } >/var/www/"$domain"/conf/qyc-site.yaml
+    cat <<EOF >/var/www/"$domain"/conf/qyc-site.yaml
+url_root: $url_root
+site-type: $site_type
+backend: $backend
+profile: dev
+ingress_mode: ${ingress_mode:-dns}
+EOF
 
     [[ ! -d /var/qyc/cloudflare/"$root_domain" ]] && mkdir /var/qyc/cloudflare/"$root_domain"
 
@@ -93,6 +94,9 @@ server_name
 $domainlist
 ;
 EOF
+
+    conf_site_listen "$domain"
+    conf_openresty_listeners
 
     # PHP-FPM Backend for WP and generic sites
     if [[ $backend == "php-fpm" ]]; then
@@ -141,7 +145,7 @@ del_dns_entries() {
         existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain" \
             -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" | tee -a /var/qyc/cache/old_dns_entries.json |
-            yq -oy '.result[] | select(.type == "A" or .type == "AAAA").id')
+            yq -oy '.result[] | select(.type == "A" or .type == "AAAA" or .type == "CNAME").id')
 
         # Delete DNS records for a Zone if they exist
         if [[ $existing_dns_records != "" ]]; then
@@ -308,9 +312,75 @@ get_public_ips() {
     ipv6=$(ip -6 a show dev "$ipv6_dev" scope global | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80 | grep -v ^fd00)
 }
 
+tunnel_and_infos() {
+    local dom="$1"
+    stk_cloudflared_install
+    tunnel_id=$(cf_get_or_create_tunnel)
+
+    if [[ -n "$tunnel_id" ]]; then
+        get_cf_token_dns
+        domain_parser "$dom"
+        zone_answer="$(curl -s https://api.cloudflare.com/client/v4/zones?name="$root_domain" \
+            -H "Authorization: Bearer $cf_token_dns")"
+        if [[ $(echo "$zone_answer" | yq -oj .success) = "true" && $(echo "$zone_answer" | yq -oj .result_info.total_count) != 0 ]]; then
+            root_domain_zone_id="$(echo "$zone_answer" | yq -oy .result[].id)"
+            cf_dns_cname_entry
+        fi
+
+        upd_cloudflared_config
+        conf_openresty_listeners
+        print_tunnel_dns_info
+        print_login_info
+    else
+        echo "Could not configure Cloudflare Tunnel for $dom."
+        print_login_info
+    fi
+}
+
+rproxy_and_infos() {
+    local dom="$1"
+    conf_openresty_listeners
+    print_rproxy_info "$dom"
+    print_login_info
+}
+
+print_tunnel_dns_info() {
+    cat <<EOF
+
+==========================================================
+Site $domain configured in TUNNEL mode.
+Cloudflare Tunnel ID: $tunnel_id
+DNS CNAME record: $domain -> ${tunnel_id}.cfargotunnel.com
+OpenResty listening on: unix:/run/openresty/nginx.sock
+==========================================================
+
+EOF
+}
+
+print_rproxy_info() {
+    cat <<EOF
+
+==========================================================
+Site $1 configured in RPROXY mode.
+OpenResty listening on TCP port 80 & unix socket.
+Configure host reverse proxy to forward traffic to this container on port 80.
+==========================================================
+
+EOF
+}
+
 dns_and_infos() {
-    get_cf_token_dns
-    get_public_ips
+    local site_ingress_mode
+    site_ingress_mode=$(yq .ingress_mode /var/www/"$domain"/conf/qyc-site.yaml 2>/dev/null)
+    [[ -z "$site_ingress_mode" || "$site_ingress_mode" == "null" ]] && site_ingress_mode="${ingress_mode:-dns}"
+
+    if [[ "$site_ingress_mode" == "tunnel" ]]; then
+        tunnel_and_infos "$domain"
+    elif [[ "$site_ingress_mode" == "rproxy" ]]; then
+        rproxy_and_infos "$domain"
+    else
+        get_cf_token_dns
+        get_public_ips
 
     if [[ $ipv6 != "" ]]; then
         if [[ $NO_AUTO_DNS != "yes" && $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
@@ -346,6 +416,7 @@ dns_and_infos() {
         fi
     else
         echo "No ip address found. That is problematic, as your website will not be accessible."
+    fi
     fi
 }
 
@@ -420,6 +491,19 @@ mk_wp() {
             wpemail="$2"
             shift
             ;;
+        m | mode | ingress | ingress-mode)
+            ingress_mode="$2"
+            shift
+            ;;
+        --tunnel | tunnel)
+            ingress_mode="tunnel"
+            ;;
+        --rproxy | rproxy)
+            ingress_mode="rproxy"
+            ;;
+        --dns | dns)
+            ingress_mode="dns"
+            ;;
         *)
             echo "Invalid option: $1"
             print_help_wp
@@ -427,6 +511,8 @@ mk_wp() {
         esac
         shift
     done
+
+    ingress_mode="${ingress_mode:-dns}"
 
     mk_common "$@"
     shift
@@ -514,7 +600,18 @@ mk_wp() {
     attempts=0
     max_attempts=10
 
-    while [[ $(curl -sk -o /dev/null -w "%{http_code}" -H "Host: $domain" https://localhost/wp-json/) != "200" ]]; do
+    while true; do
+        local check_code=""
+        if [[ -S /run/openresty/nginx.sock ]]; then
+            check_code=$(curl -s -o /dev/null -w "%{http_code}" --unix-socket /run/openresty/nginx.sock -H "Host: $domain" -H "X-Forwarded-Proto: https" http://localhost/wp-json/)
+        else
+            check_code=$(curl -sk -o /dev/null -w "%{http_code}" -H "Host: $domain" https://localhost/wp-json/)
+        fi
+
+        if [[ "$check_code" == "200" ]]; then
+            break
+        fi
+
         ((attempts++))
         echo "Attempt $attempts of $max_attempts..."
 
@@ -669,7 +766,8 @@ del_site() {
 DROP USER ${dbnaming}@localhost;    
 DROP DATABASE ${dbnaming};
 EOF
-    systemctl reload uny-openresty
+    upd_cloudflared_config
+    conf_openresty_listeners
     echo "Database deleted."
     echo "$domain deleted."
 }
@@ -926,6 +1024,169 @@ set_disable() {
     fi
 }
 
+conf_site_listen() {
+    local dom="$1"
+    local mode
+    mode=$(yq .ingress_mode /var/www/"$dom"/conf/qyc-site.yaml 2>/dev/null)
+    [[ -z "$mode" || "$mode" == "null" ]] && mode="dns"
+
+    mkdir -p /var/www/"$dom"/conf/or
+    if [[ "$mode" == "rproxy" ]]; then
+        cat <<EOF >/var/www/"$dom"/conf/or/listen.conf
+# Ingress mode: $mode
+listen unix:/run/openresty/nginx.sock;
+listen 80;
+listen [::]:80;
+EOF
+    elif [[ "$mode" == "dns" ]]; then
+        cat <<EOF >/var/www/"$dom"/conf/or/listen.conf
+# Ingress mode: $mode
+listen unix:/run/openresty/nginx.sock;
+listen 443 ssl;
+listen [::]:443 ssl;
+EOF
+    else
+        cat <<EOF >/var/www/"$dom"/conf/or/listen.conf
+# Ingress mode: $mode
+listen unix:/run/openresty/nginx.sock;
+EOF
+    fi
+}
+
+conf_openresty_listeners() {
+    mkdir -p /run/openresty
+    chown -R unyweb:unyweb /run/openresty 2>/dev/null || true
+    chmod 755 /run/openresty
+
+    local has_dns=0
+    local has_rproxy=0
+    local has_tunnel=0
+
+    for site_dir in /var/www/*; do
+        if [[ -d "$site_dir" && -f "$site_dir/conf/qyc-site.yaml" ]]; then
+            local dom
+            dom=$(basename "$site_dir")
+            local mode
+            mode=$(yq .ingress_mode "$site_dir/conf/qyc-site.yaml" 2>/dev/null)
+            if [[ -z "$mode" || "$mode" == "null" ]]; then
+                mode="dns"
+                yq '.ingress_mode = "dns"' -i "$site_dir/conf/qyc-site.yaml"
+            fi
+
+            conf_site_listen "$dom"
+
+            if [[ "$mode" == "dns" ]]; then
+                has_dns=1
+            elif [[ "$mode" == "rproxy" ]]; then
+                has_rproxy=1
+            elif [[ "$mode" == "tunnel" ]]; then
+                has_tunnel=1
+            fi
+        fi
+    done
+
+    mkdir -p /etc/uny/openresty/conf.d
+    if [[ $has_dns -eq 1 ]]; then
+        cat <<'EOF' >/etc/uny/openresty/conf.d/00-http-redirect.conf
+# HTTP to HTTPS redirect for DNS-mode sites
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
+EOF
+    else
+        rm -f /etc/uny/openresty/conf.d/00-http-redirect.conf
+    fi
+
+    systemctl reload uny-openresty 2>/dev/null || systemctl restart uny-openresty 2>/dev/null || true
+}
+
+fn_migrate_to_tunnel() {
+    stk_cloudflared_install
+
+    local target_domains=()
+    if [[ $# -ge 1 && -n "$1" ]]; then
+        target_domains=("$1")
+    else
+        for dir in /var/www/*; do
+            if [ -d "$dir" ] && [ -f "$dir/conf/qyc-site.yaml" ]; then
+                target_domains+=("$(basename "$dir")")
+            fi
+        done
+    fi
+
+    if [[ ${#target_domains[@]} -eq 0 ]]; then
+        echo "No sites found in /var/www to migrate."
+        return 0
+    fi
+
+    tunnel_id=$(cf_get_or_create_tunnel)
+    if [ -z "$tunnel_id" ]; then
+        echo "Failed to get or create Cloudflare tunnel. Aborting migration."
+        return 1
+    fi
+
+    for dom in "${target_domains[@]}"; do
+        echo "Migrating $dom to tunnel mode..."
+        domain_parser "$dom"
+        get_cf_token_dns
+
+        zone_answer="$(curl -s https://api.cloudflare.com/client/v4/zones?name="$root_domain" \
+            -H "Authorization: Bearer $cf_token_dns")"
+        if [[ $(echo "$zone_answer" | yq -oj .success) = "true" && $(echo "$zone_answer" | yq -oj .result_info.total_count) != 0 ]]; then
+            root_domain_zone_id="$(echo "$zone_answer" | yq -oy .result[].id)"
+        fi
+
+        yq '.ingress_mode = "tunnel"' -i /var/www/"$dom"/conf/qyc-site.yaml
+
+        cf_dns_cname_entry
+
+        echo "Domain $dom migrated to Cloudflare Tunnel."
+    done
+
+    upd_cloudflared_config
+    conf_openresty_listeners
+
+    echo "Migration to tunnel mode completed successfully."
+}
+
+set_ingress() {
+    local target_mode="$1"
+    if [[ "$target_mode" != "tunnel" && "$target_mode" != "dns" && "$target_mode" != "rproxy" ]]; then
+        echo "Invalid ingress mode: $target_mode. Valid modes: tunnel, dns, rproxy."
+        return 1
+    fi
+
+    local current_mode
+    current_mode=$(yq .ingress_mode /var/www/"$domain"/conf/qyc-site.yaml 2>/dev/null)
+    [[ -z "$current_mode" || "$current_mode" == "null" ]] && current_mode="dns"
+
+    if [[ "$target_mode" == "$current_mode" ]]; then
+        echo "Site $domain is already in $target_mode mode."
+        return 0
+    fi
+
+    if [[ "$target_mode" == "tunnel" ]]; then
+        fn_migrate_to_tunnel "$domain"
+    elif [[ "$target_mode" == "dns" ]]; then
+        echo "Switching $domain to dns mode..."
+        yq '.ingress_mode = "dns"' -i /var/www/"$domain"/conf/qyc-site.yaml
+        del_dns_entries
+        upd_cloudflared_config
+        conf_openresty_listeners
+        dns_and_infos
+    elif [[ "$target_mode" == "rproxy" ]]; then
+        echo "Switching $domain to rproxy mode..."
+        yq '.ingress_mode = "rproxy"' -i /var/www/"$domain"/conf/qyc-site.yaml
+        del_dns_entries
+        upd_cloudflared_config
+        conf_openresty_listeners
+        print_rproxy_info "$domain"
+    fi
+}
+
 fn_set() {
     domain_parser "$@"
     if [[ $invalid_domain == "1" ]]; then
@@ -959,6 +1220,11 @@ fn_set() {
         disable)
             shift
             set_disable
+            set_success=1
+            ;;
+        ingress | mode)
+            shift
+            set_ingress "$@"
             set_success=1
             ;;
         esac

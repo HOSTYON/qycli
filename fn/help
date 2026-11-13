@@ -24,6 +24,7 @@ Available commands:
   cnf | conf | configure    Change qycli configuration
   info                      Prints the qycli configuration
   upd | update              Update server apps and qycli
+  migrate-to-tunnel         Migrate sites to Cloudflare Tunnel mode
 
 To see the help section of a command just type "qyc [command]".
 
@@ -64,6 +65,7 @@ Available options:
   e | email         Set the email address for the WordPress admin account
   t | title         Set the title for the WordPress site
   php | phpv        Set the PHP version for the site, if empty default version is used
+  m | mode          Set ingress mode: tunnel, dns, or rproxy (default: dns)
 
 Examples:
   qyc mk wp domain.com
@@ -129,6 +131,11 @@ Available options:
 
   enable                value: none         Enables a site in the nginx configuration
   disable               value: none         Disables a site in the nginx configuration
+
+  ingress|mode
+    └─ tunnel           value: none         Switch site to Cloudflare Tunnel mode
+    └─ dns              value: none         Switch site to direct DNS mode (port 443 + self-signed cert)
+    └─ rproxy           value: none         Switch site to host reverse proxy mode (port 80)
 
 Examples:
   qyc set domain.com cache f on
