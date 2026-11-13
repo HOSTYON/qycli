@@ -1122,12 +1122,6 @@ fn_migrate_to_tunnel() {
         return 0
     fi
 
-    domain_parser "${target_domains[0]}"
-    if ! tunnel_id=$(cf_get_or_create_tunnel "$root_domain") || [ -z "$tunnel_id" ] || [[ "$tunnel_id" =~ [[:space:]] ]]; then
-        echo "Failed to get or create Cloudflare tunnel. Aborting migration."
-        return 1
-    fi
-
     for dom in "${target_domains[@]}"; do
         echo "Migrating $dom to tunnel mode..."
         domain_parser "$dom"
@@ -1137,6 +1131,12 @@ fn_migrate_to_tunnel() {
             -H "Authorization: Bearer $cf_token_dns")"
         if [[ $(echo "$zone_answer" | yq -oj .success) = "true" && $(echo "$zone_answer" | yq -oj .result_info.total_count) != 0 ]]; then
             root_domain_zone_id="$(echo "$zone_answer" | yq '.result[0].id' 2>/dev/null | tr -d '"\r\n ')"
+        fi
+
+        tunnel_id=$(cf_get_or_create_tunnel "$root_domain")
+        if [[ -z "$tunnel_id" || "$tunnel_id" =~ [[:space:]] ]]; then
+            echo "Failed to get or create Cloudflare tunnel for $dom ($root_domain). Skipping." >&2
+            continue
         fi
 
         yq '.ingress_mode = "tunnel"' -i /var/www/"$dom"/conf/qyc-site.yaml
