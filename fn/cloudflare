@@ -482,6 +482,10 @@ EOF
 }
 
 cf_dns_cname_entry() {
+    tunnel_id=$(echo "$tunnel_id" | tr -d '"\r\n ')
+    cf_token_dns=$(echo "$cf_token_dns" | tr -d '"\r\n ')
+    root_domain_zone_id=$(echo "$root_domain_zone_id" | tr -d '"\r\n ')
+
     if [[ -z "$tunnel_id" || "$tunnel_id" == "null" || "$tunnel_id" =~ [[:space:]] ]]; then
         echo "Error: Invalid tunnel ID '$tunnel_id'. Cannot set DNS CNAME record." >&2
         return 1
