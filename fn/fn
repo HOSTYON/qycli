@@ -315,10 +315,10 @@ get_public_ips() {
 tunnel_and_infos() {
     local dom="$1"
     stk_cloudflared_install
+    domain_parser "$dom"
 
-    if tunnel_id=$(cf_get_or_create_tunnel) && [ -n "$tunnel_id" ] && [[ ! "$tunnel_id" =~ [[:space:]] ]]; then
+    if tunnel_id=$(cf_get_or_create_tunnel "$root_domain") && [ -n "$tunnel_id" ] && [[ ! "$tunnel_id" =~ [[:space:]] ]]; then
         get_cf_token_dns
-        domain_parser "$dom"
         zone_answer="$(curl -s https://api.cloudflare.com/client/v4/zones?name="$root_domain" \
             -H "Authorization: Bearer $cf_token_dns")"
         if [[ $(echo "$zone_answer" | yq -oj .success) = "true" && $(echo "$zone_answer" | yq -oj .result_info.total_count) != 0 ]]; then
@@ -1122,7 +1122,8 @@ fn_migrate_to_tunnel() {
         return 0
     fi
 
-    if ! tunnel_id=$(cf_get_or_create_tunnel) || [ -z "$tunnel_id" ] || [[ "$tunnel_id" =~ [[:space:]] ]]; then
+    domain_parser "${target_domains[0]}"
+    if ! tunnel_id=$(cf_get_or_create_tunnel "$root_domain") || [ -z "$tunnel_id" ] || [[ "$tunnel_id" =~ [[:space:]] ]]; then
         echo "Failed to get or create Cloudflare tunnel. Aborting migration."
         return 1
     fi

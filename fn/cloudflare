@@ -287,6 +287,7 @@ get_cf_tunnel_id() {
 }
 
 cf_get_or_create_tunnel() {
+    local target_root="${1:-$root_domain}"
     get_cftaz
     if [ -z "$cftaz" ] || ! grep -q "c07321b023e944ff818fec44d8203567" /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null; then
         upd_get_cf_tokens >&2
@@ -306,8 +307,13 @@ cf_get_or_create_tunnel() {
     fi
 
     local account_id=""
-    if [ -n "$root_domain" ] && [ -s /var/qyc/cloudflare/cfzones.json ]; then
-        account_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").account.id' /var/qyc/cloudflare/cfzones.json 2>/dev/null | head -n1 | tr -d '"\r\n ')
+    if [ -n "$target_root" ] && [ -s /var/qyc/cloudflare/cfzones.json ]; then
+        account_id=$(yq -oy '.[].[] | select(.name == "'"$target_root"'").account.id' /var/qyc/cloudflare/cfzones.json 2>/dev/null | head -n1 | tr -d '"\r\n ')
+    fi
+    if [ -n "$target_root" ] && { [ -z "$account_id" ] || [ "$account_id" = "null" ]; }; then
+        local zone_check
+        zone_check=$(curl -s "https://api.cloudflare.com/client/v4/zones?name=$target_root" -H "Authorization: Bearer $api_token")
+        account_id=$(echo "$zone_check" | yq '.result[0].account.id' 2>/dev/null | tr -d '"\r\n ')
     fi
     if [ -z "$account_id" ] || [ "$account_id" = "null" ]; then
         if [ -s /var/qyc/cloudflare/cfaccounts.json ]; then
@@ -323,6 +329,8 @@ cf_get_or_create_tunnel() {
         account_id=$(echo "$accounts_json" | yq '.result[0].id' 2>/dev/null | tr -d '"\r\n ')
     fi
 
+    account_id=$(echo "$account_id" | tr -d '"\r\n ')
+
     if [ -z "$account_id" ] || [ "$account_id" = "null" ]; then
         echo "Could not retrieve Cloudflare Account ID for Tunnel creation." >&2
         return 1
@@ -333,8 +341,12 @@ cf_get_or_create_tunnel() {
     local tunnel_id=""
     local tunnel_secret=""
     if [ -s /var/qyc/cloudflare/tunnel.json ]; then
-        tunnel_id=$(yq -oy .TunnelID /var/qyc/cloudflare/tunnel.json 2>/dev/null | tr -d '"\r\n ')
-        tunnel_secret=$(yq -oy .TunnelSecret /var/qyc/cloudflare/tunnel.json 2>/dev/null | tr -d '"\r\n ')
+        local existing_acc
+        existing_acc=$(yq -oy .AccountTag /var/qyc/cloudflare/tunnel.json 2>/dev/null | tr -d '"\r\n ')
+        if [ "$existing_acc" = "$account_id" ]; then
+            tunnel_id=$(yq -oy .TunnelID /var/qyc/cloudflare/tunnel.json 2>/dev/null | tr -d '"\r\n ')
+            tunnel_secret=$(yq -oy .TunnelSecret /var/qyc/cloudflare/tunnel.json 2>/dev/null | tr -d '"\r\n ')
+        fi
     fi
 
     if [ -n "$tunnel_id" ] && [ "$tunnel_id" != "null" ]; then
