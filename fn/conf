@@ -47,22 +47,27 @@ conf_calculate_resource_distribution() {
 }
 
 conf_openresty_renew_cf_ips() {
+    mkdir -p /etc/uny/openresty/conf.d
+    if [ -f /var/qyc/qycli/cnf/openresty/conf.d/00-realip.conf ]; then
+        cp -f /var/qyc/qycli/cnf/openresty/conf.d/00-realip.conf /etc/uny/openresty/conf.d/ 2>/dev/null || true
+    fi
+
+    rm -f /etc/uny/openresty/conf.d/cloudflare_new
     # shellcheck disable=SC2013
     for cfip in $(
-        cat /var/qyc/cache/cloudflare_ipv6_ips
+        cat /var/qyc/cache/cloudflare_ipv6_ips 2>/dev/null
         echo ""
-        cat /var/qyc/cache/cloudflare_ipv4_ips
+        cat /var/qyc/cache/cloudflare_ipv4_ips 2>/dev/null
     ); do
-        echo "set_real_ip_from $cfip;" | tee -a /etc/uny/openresty/conf.d/cloudflare_new >/dev/null
+        [ -n "$cfip" ] && echo "set_real_ip_from $cfip;" >>/etc/uny/openresty/conf.d/cloudflare_new
     done
-    echo "set_real_ip_from unix:;" | tee -a /etc/uny/openresty/conf.d/cloudflare_new >/dev/null
 
-    echo 'real_ip_header CF-Connecting-IP;' | tee -a /etc/uny/openresty/conf.d/cloudflare_new >/dev/null
-    echo 'real_ip_recursive on;' | tee -a /etc/uny/openresty/conf.d/cloudflare_new >/dev/null
+    if [ -f /etc/uny/openresty/conf.d/cloudflare_new ]; then
+        cp -f /etc/uny/openresty/conf.d/cloudflare_new /etc/uny/openresty/conf.d/cloudflare.conf
+        rm -f /etc/uny/openresty/conf.d/cloudflare_new
+    fi
 
-    cp -f /etc/uny/openresty/conf.d/cloudflare_new /etc/uny/openresty/conf.d/cloudflare.conf
-
-    systemctl reload uny-openresty
+    systemctl reload uny-openresty 2>/dev/null || true
 }
 
 conf_openresty_resources() {
