@@ -471,7 +471,6 @@ EOF
         chmod 600 "/var/qyc/cloudflare/tunnels/${account_id}.json"
         cp -f "/var/qyc/cloudflare/tunnels/${account_id}.json" "/etc/cloudflared/${acc_slug}.json"
         chmod 600 "/etc/cloudflared/${acc_slug}.json"
-        ln -sf "/etc/cloudflared/${acc_slug}.json" "/etc/cloudflared/${tunnel_id}.json" 2>/dev/null || true
         echo "$tunnel_id"
         return 0
     fi
@@ -530,7 +529,6 @@ EOF
     chmod 600 "/etc/cloudflared/${acc_slug}.json"
     cp -f "/etc/cloudflared/${acc_slug}.json" "/var/qyc/cloudflare/tunnels/${account_id}.json"
     chmod 600 "/var/qyc/cloudflare/tunnels/${account_id}.json"
-    ln -sf "/etc/cloudflared/${acc_slug}.json" "/etc/cloudflared/${tunnel_id}.json" 2>/dev/null || true
 
     echo "$tunnel_id"
     return 0
@@ -608,8 +606,11 @@ EOF
         systemctl daemon-reload 2>/dev/null || true
     fi
 
-    # Clean up legacy single-tunnel files
+    # Clean up legacy single-tunnel files and UUID symlinks
     rm -f /etc/cloudflared/config.yml /etc/cloudflared/tunnel.json
+    for sym in /etc/cloudflared/*-*-*-*-*.json; do
+        [ -L "$sym" ] && rm -f "$sym"
+    done
 
     local edge_ip_version="auto"
     if command -v get_public_ips >/dev/null 2>&1; then
