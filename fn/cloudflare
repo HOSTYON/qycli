@@ -611,6 +611,15 @@ EOF
     # Clean up legacy single-tunnel files
     rm -f /etc/cloudflared/config.yml /etc/cloudflared/tunnel.json
 
+    local edge_ip_version="auto"
+    if command -v get_public_ips >/dev/null 2>&1; then
+        get_public_ips
+        # shellcheck disable=SC2154
+        if [ -n "$ipv6" ]; then
+            edge_ip_version="6"
+        fi
+    fi
+
     for dom_file in "$tmp_dir"/*.domains; do
         [ -f "$dom_file" ] || continue
         local acc_id
@@ -632,6 +641,7 @@ EOF
         cat <<EOF >"$cfg_file"
 tunnel: $tid
 credentials-file: $tunnel_creds
+edge-ip-version: $edge_ip_version
 
 ingress:
 EOF
@@ -658,7 +668,7 @@ EOF
 
         systemctl enable "cloudflared@${acc_slug}" 2>/dev/null || true
         systemctl restart "cloudflared@${acc_slug}" 2>/dev/null || true
-        echo "Cloudflare Tunnel for account $acc_slug ($acc_id) updated and running."
+        echo "Cloudflare Tunnel for account $acc_slug ($acc_id) updated and running (edge-ip-version: $edge_ip_version)."
     done
 
     # Clean up stale cloudflared@ instances that no longer have sites
