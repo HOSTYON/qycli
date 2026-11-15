@@ -55,6 +55,7 @@ conf_openresty_renew_cf_ips() {
     ); do
         echo "set_real_ip_from $cfip;" | tee -a /etc/uny/openresty/conf.d/cloudflare_new >/dev/null
     done
+    echo "set_real_ip_from unix:;" | tee -a /etc/uny/openresty/conf.d/cloudflare_new >/dev/null
 
     echo 'real_ip_header CF-Connecting-IP;' | tee -a /etc/uny/openresty/conf.d/cloudflare_new >/dev/null
     echo 'real_ip_recursive on;' | tee -a /etc/uny/openresty/conf.d/cloudflare_new >/dev/null
