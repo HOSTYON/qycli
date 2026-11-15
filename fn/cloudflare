@@ -345,6 +345,28 @@ cf_get_account_slug_for_id() {
     fi
     if [ -z "$slug" ]; then
         slug="$acc_id"
+    else
+        # Disambiguate duplicate account names
+        local is_duplicate=false
+        if [ -s /var/qyc/cloudflare/cfaccounts.json ]; then
+            local match_count
+            match_count=$(yq -oy '[.result[] | select(.name == "'"$raw_name"'")] | length' /var/qyc/cloudflare/cfaccounts.json 2>/dev/null)
+            if [[ "$match_count" =~ ^[0-9]+$ ]] && [ "$match_count" -gt 1 ]; then
+                is_duplicate=true
+            fi
+        fi
+
+        if [ -s "/etc/cloudflared/${slug}.json" ]; then
+            local existing_tag
+            existing_tag=$(yq -oy .AccountTag "/etc/cloudflared/${slug}.json" 2>/dev/null | tr -d '"\r\n ')
+            if [ -n "$existing_tag" ] && [ "$existing_tag" != "$acc_id" ]; then
+                is_duplicate=true
+            fi
+        fi
+
+        if [ "$is_duplicate" = true ]; then
+            slug="${slug}-${acc_id:0:8}"
+        fi
     fi
     echo "$slug"
 }
