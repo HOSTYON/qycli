@@ -315,6 +315,40 @@ cf_get_account_id_for_domain() {
     echo "$acc" | tr -d '"\r\n '
 }
 
+cf_get_account_slug_for_id() {
+    local acc_id="$1"
+    local raw_name=""
+    if [ -s /var/qyc/cloudflare/cfaccounts.json ]; then
+        raw_name=$(yq -oy '.result[] | select(.id == "'"$acc_id"'").name' /var/qyc/cloudflare/cfaccounts.json 2>/dev/null | head -n1 | tr -d '"\r\n')
+    fi
+    if [ -z "$raw_name" ] || [ "$raw_name" = "null" ]; then
+        if [ -s /var/qyc/cloudflare/cfzones.json ]; then
+            raw_name=$(yq -oy '.[].[] | select(.account.id == "'"$acc_id"'").account.name' /var/qyc/cloudflare/cfzones.json 2>/dev/null | head -n1 | tr -d '"\r\n')
+        fi
+    fi
+    if [ -z "$raw_name" ] || [ "$raw_name" = "null" ]; then
+        get_cftaz
+        local cf_token_az="$cftaz"
+        [ -z "$cf_token_az" ] && get_cf_token_dns && cf_token_az="$cf_token_dns"
+        cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml 2>/dev/null | tr -d '"\r\n ')
+        local api_token="${cf_token_az:-$cf_token}"
+        if [ -n "$api_token" ]; then
+            local acc_res
+            acc_res=$(curl -s "https://api.cloudflare.com/client/v4/accounts/$acc_id" -H "Authorization: Bearer $api_token")
+            raw_name=$(echo "$acc_res" | yq '.result.name' 2>/dev/null | tr -d '"\r\n')
+        fi
+    fi
+
+    local slug=""
+    if [ -n "$raw_name" ] && [ "$raw_name" != "null" ]; then
+        slug=$(echo "$raw_name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed -E 's/[^a-z0-9_-]+/-/g; s/^-+|-+$//g')
+    fi
+    if [ -z "$slug" ]; then
+        slug="$acc_id"
+    fi
+    echo "$slug"
+}
+
 cf_get_or_create_tunnel() {
     local target="${1:-$root_domain}"
     get_cftaz
@@ -355,6 +389,9 @@ cf_get_or_create_tunnel() {
         return 1
     fi
 
+    local acc_slug
+    acc_slug=$(cf_get_account_slug_for_id "$account_id")
+
     mkdir -p /etc/cloudflared /var/qyc/cloudflare/tunnels
 
     local tunnel_id=""
@@ -366,7 +403,17 @@ cf_get_or_create_tunnel() {
         tunnel_secret=$(yq -oy .TunnelSecret "/var/qyc/cloudflare/tunnels/${account_id}.json" 2>/dev/null | tr -d '"\r\n ')
     fi
 
-    # 2. Check in /var/qyc/cloudflare/tunnel.json
+    # 2. Check in /etc/cloudflared/<acc_slug>.json
+    if [ -z "$tunnel_id" ] && [ -s "/etc/cloudflared/${acc_slug}.json" ]; then
+        local slug_acc
+        slug_acc=$(yq -oy .AccountTag "/etc/cloudflared/${acc_slug}.json" 2>/dev/null | tr -d '"\r\n ')
+        if [ "$slug_acc" = "$account_id" ]; then
+            tunnel_id=$(yq -oy .TunnelID "/etc/cloudflared/${acc_slug}.json" 2>/dev/null | tr -d '"\r\n ')
+            tunnel_secret=$(yq -oy .TunnelSecret "/etc/cloudflared/${acc_slug}.json" 2>/dev/null | tr -d '"\r\n ')
+        fi
+    fi
+
+    # 3. Check in /var/qyc/cloudflare/tunnel.json
     if [ -z "$tunnel_id" ] && [ -s /var/qyc/cloudflare/tunnel.json ]; then
         local existing_acc
         existing_acc=$(yq -oy .AccountTag /var/qyc/cloudflare/tunnel.json 2>/dev/null | tr -d '"\r\n ')
@@ -376,7 +423,7 @@ cf_get_or_create_tunnel() {
         fi
     fi
 
-    # 3. Check any /etc/cloudflared/*.json files
+    # 4. Check any /etc/cloudflared/*.json files
     if [ -z "$tunnel_id" ]; then
         for cred_file in /etc/cloudflared/*.json; do
             if [ -s "$cred_file" ]; then
@@ -400,8 +447,9 @@ cf_get_or_create_tunnel() {
 }
 EOF
         chmod 600 "/var/qyc/cloudflare/tunnels/${account_id}.json"
-        cp -f "/var/qyc/cloudflare/tunnels/${account_id}.json" "/etc/cloudflared/${tunnel_id}.json"
-        chmod 600 "/etc/cloudflared/${tunnel_id}.json"
+        cp -f "/var/qyc/cloudflare/tunnels/${account_id}.json" "/etc/cloudflared/${acc_slug}.json"
+        chmod 600 "/etc/cloudflared/${acc_slug}.json"
+        ln -sf "/etc/cloudflared/${acc_slug}.json" "/etc/cloudflared/${tunnel_id}.json" 2>/dev/null || true
         echo "$tunnel_id"
         return 0
     fi
@@ -450,16 +498,17 @@ EOF
             --data '{"tunnel_secret":"'"$tunnel_secret"'"}' >/dev/null 2>&1
     fi
 
-    cat <<EOF >"/etc/cloudflared/${tunnel_id}.json"
+    cat <<EOF >"/etc/cloudflared/${acc_slug}.json"
 {
   "AccountTag": "$account_id",
   "TunnelSecret": "$tunnel_secret",
   "TunnelID": "$tunnel_id"
 }
 EOF
-    chmod 600 "/etc/cloudflared/${tunnel_id}.json"
-    cp -f "/etc/cloudflared/${tunnel_id}.json" "/var/qyc/cloudflare/tunnels/${account_id}.json"
+    chmod 600 "/etc/cloudflared/${acc_slug}.json"
+    cp -f "/etc/cloudflared/${acc_slug}.json" "/var/qyc/cloudflare/tunnels/${account_id}.json"
     chmod 600 "/var/qyc/cloudflare/tunnels/${account_id}.json"
+    ln -sf "/etc/cloudflared/${acc_slug}.json" "/etc/cloudflared/${tunnel_id}.json" 2>/dev/null || true
 
     echo "$tunnel_id"
     return 0
@@ -544,17 +593,19 @@ EOF
         [ -f "$dom_file" ] || continue
         local acc_id
         acc_id=$(basename "$dom_file" .domains)
-        active_accounts+=("$acc_id")
+        local acc_slug
+        acc_slug=$(cf_get_account_slug_for_id "$acc_id")
+        active_accounts+=("$acc_slug")
 
         local tid
         tid=$(cf_get_or_create_tunnel "$acc_id")
         if [ -z "$tid" ] || [ "$tid" = "null" ]; then
-            echo "Failed to get tunnel for account $acc_id. Skipping." >&2
+            echo "Failed to get tunnel for account $acc_id ($acc_slug). Skipping." >&2
             continue
         fi
 
-        local tunnel_creds="/etc/cloudflared/${tid}.json"
-        local cfg_file="/etc/cloudflared/config-${acc_id}.yml"
+        local tunnel_creds="/etc/cloudflared/${acc_slug}.json"
+        local cfg_file="/etc/cloudflared/config-${acc_slug}.yml"
 
         cat <<EOF >"$cfg_file"
 tunnel: $tid
@@ -583,29 +634,29 @@ EOF
   - service: http_status:404
 EOF
 
-        systemctl enable "cloudflared@${acc_id}" 2>/dev/null || true
-        systemctl restart "cloudflared@${acc_id}" 2>/dev/null || true
-        echo "Cloudflare Tunnel for account $acc_id updated and running."
+        systemctl enable "cloudflared@${acc_slug}" 2>/dev/null || true
+        systemctl restart "cloudflared@${acc_slug}" 2>/dev/null || true
+        echo "Cloudflare Tunnel for account $acc_slug ($acc_id) updated and running."
     done
 
     # Clean up stale cloudflared@ instances that no longer have sites
     local running_units
     running_units=$(systemctl list-units --type=service --state=running 'cloudflared@*' 2>/dev/null | awk '/cloudflared@/ {print $1}')
     for unit in $running_units; do
-        local running_acc
-        running_acc=$(echo "$unit" | sed -E 's/cloudflared@(.*)\.service/\1/')
+        local running_instance
+        running_instance=$(echo "$unit" | sed -E 's/cloudflared@(.*)\.service/\1/')
         local is_active=false
         for act in "${active_accounts[@]}"; do
-            if [ "$act" = "$running_acc" ]; then
+            if [ "$act" = "$running_instance" ]; then
                 is_active=true
                 break
             fi
         done
         if [ "$is_active" = false ]; then
-            echo "Stopping inactive tunnel for account $running_acc..."
+            echo "Stopping inactive tunnel for account $running_instance..."
             systemctl stop "$unit" 2>/dev/null || true
             systemctl disable "$unit" 2>/dev/null || true
-            rm -f "/etc/cloudflared/config-${running_acc}.yml"
+            rm -f "/etc/cloudflared/config-${running_instance}.yml"
         fi
     done
 
