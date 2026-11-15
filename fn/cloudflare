@@ -459,8 +459,7 @@ EOF
 EOF
     chmod 600 "/etc/cloudflared/${tunnel_id}.json"
     cp -f "/etc/cloudflared/${tunnel_id}.json" "/var/qyc/cloudflare/tunnels/${account_id}.json"
-    cp -f "/etc/cloudflared/${tunnel_id}.json" /var/qyc/cloudflare/tunnel.json
-    ln -sf "/etc/cloudflared/${tunnel_id}.json" /etc/cloudflared/tunnel.json 2>/dev/null || true
+    chmod 600 "/var/qyc/cloudflare/tunnels/${account_id}.json"
 
     echo "$tunnel_id"
     return 0
@@ -538,6 +537,9 @@ EOF
         systemctl daemon-reload 2>/dev/null || true
     fi
 
+    # Clean up legacy single-tunnel files
+    rm -f /etc/cloudflared/config.yml /etc/cloudflared/tunnel.json
+
     for dom_file in "$tmp_dir"/*.domains; do
         [ -f "$dom_file" ] || continue
         local acc_id
@@ -580,9 +582,6 @@ EOF
         cat <<'EOF' >>"$cfg_file"
   - service: http_status:404
 EOF
-
-        # Keep /etc/cloudflared/config.yml updated for convenience
-        cp -f "$cfg_file" /etc/cloudflared/config.yml 2>/dev/null || true
 
         systemctl enable "cloudflared@${acc_id}" 2>/dev/null || true
         systemctl restart "cloudflared@${acc_id}" 2>/dev/null || true
