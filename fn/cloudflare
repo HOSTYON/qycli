@@ -641,7 +641,7 @@ EOF
         cat <<EOF >"$cfg_file"
 tunnel: $tid
 credentials-file: $tunnel_creds
-edge-ip-version: $edge_ip_version
+edge-ip-version: "$edge_ip_version"
 
 ingress:
 EOF
