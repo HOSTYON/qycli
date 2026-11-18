@@ -578,17 +578,17 @@ upd_cloudflared_config() {
         return 0
     fi
 
-    # Ensure systemd template service is installed
-    if [ ! -f /etc/systemd/system/cloudflared@.service ]; then
+    # Ensure systemd template service is installed (and updated)
+    if [ ! -f /etc/systemd/system/cloudflared@.service ] || grep -q '%I' /etc/systemd/system/cloudflared@.service 2>/dev/null; then
         cat <<'EOF' >/etc/systemd/system/cloudflared@.service
 [Unit]
-Description=Cloudflare Tunnel for Account %I
+Description=Cloudflare Tunnel for Account %i
 After=network.target
 
 [Service]
 TimeoutStartSec=0
 Type=notify
-ExecStart=/var/qyc/bin/cloudflared tunnel --config /etc/cloudflared/config-%I.yml run
+ExecStart=/var/qyc/bin/cloudflared tunnel --config /etc/cloudflared/config-%i.yml run
 Restart=on-failure
 RestartSec=5s
 
