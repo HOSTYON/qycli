@@ -1407,17 +1407,47 @@ EOF
 }
 
 fn_info_inst() {
-    current_branch_name="$(yq .branch_name /var/qyc/cnf.yaml)"
-    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml)
+    current_branch_name="$(yq .branch_name /var/qyc/cnf.yaml 2>/dev/null)"
+    cf_token="$(yq .cloudflare_token /var/qyc/cnf.yaml 2>/dev/null)"
+    [ "$cf_token" = "null" ] && cf_token=""
 
-    cf_token_accounts_zones_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
-    cf_token_wp_cf_page_cache=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json)
+    cf_token_accounts_zones_dns=""
+    if [ -s /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ]; then
+        cf_token_accounts_zones_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null)
+        [ "$cf_token_accounts_zones_dns" = "null" ] && cf_token_accounts_zones_dns=""
+    fi
 
-    echo "To install the same qycli version with the same Cloudflare tokens on another server run:"
-    echo
-    echo "wget -qO- qyc.li/i/${current_branch_name} | sh -s cft ${cf_token} \\
-    cftaz ${cf_token_accounts_zones_dns} \\
-    cftwp ${cf_token_wp_cf_page_cache}"
+    cf_token_wp_cf_page_cache=""
+    if [ -s /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json ]; then
+        cf_token_wp_cf_page_cache=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json 2>/dev/null)
+        [ "$cf_token_wp_cf_page_cache" = "null" ] && cf_token_wp_cf_page_cache=""
+    fi
+
+    local install_cmd="wget -qO- qyc.li/i/${current_branch_name:-stable} | sh -s"
+    local has_tokens=0
+
+    if [ -n "$cf_token" ]; then
+        install_cmd="$install_cmd cft ${cf_token}"
+        has_tokens=1
+    fi
+    if [ -n "$cf_token_accounts_zones_dns" ]; then
+        install_cmd="$install_cmd cftaz ${cf_token_accounts_zones_dns}"
+        has_tokens=1
+    fi
+    if [ -n "$cf_token_wp_cf_page_cache" ]; then
+        install_cmd="$install_cmd cftwp ${cf_token_wp_cf_page_cache}"
+        has_tokens=1
+    fi
+
+    if [ "$has_tokens" -eq 1 ]; then
+        echo "To install the same qycli version with the same Cloudflare tokens on another server run:"
+        echo
+        echo "$install_cmd"
+    else
+        echo "To install qycli on another server run:"
+        echo
+        echo "wget -qO- qyc.li/i/${current_branch_name:-stable} | sh"
+    fi
 }
 
 fn_info() {
