@@ -17,10 +17,13 @@ stk_utility_and_repos() {
     # Get the Public Suffix List
     upd_psl
 
-    # qycli user
-    # groupadd qycli
-    # useradd -c "qycli Stack User" -d /var/www -g qycli \
-    #     -s /bin/false qycli
+    # unyweb user and group
+    if ! getent group unyweb >/dev/null; then
+        groupadd --system unyweb
+    fi
+    if ! getent passwd unyweb >/dev/null; then
+        useradd --system -c "OpenResty Web User" -d /var/www -g unyweb -s /bin/false unyweb
+    fi
 
     # admin user password
     echo "admin_password: $(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)" >>/var/qyc/cnf.yaml
