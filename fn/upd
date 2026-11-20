@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2154
+
+upd_openresty() {
+    unyp install openresty
+    unyp si openresty
+
+    systemctl reenable uny-openresty
+}
+
+upd_mariadb() {
+    unyp install mariadb
+    unyp si mariadb
+
+    systemctl reenable uny-mariadb
+}
+
+upd_php() {
+    for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
+        unyp install php/"$phpv"
+        conf_php_complete
+    done
+
+    unyp system-install php/"$php_default_version"
+
+    # systemctl reenable uny-php"$php_default_version"-fpm
+    # systemctl restart uny-php"$php_default_version"-fpm
+
+    cp /var/qyc/qycli/cnf/php/qyc-php-logrotate /etc/logrotate.d/qyc-php-logrotate
+}
+
+upd_psl() {
+    curl -s https://publicsuffix.org/list/public_suffix_list.dat | grep -vE "^//" | sed "s+\*\.++" | tr -s '\n' >/var/qyc/cache/psl
+}
+
+upd_qycli_wp_cron() {
+    chmod +x /var/qyc/qycli/bin/wp-cron
+    for unit in /var/qyc/qycli/cnf/wp/wp-cron.*; do
+        if ! cmp -s "$unit" /etc/systemd/system/"$(basename "$unit")"; then
+            cp -a "$unit" /etc/systemd/system/
+            d_reload=yes
+        fi
+    done
+    if [[ $d_reload == "yes" ]]; then
+        systemctl daemon-reload
+        systemctl reenable wp-cron.timer
+        systemctl start wp-cron.timer
+        d_reload=
+    fi
+}
+
+upd_qycli_changes() {
+    unyp uu
+    qyc upd
+    upd_php
+
+    for www_folder in /var/www/*; do
+        if [[ -d "$www_folder" ]]; then
+            domain=$(basename "$www_folder")
+
+            chown unyphp:unyweb -R "$www_folder"/*
+            # Set directories to 775 (Allows the unyweb group to create files/folders)
+            #find "$www_folder" -type d -exec chmod 755 {} \;
+            # Set files to 664 (Allows the unyweb group to modify files)
+            #find "$www_folder" -type f -exec chmod 644 {} \;
+
+            yq '.backend = "php-fpm"' -i /var/www/"$domain"/conf/qyc-site.yaml
+
+            php_micro_ver="$(yq .php_default_version /var/qyc/cnf.yaml | tr -d '.')"
+
+            cp /var/qyc/qycli/cnf/openresty/templates/wp.conf /etc/uny/openresty/sites-available/"$domain"
+            sed -e "s|DOMAIN|$domain|g" -e "s|MICROVER|$php_micro_ver|g" -i /etc/uny/openresty/sites-available/"$domain"
+
+            # sed -z \
+            #     -e "s|#include common.*microcache.conf;\n[ ]*}|include local/php${php_micro_ver}-fpm.conf;\n    include common/development.conf;\n    include common/wp.conf;|" \
+            #     -i /etc/uny/openresty/sites-available/"$domain"
+            # if ! grep -q "root /var/www/${domain}/htdocs;" /etc/uny/openresty/sites-available/"$domain"; then
+            #     sed "\|include /var/www/${domain}/conf/or/\*.conf.*|a\    root /var/www/${domain}/htdocs;" -i /etc/uny/openresty/sites-available/"$domain"
+            # fi
+            # sed '\|#add_header Cache-Control "public, stale-while-revalidate=60s";|d' -i /etc/uny/openresty/sites-available/"$domain"
+
+        fi
+    done
+    systemctl restart uny-openresty
+
+    current_dir="$(pwd)"
+    for htdocs_folder in /var/www/*/htdocs; do
+        cd "$htdocs_folder" || continue
+        if ! wp plugin is-installed sqlite-object-cache; then
+            wp plugin install sqlite-object-cache
+            wp config set WP_CACHE_KEY_SALT "$(openssl rand -base64 12)"
+            wp plugin activate sqlite-object-cache
+            wp sqlite-object-cache size 32
+            wp config set --raw WP_SQLITE_OBJECT_CACHE_APCU true
+        fi
+        if wp plugin is-installed litespeed-cache; then
+            wp plugin deactivate litespeed-cache
+            wp plugin uninstall litespeed-cache
+        fi
+        if [ -f "$htdocs_folder"/wp-content/object-cache.php ]; then
+            rm "$htdocs_folder"/wp-content/object-cache.php
+        fi
+        if [ -f "$htdocs_folder"/wp-content/mu-plugins/qycli.php ]; then
+            rm "$htdocs_folder"/wp-content/mu-plugins/qycli.php
+        fi
+        rm -f "$htdocs_folder"/.htaccess "$htdocs_folder"/.htaccess.bak
+    done
+    cd "$current_dir" || exit
+
+    for pkg in valkey openlitespeed; do
+        if systemctl list-unit-files --type=service | grep -q uny-"$pkg"; then
+            systemctl stop uny-"$pkg"
+            systemctl disable uny-"$pkg"
+            rm -f /etc/systemd/system/uny-"$pkg".service
+            systemctl daemon-reload
+
+            unyp rm "$pkg"
+        fi
+    done
+
+    qyc conf limits
+}
+
+upd_qycli() {
+    qycli_branch="$(yq .branch_name /var/qyc/cnf.yaml)"
+    git -C /var/qyc/qycli checkout "$qycli_branch"
+    git -C /var/qyc/qycli reset --hard HEAD
+    git -C /var/qyc/qycli pull -f
+
+    git -C /var/qyc/qycli-plugin reset --hard HEAD
+    git -C /var/qyc/qycli-plugin pull -f
+
+    ln -sf /var/qyc/qycli/bin/qyc /bin/qyc
+
+    chmod 755 /var/qyc/qycli/bin/qyc
+    chmod 755 /var/qyc/qycli/ins/kernel
+
+    upd_qycli_wp_cron
+    conf_openresty_complete
+
+    # upd_qycli_changes
+}
+
+upd_stack() {
+    upd_get_new_cf_ips
+    upd_mariadb
+    conf_mariadb
+    upd_openresty
+    conf_openresty_complete
+    upd_php
+    upd_psl
+    upd_cloudflared
+}
+
+upd_cloudflared() {
+    echo "Updating cloudflared..."
+    mkdir -p /var/qyc/bin
+    wget -qO /var/qyc/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+    chmod +x /var/qyc/bin/cloudflared
+    ln -sf /var/qyc/bin/cloudflared /usr/local/bin/cloudflared
+    ln -sf /var/qyc/bin/cloudflared /bin/cloudflared
+}
+
+upd_parser() {
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+        qyc | qycli)
+            # Already updated by upd_qycli before upd_parser
+            shift
+            ;;
+        stk | stack)
+            shift
+            upd_stack
+            ;;
+        cloudflared)
+            shift
+            upd_cloudflared
+            ;;
+        cf | cloudflareinfo)
+            shift
+            upd_get_cf_tokens
+            upd_get_cf_accounts_and_zones
+            ;;
+        limits | resources)
+            shift
+            conf_update_resource_limits "$@"
+            ;;
+        *)
+            echo "Invalid option: $1"
+            print_help_upd
+            ;;
+        esac
+        shift
+    done
+}

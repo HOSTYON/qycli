@@ -24,6 +24,7 @@ Available commands:
   cnf | conf | configure    Change qycli configuration
   info                      Prints the qycli configuration
   upd | update              Update server apps and qycli
+  migrate-to-tunnel         Migrate sites to Cloudflare Tunnel mode
 
 To see the help section of a command just type "qyc [command]".
 
@@ -64,6 +65,7 @@ Available options:
   e | email         Set the email address for the WordPress admin account
   t | title         Set the title for the WordPress site
   php | phpv        Set the PHP version for the site, if empty default version is used
+  m | mode          Set ingress mode: tunnel, dns, or rproxy (default: dns)
 
 Examples:
   qyc mk wp domain.com
@@ -130,6 +132,11 @@ Available options:
   enable                value: none         Enables a site in the nginx configuration
   disable               value: none         Disables a site in the nginx configuration
 
+  ingress|mode
+    └─ tunnel           value: none         Switch site to Cloudflare Tunnel mode
+    └─ dns              value: none         Switch site to direct DNS mode (port 443 + self-signed cert)
+    └─ rproxy           value: none         Switch site to host reverse proxy mode (port 80)
+
 Examples:
   qyc set domain.com cache f on
   qyc set domain.com name add sub.domain2.com
@@ -147,16 +154,18 @@ Usage:
   qyc cnf [option] [option] [value] [option] [value] ...
 
 Available options:
-  php                       values: 8.4|8.3|8.2|8.1|7.4    Change the installed php versions, the first one will be the default
-  cft|cloudflaretoken       value:  <CloudflareToken>      Change the Cloudflare Token to be used
-  aupd|autoupd|autoupdate   values: on|yes|off|no          Turn automatic updates for the server and qycli on or off
-  opc | opcache             values: on|off                 Turn Zend OPCache for PHP on or off
+  php                           values: 8.4|8.3|8.2|8.1|7.4    Change the installed php versions, the first one will be the default
+  cft | cloudflaretoken         value:  <CloudflareToken>      Change the Cloudflare Token to be used
+  aupd | autoupd | autoupdate   values: on|yes|off|no          Turn automatic updates for the server and qycli on or off
+  opc | opcache                 values: on|off                 Turn Zend OPCache for PHP on or off
+  qycv | qycliversion           value: stable|beta|dev         Sets the qycli version
 
 Examples:
   qyc cnf php 8.4,8.3
   qyc cnf cft sdflsnef843nkfs8hdfsknslfijei9
   qyc cnf aupd on
   qyc cnf opcache off
+  qyc cnf qycv stable
 
 EOF
 }

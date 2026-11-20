@@ -3,3 +3,4 @@
   fastcgi_param  SCRIPT_FILENAME    $request_filename;
   fastcgi_param  SERVER_NAME        $host;
   fastcgi_param  HTTP_HOST          $http_host;
+  fastcgi_param  HTTPS              $fastcgi_https if_not_empty;

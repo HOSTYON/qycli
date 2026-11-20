@@ -1,0 +1,36 @@
+[Unit]
+Description=PHP SHORTVER FastCGI Process Manager (qycli)
+After=network.target
+
+[Service]
+Type=notify
+
+# Pathing for compiled binary, custom master config, and PID file
+PIDFile=/run/php/ver/php-fpm.pid
+ExecStart=/uny/pkg/php/LONGVER/sbin/php-fpm --nodaemonize --fpm-config /uny/etc/php/SHORTVER/php-fpm.conf --pid /run/php/SHORTVER/fpm.pid
+ExecReload=/bin/kill -USR2 $MAINPID
+
+# Dynamic runtime directory management for your pool's prefix path
+RuntimeDirectory=php/SHORTVER
+RuntimeDirectoryMode=0755
+
+# Security & Sandboxing Features
+# Protects system directories and ensures isolated /tmp files per service
+PrivateTmp=true
+ProtectSystem=full
+PrivateDevices=true
+
+# Kernel and scheduling hardening
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictRealtime=true
+
+# Restrict network namespaces & address families to necessary protocols
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX
+
+[Install]
+Alias=phpSHORTVER-fpm.service
+Alias=phpMICROVER.service
+WantedBy=multi-user.target

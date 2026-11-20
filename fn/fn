@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
 
-# shellcheck disable=1091
-source /var/qyc/qycli/bin/upd
-
-# function library for qyc
-
 domain_parser() {
     if [[ "$1" == *"."* ]]; then
         domain="$1"
@@ -34,13 +29,13 @@ domain_parser() {
 }
 
 enable_site() {
-    ln -s /etc/uny/openresty/sites-available/"$domain" /etc/uny/openresty/sites-enabled/
+    ln -sf /etc/uny/openresty/sites-available/"$domain" /etc/uny/openresty/sites-enabled/
     yq '.enabled = "yes"' -i /var/www/"$domain"/conf/qyc-site.yaml
     systemctl reload uny-openresty
 }
 
 disable_site() {
-    rm /etc/uny/openresty/sites-enabled/"$domain"
+    rm -f /etc/uny/openresty/sites-enabled/"$domain"
     yq '.enabled = "no"' -i /var/www/"$domain"/conf/qyc-site.yaml
     systemctl reload uny-openresty
 }
@@ -52,7 +47,9 @@ mk_common_db() {
     dbnaming="qyc_$snakedomain"
 
     runuser -u mysql -- mariadb --user=mysql <<EOF
-CREATE USER ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
+CREATE USER IF NOT EXISTS ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
+ALTER USER ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
+DROP DATABASE IF EXISTS ${dbnaming};
 CREATE DATABASE ${dbnaming};
 GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
 FLUSH PRIVILEGES;
@@ -69,16 +66,22 @@ EOF
 mk_common_site() {
     url_root="$domain""$location"
 
-    mkdir -p /var/www/"$domain"/{htdocs,conf/{or,ols}}
+    mkdir -p /var/www/"$domain"/{htdocs,conf/{or,php}}
 
-    echo "url_root: $url_root" >/var/www/"$domain"/conf/qyc-site.yaml
-    echo "site-type: $site_type" >>/var/www/"$domain"/conf/qyc-site.yaml
-    echo "backend: $backend" >>/var/www/"$domain"/conf/qyc-site.yaml
+    cat <<EOF >/var/www/"$domain"/conf/qyc-site.yaml
+url_root: $url_root
+site-type: $site_type
+backend: $backend
+profile: dev
+ingress_mode: ${ingress_mode:-dns}
+EOF
 
     [[ ! -d /var/qyc/cloudflare/"$root_domain" ]] && mkdir /var/qyc/cloudflare/"$root_domain"
 
-    cp /var/qyc/qycli/cnf/openresty/"$site_type"-template.conf /etc/uny/openresty/sites-available/"$domain"
-    sed -e "s|dmn\.tld|$domain|g" -e "s|LOCATION|$location|g" -i /etc/uny/openresty/sites-available/"$domain"
+    cp /var/qyc/qycli/cnf/openresty/templates/"$site_type".conf /etc/uny/openresty/sites-available/"$domain"
+    sed -e "s|DOMAIN|$domain|g" -i /etc/uny/openresty/sites-available/"$domain"
+
+    # Site specific server_name entries for OpenResty
     if [[ $subdomain == true ]]; then
         domainlist=$domain
     else
@@ -92,8 +95,11 @@ $domainlist
 ;
 EOF
 
-    if [[ $backend == "openlitespeed" ]]; then
-        mkdir -p /etc/uny/openlitespeed/conf/vhosts/"$domain"
+    conf_site_listen "$domain"
+    conf_openresty_listeners
+
+    # PHP-FPM Backend for WP and generic sites
+    if [[ $backend == "php-fpm" ]]; then
 
         if [[ $php_site_version == "" ]]; then
             php_site_version="$(yq .php_default_version /var/qyc/cnf.yaml)"
@@ -105,8 +111,8 @@ EOF
                 exit 1
             fi
         fi
-        php_site_version_short="${php_site_version//\./}"
 
+        # Install PHP version if missing
         for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
             if [[ $php_site_version == "$phpv" ]]; then
                 already_installed=yes
@@ -118,31 +124,15 @@ EOF
         fi
         unset already_installed
 
-        sed -e "s|HTDOCS|/var/www/${domain}/htdocs|g" -e "s|SHORTVER|$php_site_version_short|g" \
-            /var/qyc/qycli/cnf/openlitespeed/"$site_type"-vhostconf-template.conf >/etc/uny/openlitespeed/conf/vhosts/"$domain"/vhconf.conf
+        # Configure PHP-FPM version for the site
+        php_site_version_micro="${php_site_version//\./}"
+        sed "s|MICROVER|$php_site_version_micro|g" -i /etc/uny/openresty/sites-available/"$domain"
 
-        ols_vhost="$(
-            sed -e "s|DOMAIN|$domain|g" -e "s|HTDOCS|/var/www/${domain}/htdocs|g" -e "s|VHOSTCONF|\$SERVER_ROOT/conf/vhosts/${domain}/vhconf.conf|g" \
-                /var/qyc/qycli/cnf/openlitespeed/"$site_type"-vhost-template.conf
-        )"
-        sed -zEn "s|(listener Default\s*\{[^\}]*})|&\n\n${ols_vhost}|p" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-
-        for name in $domainlist; do
-            if [[ $commalist == "" ]]; then
-                commalist="$name"
-            else
-                commalist+=", $name"
-            fi
-        done
-        sed -E "/secure\s*0/a\    map $domain $commalist" -i /etc/uny/openlitespeed/conf/httpd_config.conf
-
-        systemctl reload uny-openlitespeed
+        chown unyphp:unyweb -R /var/www/"$domain"/*
     fi
 
     enable_site
 
-    chown unyweb:unyweb -R /var/www/"$domain"/*
-    systemctl reload uny-openresty
 }
 
 del_dns_entries() {
@@ -152,15 +142,15 @@ del_dns_entries() {
     if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
 
         # List DNS records for a Zone
-        existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain&type=A,AAAA" \
+        existing_dns_records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain" \
             -H "Authorization: Bearer $cf_token_dns" \
             -H "Content-Type: application/json" | tee -a /var/qyc/cache/old_dns_entries.json |
-            yq -oy '.result[].id')
+            yq -oy '.result[] | select(.type == "A" or .type == "AAAA" or .type == "CNAME").id')
 
         # Delete DNS records for a Zone if they exist
         if [[ $existing_dns_records != "" ]]; then
             for id in $existing_dns_records; do
-                curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
+                curl -sS -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
                     -H "Authorization: Bearer $cf_token_dns" \
                     -H "Content-Type: application/json" 1>/dev/null
             done
@@ -171,25 +161,83 @@ del_dns_entries() {
 }
 
 cf_dns_entry() {
-    del_dns_entries
-    if [[ $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
-        # Create new DNS record in zone
-        curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
-            -H "Authorization: Bearer $cf_token_dns" \
-            -H "Content-Type: application/json" \
-            --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}' \
-            >/var/qyc/cloudflare/"$root_domain"/"$domain"_cf_dns_record.json
+    echo "Setting DNS record ($dns_type) $domain to $dns_value"
 
-        # Change zone settings #Change this to appropriate tokens
-        curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
-            -H "Authorization: Bearer $cf_token_dns" \
-            -H "Content-Type: application/json" \
-            --data '{"items":[{"id":"ssl","value":"full"},{"id":"0rtt","value":"on"},{"id":"minify","value":{"css":"on","html":"on","js":"on"}},{"id":"rocket_loader","value":"off"}]}' 1>/dev/null
-        curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/argo/tiered_caching" \
-            -H "Authorization: Bearer $cf_token_dns" \
-            -H "Content-Type: application/json" \
-            --data '{"value":"on"}' 1>/dev/null
+    if [[ -z "$cf_token_dns" || -z "$root_domain_zone_id" ]]; then
+        echo "Cloudflare token or zone ID is missing. Could not set DNS record."
+        return 1
     fi
+
+    mkdir -p /var/qyc/cloudflare/"$root_domain"
+
+    # Query existing A and AAAA DNS records for this domain
+    existing_records_json="$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records?name=$domain" \
+        -H "Authorization: Bearer $cf_token_dns" \
+        -H "Content-Type: application/json")"
+
+    if [[ $(echo "$existing_records_json" | yq -oj .success 2>/dev/null) != "true" ]]; then
+        local err_msg
+        err_msg="$(echo "$existing_records_json" | yq -oy '.errors[].message' 2>/dev/null)"
+        echo "Failed to query Cloudflare DNS records for $domain: ${err_msg:-unknown error}. Keeping existing DNS unchanged."
+        return 1
+    fi
+
+    local matching_record_id
+    matching_record_id="$(echo "$existing_records_json" | yq -oy '.result[] | select(.type == "'"$dns_type"'").id' 2>/dev/null | head -n1)"
+
+    local record_response
+    local new_record_id
+
+    # Update existing record if found of matching type, or create new one
+    if [[ -n "$matching_record_id" ]]; then
+        echo "Updating existing $dns_type record ($matching_record_id) to $dns_value..."
+        record_response="$(curl -sS -X PUT "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$matching_record_id" \
+            -H "Authorization: Bearer $cf_token_dns" \
+            -H "Content-Type: application/json" \
+            --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}')"
+    else
+        echo "Creating new $dns_type record for $domain..."
+        record_response="$(curl -sS -X POST "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records" \
+            -H "Authorization: Bearer $cf_token_dns" \
+            -H "Content-Type: application/json" \
+            --data '{"type":"'"$dns_type"'","name":"'"$domain"'","content":"'"$dns_value"'","ttl":1,"proxied":true}')"
+    fi
+
+    echo "$record_response" >/var/qyc/cloudflare/"$root_domain"/"$domain"_cf_dns_record.json
+
+    # Only delete anything if the new/updated record was successfully saved
+    if [[ $(echo "$record_response" | yq -oj .success 2>/dev/null) != "true" ]]; then
+        local err_msg
+        err_msg="$(echo "$record_response" | yq -oy '.errors[].message' 2>/dev/null)"
+        echo "Error setting Cloudflare DNS record: ${err_msg:-unknown error}. Existing DNS records were NOT deleted."
+        return 1
+    fi
+
+    new_record_id="$(echo "$record_response" | yq -oy .result.id 2>/dev/null)"
+
+    # Clean up stale records (e.g. old A records or extra duplicate AAAA records) now that new one is verified active
+    local stale_records
+    stale_records="$(echo "$existing_records_json" | yq -oy '.result[] | select(.id != "'"$new_record_id"'" and (.type == "A" or .type == "AAAA")).id' 2>/dev/null)"
+
+    if [[ -n "$stale_records" ]]; then
+        for id in $stale_records; do
+            curl -sS -X DELETE "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/dns_records/$id" \
+                -H "Authorization: Bearer $cf_token_dns" \
+                -H "Content-Type: application/json" >/dev/null 2>&1
+        done
+    fi
+
+    # Best-effort update of zone settings (does not fail if token lacks Zone Settings scope)
+    curl -sS -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/settings" \
+        -H "Authorization: Bearer $cf_token_dns" \
+        -H "Content-Type: application/json" \
+        --data '{"items":[{"id":"ssl","value":"full"},{"id":"0rtt","value":"on"},{"id":"minify","value":{"css":"on","html":"on","js":"on"}},{"id":"rocket_loader","value":"off"}]}' >/dev/null 2>&1
+    curl -sS -X PATCH "https://api.cloudflare.com/client/v4/zones/$root_domain_zone_id/argo/tiered_caching" \
+        -H "Authorization: Bearer $cf_token_dns" \
+        -H "Content-Type: application/json" \
+        --data '{"value":"on"}' >/dev/null 2>&1
+
+    return 0
 }
 
 print_dns_info_auto() {
@@ -264,36 +312,110 @@ get_public_ips() {
     ipv6=$(ip -6 a show dev "$ipv6_dev" scope global | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1 | grep -v ^fe80 | grep -v ^fd00)
 }
 
-dns_and_infos() {
-    get_cf_token_dns
-    get_public_ips
+tunnel_and_infos() {
+    local dom="$1"
+    stk_cloudflared_install
+    domain_parser "$dom"
 
-    if [[ $ipv6 != "" ]]; then
-        if [[ $NO_AUTO_DNS != "yes" && $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
-            dns_value=$ipv6
-            dns_type=AAAA
-            echo "Setting DNS record ($dns_type)"
-            cf_dns_entry
-            print_dns_info_auto
-            print_login_info
-        else
-            print_dns_info_manual_v6
-            print_login_info
+    if tunnel_id=$(cf_get_or_create_tunnel "$root_domain") && [ -n "$tunnel_id" ] && [[ ! "$tunnel_id" =~ [[:space:]] ]]; then
+        get_cf_token_dns
+        zone_answer="$(curl -s https://api.cloudflare.com/client/v4/zones?name="$root_domain" \
+            -H "Authorization: Bearer $cf_token_dns")"
+        if [[ $(echo "$zone_answer" | yq -oj .success) = "true" && $(echo "$zone_answer" | yq -oj .result_info.total_count) != 0 ]]; then
+            root_domain_zone_id="$(echo "$zone_answer" | yq -oy .result[].id)"
+            cf_dns_cname_entry
         fi
-    elif [[ $ipv4 != "" ]]; then
-        if [[ $NO_AUTO_DNS != "yes" && $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
-            dns_value=$ipv4
-            dns_type=A
-            echo "Setting DNS record ($dns_type)"
-            cf_dns_entry
-            print_dns_info_auto
-            print_login_info
-        else
-            print_dns_info_manual_v4
-            print_login_info
-        fi
+
+        upd_cloudflared_config
+        conf_openresty_listeners
+        print_tunnel_dns_info
+        print_login_info
     else
-        echo "No ip address found. That is problematic, as your website will not be accessible."
+        echo "Could not configure Cloudflare Tunnel for $dom."
+        print_login_info
+    fi
+}
+
+rproxy_and_infos() {
+    local dom="$1"
+    conf_openresty_listeners
+    print_rproxy_info "$dom"
+    print_login_info
+}
+
+print_tunnel_dns_info() {
+    cat <<EOF
+
+==========================================================
+Site $domain configured in TUNNEL mode.
+Cloudflare Tunnel ID: $tunnel_id
+DNS CNAME record: $domain -> ${tunnel_id}.cfargotunnel.com
+OpenResty listening on: unix:/run/openresty/nginx.sock
+==========================================================
+
+EOF
+}
+
+print_rproxy_info() {
+    cat <<EOF
+
+==========================================================
+Site $1 configured in RPROXY mode.
+OpenResty listening on TCP port 80 & unix socket.
+Configure host reverse proxy to forward traffic to this container on port 80.
+==========================================================
+
+EOF
+}
+
+dns_and_infos() {
+    local site_ingress_mode
+    site_ingress_mode=$(yq .ingress_mode /var/www/"$domain"/conf/qyc-site.yaml 2>/dev/null)
+    [[ -z "$site_ingress_mode" || "$site_ingress_mode" == "null" ]] && site_ingress_mode="${ingress_mode:-dns}"
+
+    if [[ "$site_ingress_mode" == "tunnel" ]]; then
+        tunnel_and_infos "$domain"
+    elif [[ "$site_ingress_mode" == "rproxy" ]]; then
+        rproxy_and_infos "$domain"
+    else
+        get_cf_token_dns
+        get_public_ips
+
+        if [[ $ipv6 != "" ]]; then
+            if [[ $NO_AUTO_DNS != "yes" && $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
+                dns_value=$ipv6
+                dns_type=AAAA
+
+                if cf_dns_entry; then
+                    print_dns_info_auto
+                    print_login_info
+                else
+                    print_dns_info_manual_v6
+                    print_login_info
+                fi
+            else
+                print_dns_info_manual_v6
+                print_login_info
+            fi
+        elif [[ $ipv4 != "" ]]; then
+            if [[ $NO_AUTO_DNS != "yes" && $cf_token_dns != "" && $root_domain_zone_id != "" ]]; then
+                dns_value=$ipv4
+                dns_type=A
+
+                if cf_dns_entry; then
+                    print_dns_info_auto
+                    print_login_info
+                else
+                    print_dns_info_manual_v4
+                    print_login_info
+                fi
+            else
+                print_dns_info_manual_v4
+                print_login_info
+            fi
+        else
+            echo "No ip address found. That is problematic, as your website will not be accessible."
+        fi
     fi
 }
 
@@ -304,7 +426,7 @@ wp_cf_page_cache_token_and_plugin_options() {
         root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
 
         if [[ $cf_token_wp_cf_page_cache != "" && $root_domain_zone_id != "" ]]; then
-            wp option add swcfpc_config []
+            wp option add swcfpc_config '{}' --format=json
 
             echo '{
   "cf_auth_mode": 1,
@@ -368,6 +490,19 @@ mk_wp() {
             wpemail="$2"
             shift
             ;;
+        m | mode | ingress | ingress-mode)
+            ingress_mode="$2"
+            shift
+            ;;
+        --tunnel | tunnel)
+            ingress_mode="tunnel"
+            ;;
+        --rproxy | rproxy)
+            ingress_mode="rproxy"
+            ;;
+        --dns | dns)
+            ingress_mode="dns"
+            ;;
         *)
             echo "Invalid option: $1"
             print_help_wp
@@ -376,7 +511,9 @@ mk_wp() {
         shift
     done
 
-    mk_common
+    ingress_mode="${ingress_mode:-dns}"
+
+    mk_common "$@"
     shift
 
     echo "Installing WordPress"
@@ -399,7 +536,7 @@ mk_wp() {
     sed -e "s|require_once ABSPATH . 'wp-settings.php';||" -e "s|/\*\* Sets up WordPress vars and included files. \*/||" -i conf/wp-config.php
     cp /var/qyc/qycli/cnf/wp/wp-config-redirect.php htdocs/wp-config.php
 
-    chown unyweb:unyweb -R ./*
+    chown unyphp:unyweb -R ./*
 
     cd htdocs || exit
 
@@ -444,31 +581,48 @@ mk_wp() {
 
     #wp login install --activate
 
-    # Install LiteSpeed Cache Plugin and WP Cloudflare Super Page Cache Setup
-    wp plugin install --activate wp-cloudflare-page-cache litespeed-cache
+    # Install SQLite Object Cache and WP Cloudflare Super Page Cache Setup
 
-    wp option update litespeed.conf.cache 0
-    wp option update litespeed.conf.cache-priv 0
-    wp option update litespeed.conf.cache-commenter 0
-    wp option update litespeed.conf.cache-rest 0
-    wp option update litespeed.conf.cache-page_login 0
-    wp option update litespeed.conf.cache-resources 0
-    wp option update litespeed.conf.cache-mobile 0
+    wp plugin install sqlite-object-cache
+    wp config set WP_CACHE_KEY_SALT "$(openssl rand -base64 12)"
+    wp plugin activate sqlite-object-cache
+    wp sqlite-object-cache size 32
+    wp config set --raw WP_SQLITE_OBJECT_CACHE_APCU true
 
-    wp option update litespeed.conf.object-kind 1
-    wp option update litespeed.conf.object-host /run/valkey/valkey.sock
-    wp option update litespeed.conf.object-port 0
-    wp option update litespeed.conf.object 1
+    wp plugin install --activate wp-cloudflare-page-cache
 
     wp_cf_page_cache_token_and_plugin_options
 
     systemctl reload uny-openresty
 
     echo "Checking wp-json API"
-    while [[ $(wget -S --spider --header="Host:$domain" http://localhost:8088/wp-json/ 2>&1 | grep -o "HTTP/.*" | cut -f2 -d" ") != "200" ]]; do
-        #wp rewrite structure "$(wp option get permalink_structure)"
+    attempts=0
+    max_attempts=10
+
+    while true; do
+        local check_code=""
+        if [[ -S /run/openresty/nginx.sock ]]; then
+            check_code=$(curl -s -o /dev/null -w "%{http_code}" --unix-socket /run/openresty/nginx.sock -H "Host: $domain" -H "X-Forwarded-Proto: https" http://localhost/wp-json/)
+        else
+            check_code=$(curl -sk -o /dev/null -w "%{http_code}" -H "Host: $domain" https://localhost/wp-json/)
+        fi
+
+        if [[ "$check_code" == "200" ]]; then
+            break
+        fi
+
+        ((attempts++))
+        echo "Attempt $attempts of $max_attempts..."
+
+        if [[ $attempts -ge $max_attempts ]]; then
+            echo "Maximum attempts reached. Exiting loop."
+            break
+        fi
+
         wp rewrite flush --hard
-        systemctl restart uny-openlitespeed
+        systemctl restart uny-openresty
+
+        sleep 1
     done
 
     dns_and_infos
@@ -488,11 +642,11 @@ fn_mk() {
     location="/"
     if [[ $site_type == "wp" ]]; then
         shift
-        backend=openlitespeed
+        backend=php-fpm
         mk_wp "$@"
     elif [[ $site_type == "site" ]]; then
         shift
-        backend=openlitespeed
+        backend=php-fpm
         mk_site "$@"
     else
         print_help_mk
@@ -611,7 +765,8 @@ del_site() {
 DROP USER ${dbnaming}@localhost;    
 DROP DATABASE ${dbnaming};
 EOF
-    systemctl reload uny-openlitespeed
+    upd_cloudflared_config
+    conf_openresty_listeners
     echo "Database deleted."
     echo "$domain deleted."
 }
@@ -868,6 +1023,188 @@ set_disable() {
     fi
 }
 
+conf_site_listen() {
+    local dom="$1"
+    local mode
+    mode=$(yq .ingress_mode /var/www/"$dom"/conf/qyc-site.yaml 2>/dev/null)
+    [[ -z "$mode" || "$mode" == "null" ]] && mode="dns"
+
+    mkdir -p /var/www/"$dom"/conf/or
+    if [[ "$mode" == "rproxy" ]]; then
+        cat <<EOF >/var/www/"$dom"/conf/or/listen.conf
+# Ingress mode: $mode
+listen unix:/run/openresty/nginx.sock;
+listen 80;
+listen [::]:80;
+EOF
+    elif [[ "$mode" == "dns" ]]; then
+        cat <<EOF >/var/www/"$dom"/conf/or/listen.conf
+# Ingress mode: $mode
+listen unix:/run/openresty/nginx.sock;
+listen 443 ssl;
+listen [::]:443 ssl;
+EOF
+    else
+        cat <<EOF >/var/www/"$dom"/conf/or/listen.conf
+# Ingress mode: $mode
+listen unix:/run/openresty/nginx.sock;
+EOF
+    fi
+}
+
+conf_openresty_listeners() {
+    mkdir -p /run/openresty
+    chown -R unyweb:unyweb /run/openresty 2>/dev/null || true
+    chmod 755 /run/openresty
+
+    local has_dns=0
+
+    for site_dir in /var/www/*; do
+        if [[ -d "$site_dir" && -f "$site_dir/conf/qyc-site.yaml" ]]; then
+            local dom
+            dom=$(basename "$site_dir")
+            local mode
+            mode=$(yq .ingress_mode "$site_dir/conf/qyc-site.yaml" 2>/dev/null)
+            if [[ -z "$mode" || "$mode" == "null" ]]; then
+                mode="dns"
+                yq '.ingress_mode = "dns"' -i "$site_dir/conf/qyc-site.yaml"
+            fi
+
+            if [[ $(yq .backend "$site_dir/conf/qyc-site.yaml" 2>/dev/null) == "openlitespeed" ]]; then
+                yq '.backend = "php-fpm"' -i "$site_dir/conf/qyc-site.yaml"
+            fi
+
+            conf_site_listen "$dom"
+            sed -i '/listen.*443.*ssl;/d' /etc/uny/openresty/sites-available/"$dom" 2>/dev/null || true
+
+            if [[ "$mode" == "dns" ]]; then
+                has_dns=1
+            fi
+        fi
+    done
+
+    mkdir -p /etc/uny/openresty/conf.d
+    rm -f /etc/uny/openresty/conf.d/openlitespeed.conf /var/qyc/qycli/cnf/openresty/conf.d/openlitespeed.conf
+    find /etc/uny/openresty/conf.d -xtype l -delete 2>/dev/null || true
+
+    cat <<'EOF' >/etc/uny/openresty/conf.d/00-realip.conf
+# Real IP configuration for unix sockets, local proxies, and Cloudflare
+set_real_ip_from unix:;
+set_real_ip_from 127.0.0.1;
+set_real_ip_from ::1;
+set_real_ip_from 10.0.0.0/8;
+set_real_ip_from 172.16.0.0/12;
+set_real_ip_from 192.168.0.0/16;
+set_real_ip_from fd00::/8;
+
+real_ip_header CF-Connecting-IP;
+real_ip_recursive on;
+EOF
+
+    if [[ -f /etc/uny/openresty/conf.d/cloudflare.conf ]]; then
+        sed -i '/real_ip_header/d; /real_ip_recursive/d' /etc/uny/openresty/conf.d/cloudflare.conf
+    fi
+    if [[ $has_dns -eq 1 ]]; then
+        cat <<'EOF' >/etc/uny/openresty/conf.d/00-http-redirect.conf
+# HTTP to HTTPS redirect for DNS-mode sites
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
+EOF
+    else
+        rm -f /etc/uny/openresty/conf.d/00-http-redirect.conf
+    fi
+
+    systemctl reload uny-openresty 2>/dev/null || systemctl restart uny-openresty 2>/dev/null || true
+}
+
+fn_migrate_to_tunnel() {
+    stk_cloudflared_install
+
+    local target_domains=()
+    if [[ $# -ge 1 && -n "$1" ]]; then
+        target_domains=("$1")
+    else
+        for dir in /var/www/*; do
+            if [ -d "$dir" ] && [ -f "$dir/conf/qyc-site.yaml" ]; then
+                target_domains+=("$(basename "$dir")")
+            fi
+        done
+    fi
+
+    if [[ ${#target_domains[@]} -eq 0 ]]; then
+        echo "No sites found in /var/www to migrate."
+        return 0
+    fi
+
+    for dom in "${target_domains[@]}"; do
+        echo "Migrating $dom to tunnel mode..."
+        domain_parser "$dom"
+        get_cf_token_dns
+
+        zone_answer="$(curl -s https://api.cloudflare.com/client/v4/zones?name="$root_domain" \
+            -H "Authorization: Bearer $cf_token_dns")"
+        if [[ $(echo "$zone_answer" | yq -oj .success) = "true" && $(echo "$zone_answer" | yq -oj .result_info.total_count) != 0 ]]; then
+            root_domain_zone_id="$(echo "$zone_answer" | yq '.result[0].id' 2>/dev/null | tr -d '"\r\n ')"
+        fi
+
+        tunnel_id=$(cf_get_or_create_tunnel "$root_domain")
+        if [[ -z "$tunnel_id" || "$tunnel_id" =~ [[:space:]] ]]; then
+            echo "Failed to get or create Cloudflare tunnel for $dom ($root_domain). Skipping." >&2
+            continue
+        fi
+
+        yq '.ingress_mode = "tunnel"' -i /var/www/"$dom"/conf/qyc-site.yaml
+
+        cf_dns_cname_entry
+
+        echo "Domain $dom migrated to Cloudflare Tunnel."
+    done
+
+    upd_cloudflared_config
+    conf_openresty_listeners
+
+    echo "Migration to tunnel mode completed successfully."
+}
+
+set_ingress() {
+    local target_mode="$1"
+    if [[ "$target_mode" != "tunnel" && "$target_mode" != "dns" && "$target_mode" != "rproxy" ]]; then
+        echo "Invalid ingress mode: $target_mode. Valid modes: tunnel, dns, rproxy."
+        return 1
+    fi
+
+    local current_mode
+    current_mode=$(yq .ingress_mode /var/www/"$domain"/conf/qyc-site.yaml 2>/dev/null)
+    [[ -z "$current_mode" || "$current_mode" == "null" ]] && current_mode="dns"
+
+    if [[ "$target_mode" == "$current_mode" ]]; then
+        echo "Site $domain is already in $target_mode mode."
+        return 0
+    fi
+
+    if [[ "$target_mode" == "tunnel" ]]; then
+        fn_migrate_to_tunnel "$domain"
+    elif [[ "$target_mode" == "dns" ]]; then
+        echo "Switching $domain to dns mode..."
+        yq '.ingress_mode = "dns"' -i /var/www/"$domain"/conf/qyc-site.yaml
+        del_dns_entries
+        upd_cloudflared_config
+        conf_openresty_listeners
+        dns_and_infos
+    elif [[ "$target_mode" == "rproxy" ]]; then
+        echo "Switching $domain to rproxy mode..."
+        yq '.ingress_mode = "rproxy"' -i /var/www/"$domain"/conf/qyc-site.yaml
+        del_dns_entries
+        upd_cloudflared_config
+        conf_openresty_listeners
+        print_rproxy_info "$domain"
+    fi
+}
+
 fn_set() {
     domain_parser "$@"
     if [[ $invalid_domain == "1" ]]; then
@@ -901,6 +1238,11 @@ fn_set() {
         disable)
             shift
             set_disable
+            set_success=1
+            ;;
+        ingress | mode)
+            shift
+            set_ingress "$@"
             set_success=1
             ;;
         esac
@@ -958,7 +1300,6 @@ clone_site() {
     # fi
 
     systemctl reload uny-openresty
-    systemctl reload uny-openlitespeed
 
     wpadmin=$(yq .wp-login.user /var/www/"$clonefrom"/conf/qyc-site.yaml)
     wpemail=$(yq .wp-login.email /var/www/"$clonefrom"/conf/qyc-site.yaml)
@@ -1003,28 +1344,6 @@ fn_clone() {
     fi
 }
 
-cnf_php_versions() {
-    invalid_versions="$(echo "$1" | tr "," "\n" | grep -v "[7-9]\.[0-9]")"
-    if [ "$invalid_versions" != "" ]; then
-        for ver in $invalid_versions; do
-            echo "$ver is not a valid PHP version."
-        done
-        echo "Aborting PHP config change due to invalid PHP version(s)."
-        exit 1
-    fi
-    php_versions="$(echo "$1" | tr "," "\n")"
-
-    php_default_version="$(echo "$php_versions" | head -n1)"
-    yq ".php_default_version = $php_default_version" -i /var/qyc/cnf.yaml
-
-    yq 'del(.php_versions)' -i /var/qyc/cnf.yaml
-    for ver in $php_versions; do
-        yq ".php_versions += [$ver]" -i /var/qyc/cnf.yaml
-    done
-
-    upd_php
-}
-
 verify_cloudflare_token() {
     if wget --method=get -O- -q \
         --header="Authorization: Bearer $cf_token" \
@@ -1035,122 +1354,6 @@ verify_cloudflare_token() {
     else
         echo "Needs to be a valid Cloudflare User Token (not an Account Token). Aborting."
         exit 1
-    fi
-}
-
-cnf_cloudflare_token() {
-    if [[ -z $cf_token ]]; then
-        echo "No Cloudflare token was given."
-        print_help_cnf
-    else
-        verify_cloudflare_token
-        sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/qyc/cnf.yaml
-        upd_get_cf_tokens
-        upd_get_cf_accounts_and_zones
-    fi
-}
-
-cnf_opcache() {
-    if [[ "$1" == "off" ]]; then
-        grep -q "opcache.enable = 0" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing" && exit
-        sed "s+opcache.enable = 1+opcache.enable = 0+" -i /etc/qyc/php/fpm/php.ini
-        sed "s+opcache.enable_cli = 1+opcache.enable_cli = 0+" -i /etc/qyc/php/fpm/php.ini
-        systemctl reload uny-openlitespeed
-    elif [[ "$1" == "on" ]]; then
-        grep -q "opcache.enable = 1" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing" && exit
-        sed "s+opcache.enable = 0+opcache.enable = 1+" -i /etc/qyc/php/fpm/php.ini
-        sed "s+opcache.enable_cli = 0+opcache.enable_cli = 1+" -i /etc/qyc/php/fpm/php.ini
-        systemctl reload uny-openlitespeed
-    else
-        echo 'Missing "on" or "off"'
-        print_help_set
-        exit
-    fi
-}
-
-cnf_admin_users() {
-    if [[ $1 == "add" && ! $2 == "" && ! $(yq '.admin_users.[].user | select(. == "'"$2"'")' /var/qyc/cnf.yaml) ]]; then
-        admin_user="$2"
-        admin_password=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
-        runuser -u mysql -- mariadb --user=mysql <<EOF
-CREATE USER '${admin_user}'@'localhost' IDENTIFIED BY '${admin_password}';
-GRANT ALL PRIVILEGES ON *.* TO '${admin_user}'@'localhost';
-FLUSH PRIVILEGES;
-EOF
-
-        yq '.admin_users += [{"user": "'"$admin_user"'", "password": "'"$admin_password"'"}]' -i /var/qyc/cnf.yaml
-
-        echo "Admin user $admin_user added."
-        echo "All currently active admin users having database and file managing access:"
-        yq '.admin_users' /var/qyc/cnf.yaml
-    elif [[ $1 =~ (rm|remove) && ! $2 == "" && $(yq '.admin_users.[].user | select(. == "'"$2"'")' /var/qyc/cnf.yaml) ]]; then
-        admin_user="$2"
-        mariadb <<EOF
-DROP USER ${admin_user}@localhost;
-EOF
-
-        yq 'del(.admin_users.[] | select(.user == "'"$admin_user"'"))' -i /var/qyc/cnf.yaml
-
-        echo "Admin user $admin_user deleted."
-        echo "All currently active admin users having database and file managing access:"
-        yq '.admin_users' /var/qyc/cnf.yaml
-    else
-        echo "You have to specify qyc cnf admin add <user> or qyc cnf admin remove <user>. Something wasn't right."
-    fi
-}
-
-cnf_qycli_version() {
-    current_branch="$(yq .branch_name /var/qyc/cnf.yaml)"
-
-    if [[ "$1" == "$current_branch" ]]; then
-        echo "qycli is already in the $current_branch branch."
-        exit
-    fi
-
-    if [[ $1 =~ (stable|beta|dev) ]]; then
-        yq '.branch_name = "'"$1"'"' -i /var/qyc/cnf.yaml
-        upd_qycli
-    else
-        echo 'Possible qycli verions are: "stable", "beta" and "dev"'
-        print_help_cnf
-        exit
-    fi
-}
-
-fn_cnf() {
-    if [[ "$#" -gt 0 ]]; then
-        while [[ "$#" -gt 0 ]]; do
-            case "$1" in
-            php)
-                shift
-                cnf_php_versions "$@"
-                ;;
-            cft | cloudflaretoken)
-                shift
-                cf_token=$1
-                cnf_cloudflare_token
-                ;;
-            opc | opcache)
-                shift
-                cnf_opcache "$@"
-                ;;
-            a | admin)
-                shift
-                cnf_admin_users "$@"
-                ;;
-            qycv | qycliversion)
-                shift
-                cnf_qycli_version "$@"
-                ;;
-            *)
-                echo "Invalid option: $1"
-                print_help_cnf
-                ;;
-            esac
-            shift
-        done
-    else
-        print_help_cnf
     fi
 }
 
@@ -1245,7 +1448,7 @@ point_dns_here_do_the_pointing() {
     domain_parser "$1"
     get_cf_token_dns
 
-    zone_answer="$(curl https://api.cloudflare.com/client/v4/zones?name="$root_domain" \
+    zone_answer="$(curl -s https://api.cloudflare.com/client/v4/zones?name="$root_domain" \
         -H "Authorization: Bearer $cf_token_dns")"
 
     if [[ $(echo "$zone_answer" | yq -oj .success) = "true" && $(echo "$zone_answer" | yq -oj .result_info.total_count) != 0 ]]; then

@@ -1,0 +1,443 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2154
+
+conf_calculate_resource_distribution() {
+    # INPUTS (Raw hardware data)
+    ram=$(($(grep MemTotal /proc/meminfo | awk '{print $2}') / 1024))
+    cpus=$(nproc)
+
+    # THE MASTER BLUEPRINT (1/8 OS + Reverse Proxy, 3/8 Databases, 1/2 Application Servers)
+    # Cleanly slice off 12.5% for Linux/OpenResty right at the gate
+    local host_overhead=$((ram * 1 / 8))
+    local available_pool=$((ram - host_overhead))
+
+    # Divide the REMAINING safe pool between your actual active services
+    # 3/7 goes to MariaDB (~37.5% of total), 4/7 goes to PHP-FPM (~50% of total)
+    db_mb=$((available_pool * 3 / 7))
+    app_mb=$((available_pool * 4 / 7))
+
+    # APCu COGNITIVE ISOLATION ENGINE
+    # Extract 10% for the L1 user cache and apply efficiency guardrails
+    apc_mb=$((app_mb * 10 / 100))
+    if [ "$apc_mb" -gt 256 ]; then
+        apc_mb=256 # 256MB is massive for an L1 APCu user cache with igbinary compression
+    elif [ "$apc_mb" -lt 32 ]; then
+        apc_mb=32 # Structural fallback floor
+    fi
+
+    # Deduct the finalized APCu slice to isolate the pure runtime pool
+    local execution_pool=$((app_mb - apc_mb))
+
+    # PHP-FPM PURE BALANCE MAP (40% OPcache / 60% Workers)
+    # Boundless scaling: more total RAM = massive OPcache bucket for infinite site paths
+    opc_mb=$((execution_pool * 40 / 100))
+    wrk_mb=$((execution_pool * 60 / 100))
+
+    # WORKER CONCURRENCY TRACKS
+    children=$((wrk_mb / 60)) # One worker should max out at 60MB of RAM usage (including overhead)
+    cpu_max=$((cpus * 5))
+
+    # CPU GOVERNOR (Only applies to high-RAM configurations to avoid thread thrashing)
+    if [ $children -gt $cpu_max ] && [ $ram -gt 1500 ]; then
+        children=$cpu_max
+    fi
+
+    # Fallback floor protection for ultra-low resource nodes
+    [ $children -lt 2 ] && children=2
+}
+
+conf_openresty_renew_cf_ips() {
+    mkdir -p /etc/uny/openresty/conf.d
+    if [ -f /var/qyc/qycli/cnf/openresty/conf.d/00-realip.conf ]; then
+        cp -f /var/qyc/qycli/cnf/openresty/conf.d/00-realip.conf /etc/uny/openresty/conf.d/ 2>/dev/null || true
+    fi
+
+    rm -f /etc/uny/openresty/conf.d/cloudflare_new
+    # shellcheck disable=SC2013
+    for cfip in $(
+        cat /var/qyc/cache/cloudflare_ipv6_ips 2>/dev/null
+        echo ""
+        cat /var/qyc/cache/cloudflare_ipv4_ips 2>/dev/null
+    ); do
+        [ -n "$cfip" ] && echo "set_real_ip_from $cfip;" >>/etc/uny/openresty/conf.d/cloudflare_new
+    done
+
+    if [ -f /etc/uny/openresty/conf.d/cloudflare_new ]; then
+        cp -f /etc/uny/openresty/conf.d/cloudflare_new /etc/uny/openresty/conf.d/cloudflare.conf
+        rm -f /etc/uny/openresty/conf.d/cloudflare_new
+    fi
+
+    systemctl reload uny-openresty 2>/dev/null || true
+}
+
+conf_openresty_resources() {
+    # Ensure baseline configuration profile exists
+    cp /var/qyc/qycli/cnf/openresty/perf.conf /etc/uny/openresty/
+
+    # Use nproc for cleaner core tracking
+    local cores
+    cores=$(nproc)
+
+    # Worker Processes (Lock one worker per CPU core)
+    local worker_processes=$cores
+
+    # Worker Connections (Set high static baseline per worker, capped cleanly at system ulimits)
+    local worker_connections=65535
+    if [[ $cores -eq 1 ]]; then
+        worker_connections=16384 # Scaled down safely for survival on low resource nodes
+    fi
+
+    # Inject optimized settings into performance matrix
+    sed -i "s+.*worker_processes.*+worker_processes ${worker_processes};+" /etc/uny/openresty/perf.conf
+    sed -i "s+.*worker_connections.*+    worker_connections ${worker_connections};+" /etc/uny/openresty/perf.conf
+}
+
+conf_openresty_complete() {
+    for inode in /var/qyc/qycli/cnf/openresty/*; do
+        if [[ ! $(basename "$inode") =~ (perf\.conf|conf\.d) ]]; then
+            ln -sfn "$inode" /etc/uny/openresty/"$(basename "$inode")"
+        fi
+    done
+
+    mkdir -p /etc/uny/openresty/conf.d
+    rm -f /etc/uny/openresty/conf.d/openlitespeed.conf /var/qyc/qycli/cnf/openresty/conf.d/openlitespeed.conf
+    find /etc/uny/openresty/conf.d -xtype l -delete 2>/dev/null || true
+    for inode in /var/qyc/qycli/cnf/openresty/conf.d/*; do
+        ln -sfn "$inode" /etc/uny/openresty/conf.d/"$(basename "$inode")"
+    done
+
+    conf_openresty_resources
+
+    cp /var/qyc/qycli/cnf/openresty/qyc-openresty-logrotate /etc/logrotate.d/qyc-openresty-logrotate
+
+    if command -v conf_openresty_listeners >/dev/null 2>&1; then
+        conf_openresty_listeners
+    else
+        systemctl restart uny-openresty
+    fi
+}
+
+conf_mariadb_resources() {
+    # Execute resource distribution blueprint to populate $ram, $db_mb, and $children
+    conf_calculate_resource_distribution
+
+    # Establish Max Connections first (Tethered to PHP capacity)
+    local max_connections=$((children * 2 + 30))
+    if [[ $max_connections -lt 50 ]]; then
+        max_connections=50 # Floor for standard administration stability
+    fi
+
+    # Calculate connection thread overhead memory footprint (6MB per thread)
+    local thread_overhead_mb=$((max_connections * 6))
+
+    # Internal Temporary Memory Tables (1% of database memory budget with floor/ceil caps)
+    local tmp_table_size=$((db_mb * 1 / 100))
+    if [[ $tmp_table_size -lt 16 ]]; then
+        tmp_table_size=16
+    elif [[ $tmp_table_size -gt 64 ]]; then
+        tmp_table_size=64 # Hard optimized cap; massive sorts belong on disk/SSD tmpfs
+    fi
+
+    # Hand the TRUE absolute rest of the database allocation to the Buffer Pool
+    # We subtract both the thread cushion AND the temp table memory ceiling
+    local innodb_buffer_pool_size=$((db_mb - thread_overhead_mb - tmp_table_size))
+
+    # Enforce floor safety rule for ultra-low resource setups
+    if [[ $innodb_buffer_pool_size -lt 64 ]]; then
+        innodb_buffer_pool_size=64
+    fi
+
+    # InnoDB Log File Size (25% of the calculated buffer pool)
+    local innodb_log_file_size=$((innodb_buffer_pool_size * 25 / 100))
+    if [[ $innodb_log_file_size -gt 2048 ]]; then
+        innodb_log_file_size=2048
+    elif [[ $innodb_log_file_size -lt 32 ]]; then
+        innodb_log_file_size=32
+    fi
+
+    # Thread Cache Size (Scales smoothly alongside max connections)
+    local thread_cache_size=$((max_connections / 4))
+    if [[ $thread_cache_size -gt 100 ]]; then
+        thread_cache_size=100
+    elif [[ $thread_cache_size -lt 16 ]]; then
+        thread_cache_size=16
+    fi
+
+    # Inject the safe, calculated values into the target configuration matrix
+    sed -e "s/^[#[:space:]]*innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${innodb_buffer_pool_size}M/" \
+        -e "s/^[#[:space:]]*innodb_log_file_size.*/innodb_log_file_size = ${innodb_log_file_size}M/" \
+        -e "s/^[#[:space:]]*max_connections.*/max_connections = ${max_connections}/" \
+        -e "s/^[#[:space:]]*tmp_table_size.*/tmp_table_size = ${tmp_table_size}M/" \
+        -e "s/^[#[:space:]]*max_heap_table_size.*/max_heap_table_size = ${tmp_table_size}M/" \
+        -e "s/^[#[:space:]]*thread_cache_size.*/thread_cache_size = ${thread_cache_size}/" \
+        -i /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
+
+    # Storage Engine / Filesystem Check
+    if mount | grep -q "type zfs"; then
+        cp /var/qyc/qycli/cnf/mariadb/my.cnf.d/99-fs-zfs.cnf /etc/uny/mariadb/my.cnf.d/99-fs-zfs.cnf
+        [[ -s /etc/uny/mariadb/my.cnf.d/99-fs-standard.cnf ]] && rm /etc/uny/mariadb/my.cnf.d/99-fs-standard.cnf
+        echo "Using ZFS Optimizations for MariaDB."
+    else
+        cp /var/qyc/qycli/cnf/mariadb/my.cnf.d/99-fs-standard.cnf /etc/uny/mariadb/my.cnf.d/99-fs-standard.cnf
+        [[ -s /etc/uny/mariadb/my.cnf.d/99-fs-zfs.cnf ]] && rm /etc/uny/mariadb/my.cnf.d/99-fs-zfs.cnf
+        echo "Using Standard Filesystem Optimizations for MariaDB."
+    fi
+}
+
+conf_mariadb_complete() {
+    cp /var/qyc/qycli/cnf/mariadb/my.cnf.d/99-qyc.cnf /etc/uny/mariadb/my.cnf.d/99-qyc.cnf
+    conf_mariadb_resources
+    systemctl restart uny-mariadb
+}
+
+conf_php_default_version_resources() {
+    conf_calculate_resource_distribution
+    php_default_version=$(yq .php_default_version /var/qyc/cnf.yaml)
+
+    if [[ $phpv == "$php_default_version" ]]; then
+        # Adaptive children calculation based on total PHP-FPM memory allocation and number of non-default versions
+        for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
+            children=$((children - 2)) # Subtract 2 children per non-default version to avoid overcommitment
+        done
+        children=$((children + 2)) # Add back the 2 children for the default version
+
+        # Interned Strings calculation (15% of OPcache memory, minimum 32MB floor)
+        local opstrings=$((opc_mb * 15 / 100))
+        if [ "$opstrings" -lt 32 ]; then opstrings=32; fi
+
+        # Update php.ini configuration mappings
+        sed -e "s/.*opcache.memory_consumption.*/opcache.memory_consumption = ${opc_mb}M/" \
+            -e "s/.*opcache.interned_strings_buffer.*/opcache.interned_strings_buffer = ${opstrings}M/" \
+            -e "s/.*apc.shm_size.*/apc.shm_size = ${apc_mb}M/" \
+            -i /etc/uny/php/"$phpv"/php.ini
+
+        # Dynamic Backlog & Request cycling limits based on master children metric
+        local backlog=$((children * 128))
+
+        local max_reqs=1024
+        if [ "$children" -le 4 ]; then max_reqs=512; fi
+
+        # Inject resource boundaries directly to your default pool config
+        sed -e "s/.*pm.max_children.*/pm.max_children = ${children}/" \
+            -e "s/.*pm.max_requests.*/pm.max_requests = ${max_reqs}/" \
+            -e "s/.*listen.backlog.*/listen.backlog = ${backlog}/" \
+            -i /uny/etc/php/"$phpv"/php-fpm.d/qycli.conf
+    fi
+}
+
+conf_php_complete() {
+    phpv_micro="${phpv//\./}"
+    phpv_long="$(find /uny/pkg/php -maxdepth 1 -name "$phpv*" -printf "%f\n" | sort -V | tail -n1)"
+
+    cp /var/qyc/qycli/cnf/php/php.ini /uny/etc/php/"$phpv"/php.ini
+    cp /var/qyc/qycli/cnf/php/php-fpm.conf /uny/etc/php/"$phpv"/php-fpm.conf
+    [[ -f /etc/uny/php/${phpv}/php-fpm.d/www.conf ]] && rm -f /uny/etc/php/"$phpv"/php-fpm.d/www.conf # Delete standard package config
+    cp /var/qyc/qycli/cnf/php/php-fpm.d/qycli.conf /uny/etc/php/"$phpv"/php-fpm.d/qycli.conf
+    cp /var/qyc/qycli/cnf/php/php-fpm.service /etc/systemd/system/uny-php"$phpv"-fpm.service
+
+    if ! grep -q "php${phpv_micro}-fpm" /etc/uny/openresty/conf.d/php-fpm.conf; then
+        touch /etc/uny/openresty/conf.d/php-fpm.conf
+        sed -e "s|SHORTVER|$phpv|g" \
+            -e "s|LONGVER|$phpv_long|g" \
+            -e "s|MICROVER|$phpv_micro|g" \
+            /var/qyc/qycli/cnf/openresty/templates/php-fpm-upstream.conf >>/etc/uny/openresty/conf.d/php-fpm.conf
+    fi
+    if ! [[ -s /etc/uny/openresty/local/php"$phpv_micro"-fpm.conf ]]; then
+        touch /etc/uny/openresty/local/php"$phpv_micro"-fpm.conf
+        sed -e "s|SHORTVER|$phpv|g" \
+            -e "s|LONGVER|$phpv_long|g" \
+            -e "s|MICROVER|$phpv_micro|g" \
+            /var/qyc/qycli/cnf/openresty/templates/php-fpm-location.conf >/etc/uny/openresty/local/php"$phpv_micro"-fpm.conf
+    fi
+
+    for file in /uny/etc/php/"$phpv"/php-fpm.conf /uny/etc/php/"$phpv"/php-fpm.d/qycli.conf /etc/systemd/system/uny-php"$phpv"-fpm.service; do
+        sed -e "s|SHORTVER|$phpv|g" \
+            -e "s|LONGVER|$phpv_long|g" \
+            -e "s|MICROVER|$phpv_micro|g" \
+            -i "$file"
+    done
+
+    conf_php_default_version_resources
+
+    mkdir -p /var/log/php/"$phpv"
+
+    chown -R unyphp:unyweb /uny/etc/php/"$phpv" /var/log/php/"$phpv"
+
+    systemctl reenable uny-php"$phpv"-fpm
+    systemctl restart uny-php"$phpv"-fpm
+}
+
+conf_update_resource_limits() {
+    if echo "$@" | grep -qE "^(force|overwrite|\-f)$"; then
+        force=yes
+    fi
+
+    echo "Updating OpenResty limits."
+    conf_openresty_resources
+    systemctl restart uny-openresty
+
+    if [[ $force == "yes" ]]; then
+        # MariaDB
+        echo "Updating MariaDB limits. Overwriting existing configuration files."
+        conf_mariadb_complete
+        # PHP-FPM
+        echo "Updating PHP-FPM limits. Overwriting existing configuration files."
+        for phpv in $(yq -ot .php_versions /var/qyc/cnf.yaml); do
+            conf_php_complete
+        done
+    else
+        # MariaDB
+        echo "Updating MariaDB limits."
+        conf_mariadb_resources
+        # PHP-FPM
+        echo "Updating default PHP-FPM limits."
+        phpv="$(yq -ot .php_default_version /var/qyc/cnf.yaml)"
+        conf_php_default_version_resources
+        systemctl restart uny-php"$phpv"-fpm
+    fi
+    systemctl restart uny-mariadb
+
+    echo "Updated resource limits."
+}
+
+conf_php_versions() {
+    invalid_versions="$(echo "$1" | tr "," "\n" | grep -v "[7-9]\.[0-9]")"
+    if [ "$invalid_versions" != "" ]; then
+        for ver in $invalid_versions; do
+            echo "$ver is not a valid PHP version."
+        done
+        echo "Aborting PHP config change due to invalid PHP version(s)."
+        exit 1
+    fi
+    php_versions="$(echo "$1" | tr "," "\n")"
+
+    php_default_version="$(echo "$php_versions" | head -n1)"
+    yq ".php_default_version = $php_default_version" -i /var/qyc/cnf.yaml
+
+    yq 'del(.php_versions)' -i /var/qyc/cnf.yaml
+    for ver in $php_versions; do
+        yq ".php_versions += [$ver]" -i /var/qyc/cnf.yaml
+    done
+
+    upd_php
+}
+
+conf_cloudflare_token() {
+    if [[ -z $cf_token ]]; then
+        echo "No Cloudflare token was given."
+        print_help_cnf
+    else
+        verify_cloudflare_token
+        sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/qyc/cnf.yaml
+        upd_get_cf_tokens
+        upd_get_cf_accounts_and_zones
+    fi
+}
+
+conf_opcache() {
+    if [[ "$1" == "off" ]]; then
+        grep -q "opcache.enable = 0" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already disabled. Doing nothing" && exit
+        sed "s+opcache.enable = 1+opcache.enable = 0+" -i /etc/qyc/php/fpm/php.ini
+        sed "s+opcache.enable_cli = 1+opcache.enable_cli = 0+" -i /etc/qyc/php/fpm/php.ini
+        systemctl reload uny-openlitespeed
+    elif [[ "$1" == "on" ]]; then
+        grep -q "opcache.enable = 1" /etc/qyc/php/fpm/php.ini && echo "PHP OPcache is already enabled. Doing nothing" && exit
+        sed "s+opcache.enable = 0+opcache.enable = 1+" -i /etc/qyc/php/fpm/php.ini
+        sed "s+opcache.enable_cli = 0+opcache.enable_cli = 1+" -i /etc/qyc/php/fpm/php.ini
+        systemctl reload uny-openlitespeed
+    else
+        echo 'Missing "on" or "off"'
+        print_help_set
+        exit
+    fi
+}
+
+conf_admin_users() {
+    if [[ $1 == "add" && ! $2 == "" && ! $(yq '.admin_users.[].user | select(. == "'"$2"'")' /var/qyc/cnf.yaml) ]]; then
+        admin_user="$2"
+        admin_password=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
+        runuser -u mysql -- mariadb --user=mysql <<EOF
+CREATE USER '${admin_user}'@'localhost' IDENTIFIED BY '${admin_password}';
+GRANT ALL PRIVILEGES ON *.* TO '${admin_user}'@'localhost';
+FLUSH PRIVILEGES;
+EOF
+
+        yq '.admin_users += [{"user": "'"$admin_user"'", "password": "'"$admin_password"'"}]' -i /var/qyc/cnf.yaml
+
+        echo "Admin user $admin_user added."
+        echo "All currently active admin users having database and file managing access:"
+        yq '.admin_users' /var/qyc/cnf.yaml
+    elif [[ $1 =~ (rm|remove) && ! $2 == "" && $(yq '.admin_users.[].user | select(. == "'"$2"'")' /var/qyc/cnf.yaml) ]]; then
+        admin_user="$2"
+        mariadb <<EOF
+DROP USER ${admin_user}@localhost;
+EOF
+
+        yq 'del(.admin_users.[] | select(.user == "'"$admin_user"'"))' -i /var/qyc/cnf.yaml
+
+        echo "Admin user $admin_user deleted."
+        echo "All currently active admin users having database and file managing access:"
+        yq '.admin_users' /var/qyc/cnf.yaml
+    else
+        echo "You have to specify qyc cnf admin add <user> or qyc cnf admin remove <user>. Something wasn't right."
+    fi
+}
+
+conf_qycli_version() {
+    current_branch="$(yq .branch_name /var/qyc/cnf.yaml)"
+
+    if [[ "$1" == "$current_branch" ]]; then
+        echo "qycli is already in the $current_branch branch."
+        exit
+    fi
+
+    if [[ $1 =~ (stable|beta|dev) ]]; then
+        yq '.branch_name = "'"$1"'"' -i /var/qyc/cnf.yaml
+        upd_qycli
+    else
+        echo 'Possible qycli verions are: "stable", "beta" and "dev"'
+        print_help_cnf
+        exit
+    fi
+}
+
+conf_parser() {
+    if [[ "$#" -gt 0 ]]; then
+        while [[ "$#" -gt 0 ]]; do
+            case "$1" in
+            limits | resources)
+                shift
+                conf_update_resource_limits "$@"
+                ;;
+            php)
+                shift
+                conf_php_versions "$@"
+                ;;
+            cft | cloudflaretoken)
+                shift
+                cf_token=$1
+                conf_cloudflare_token
+                ;;
+            opc | opcache)
+                shift
+                conf_opcache "$@"
+                ;;
+            a | admin)
+                shift
+                conf_admin_users "$@"
+                ;;
+            qycv | qycliversion)
+                shift
+                conf_qycli_version "$@"
+                ;;
+            *)
+                echo "Invalid option: $1"
+                print_help_cnf
+                ;;
+            esac
+            shift
+        done
+    else
+        print_help_cnf
+    fi
+}

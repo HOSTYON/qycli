@@ -6,9 +6,13 @@
 
 [[ $(whoami) != "root" ]] && echo "qycli has to be run as root, try 'sudo -i' or 'su -' to become root, then try again." && exit
 
-source /var/qyc/qycli/bin/help
-source /var/qyc/qycli/bin/stk
-source /var/qyc/qycli/bin/fn
+source_functions() {
+    for fn in /var/qyc/qycli/fn/*; do
+        # shellcheck source=fn/*
+        [ -f "$fn" ] && . "$fn"
+    done
+}
+source_functions
 
 if [[ $1 =~ (mk|make) ]]; then
     shift
@@ -29,20 +33,22 @@ elif [[ $1 =~ (del|delete) ]]; then
     fn_del "$@"
 elif [[ $1 =~ (upd|update) ]]; then
     shift
-    source /var/qyc/qycli/bin/upd
     upd_qycli
     echo
-    source /var/qyc/qycli/bin/upd
+    source_functions
     upd_parser "$@"
 elif [[ $1 =~ (cnf|conf|configure) ]]; then
     shift
-    fn_cnf "$@"
+    conf_parser "$@"
 elif [[ $1 == "info" ]]; then
     shift
     fn_info "$@"
 elif [[ $1 == "point-dns-here" ]]; then
     shift
     point_dns_here "$@"
+elif [[ $1 == "migrate-to-tunnel" ]]; then
+    shift
+    fn_migrate_to_tunnel "$@"
 else
     print_help_qyc
 fi
