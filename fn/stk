@@ -75,7 +75,7 @@ EOF
 
 stk_mariadb_install() {
     upd_mariadb
-    conf_mariadb
+    conf_mariadb_complete
     stk_mariadb_admin_user
 
     sed 's+# port = 3306+port = 3306+' -i /etc/uny/mariadb/my.cnf
@@ -136,6 +136,7 @@ stk_crowdsec_install() {
 
     # shellcheck disable=2034
     domain=crowdsec
+    mkdir -p /var/www/crowdsec/conf
     mk_common_db
     yq '.db_config.type = "mysql"' -i /etc/uny/crowdsec/config.yaml
     # shellcheck disable=2154

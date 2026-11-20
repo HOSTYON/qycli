@@ -9,10 +9,15 @@ upd_openresty() {
 }
 
 upd_mariadb() {
-    unyp install mariadb
+    unyp install liburing mariadb
     unyp si mariadb
 
+    if [ ! -d /var/lib/mysql/mysql ]; then
+        "/uny/pkg/mariadb/$(unyp info-installed mariadb)/scripts/mariadb-install-db" --user=mysql --datadir=/var/lib/mysql
+    fi
+
     systemctl reenable uny-mariadb
+    systemctl restart uny-mariadb
 }
 
 upd_php() {
@@ -144,7 +149,7 @@ upd_qycli() {
 upd_stack() {
     upd_get_new_cf_ips
     upd_mariadb
-    conf_mariadb
+    conf_mariadb_complete
     upd_openresty
     conf_openresty_complete
     upd_php
