@@ -49,9 +49,12 @@ mk_common_db() {
     runuser -u mysql -- mariadb --user=mysql <<EOF
 CREATE USER IF NOT EXISTS ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
 ALTER USER ${dbnaming}@localhost IDENTIFIED BY '${dbpassword}';
+CREATE USER IF NOT EXISTS ${dbnaming}@'127.0.0.1' IDENTIFIED BY '${dbpassword}';
+ALTER USER ${dbnaming}@'127.0.0.1' IDENTIFIED BY '${dbpassword}';
 DROP DATABASE IF EXISTS ${dbnaming};
 CREATE DATABASE ${dbnaming};
 GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@localhost;
+GRANT ALL PRIVILEGES ON ${dbnaming}.* TO ${dbnaming}@'127.0.0.1';
 FLUSH PRIVILEGES;
 EOF
 
