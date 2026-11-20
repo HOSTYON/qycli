@@ -49,7 +49,7 @@ stk_tls_cert() {
         -out /etc/ssl/qycli.crt \
         -keyout /etc/ssl/qycli.key \
         -subj "/C=AQ/ST=qycli/L=qycli/O=HOSTYON/OU=SysOps/CN=HOSTYON"
-    chown qycli:qycli /etc/ssl/qycli.crt /etc/ssl/qycli.key
+    chown unyweb:unyweb /etc/ssl/qycli.crt /etc/ssl/qycli.key 2>/dev/null || true
 }
 
 # stk_openlitespeed_install() {
