@@ -1443,10 +1443,6 @@ fn_info_inst() {
         echo "To install the same qycli version with the same Cloudflare tokens on another server run:"
         echo
         echo "$install_cmd"
-    else
-        echo "To install qycli on another server run:"
-        echo
-        echo "wget -qO- qyc.li/i/${current_branch_name:-stable} | sh"
     fi
 }
 
