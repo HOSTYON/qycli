@@ -304,7 +304,9 @@ get_cf_token_dns() {
     elif [ -s /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ]; then
         cf_token_dns=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json)
     fi
-    root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json)
+    if [ -s /var/qyc/cloudflare/cfzones.json ]; then
+        root_domain_zone_id=$(yq -oy '.[].[] | select(.name == "'"$root_domain"'").id' /var/qyc/cloudflare/cfzones.json 2>/dev/null)
+    fi
 }
 
 get_public_ips() {
@@ -1125,8 +1127,6 @@ EOF
 }
 
 fn_migrate_to_tunnel() {
-    stk_cloudflared_install
-
     local target_domains=()
     if [[ $# -ge 1 && -n "$1" ]]; then
         target_domains=("$1")
@@ -1143,10 +1143,60 @@ fn_migrate_to_tunnel() {
         return 0
     fi
 
+    # Check for Cloudflare token before attempting tunnel migration
+    local has_token=0
+    local cf_master_token
+    cf_master_token=$(yq .cloudflare_token /var/qyc/cnf.yaml 2>/dev/null | tr -d '"\r\n ')
+    [[ "$cf_master_token" == "null" ]] && cf_master_token=""
+
+    local cf_az_token=""
+    if [ -s /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ]; then
+        cf_az_token=$(yq -oy .result.value /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null | tr -d '"\r\n ')
+        [[ "$cf_az_token" == "null" ]] && cf_az_token=""
+    fi
+
+    if [ -n "$cf_az_token" ]; then
+        has_token=1
+    elif [ -n "$cf_master_token" ]; then
+        if upd_get_cf_tokens >&2; then
+            if [ -s /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ]; then
+                has_token=1
+            fi
+        fi
+    fi
+
+    if [ $has_token -eq 0 ]; then
+        for dom in "${target_domains[@]}"; do
+            if [ -f "/var/www/$dom/conf/qyc-site.yaml" ]; then
+                local site_tok
+                site_tok=$(yq .cf_accounts_zones_dns_token /var/www/"$dom"/conf/qyc-site.yaml 2>/dev/null | tr -d '"\r\n ')
+                if [[ -n "$site_tok" && "$site_tok" != "null" ]]; then
+                    has_token=1
+                    break
+                fi
+            fi
+        done
+    fi
+
+    if [ $has_token -eq 0 ]; then
+        echo "No valid Cloudflare API token found." >&2
+        echo "Cloudflare Tunnel requires a valid Cloudflare token to create and manage tunnels." >&2
+        echo "Please set a token with 'qyc conf cloudflare_token' or in site configuration. Aborting." >&2
+        return 1
+    fi
+
+    stk_cloudflared_install
+
+    local migrated_count=0
     for dom in "${target_domains[@]}"; do
         echo "Migrating $dom to tunnel mode..."
         domain_parser "$dom"
         get_cf_token_dns
+
+        if [ -z "$cf_token_dns" ] || [ "$cf_token_dns" = "null" ]; then
+            echo "No Cloudflare token available for $dom ($root_domain). Skipping." >&2
+            continue
+        fi
 
         zone_answer="$(curl -s https://api.cloudflare.com/client/v4/zones?name="$root_domain" \
             -H "Authorization: Bearer $cf_token_dns")"
@@ -1165,12 +1215,18 @@ fn_migrate_to_tunnel() {
         cf_dns_cname_entry
 
         echo "Domain $dom migrated to Cloudflare Tunnel."
+        migrated_count=$((migrated_count + 1))
     done
+
+    if [ "$migrated_count" -eq 0 ]; then
+        echo "No domains were successfully migrated to tunnel mode." >&2
+        return 1
+    fi
 
     upd_cloudflared_config
     conf_openresty_listeners
 
-    echo "Migration to tunnel mode completed successfully."
+    echo "Migration to tunnel mode completed successfully ($migrated_count domain(s) migrated)."
 }
 
 set_ingress() {
