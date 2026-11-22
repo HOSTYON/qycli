@@ -69,8 +69,6 @@ upd_get_cf_tokens() {
     local cftaz_gen=no
     local cftwp_gen=no
 
-    local tunnel_write_id="c07321b023e944ff818fec44d8203567"
-
     if [[ -n "$cf_token_accounts_zones_dns" ]]; then
         cf_token_accounts_zones_dns_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
             -H "Authorization: Bearer $cf_token_accounts_zones_dns" \
@@ -79,7 +77,7 @@ upd_get_cf_tokens() {
             echo "Cloudflare Accounts and Zones DNS token is valid and active."
             # Check if existing token has Cloudflare Tunnel Write permission (if policies are stored)
             if [ -s /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ] && grep -q '"policies"' /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null; then
-                if ! grep -q "$tunnel_write_id" /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null; then
+                if ! grep -q "c07321b023e944ff818fec44d8203567" /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null; then
                     echo "Cloudflare Accounts and Zones DNS token is missing Cloudflare Tunnel permissions. Regenerating token."
                     cftaz_gen=yes
                 fi
@@ -127,19 +125,6 @@ upd_get_cf_tokens() {
         return 1
     fi
 
-    # Query available permission groups to dynamically discover Cloudflare Tunnel permission group IDs
-    local cf_perm_groups
-    cf_perm_groups="$(curl -sS -X GET "https://api.cloudflare.com/client/v4/user/tokens/permission_groups" \
-        -H "Authorization: Bearer $cf_token" \
-        -H "Content-Type: application/json")"
-
-    local dynamic_tunnel_write_id
-    dynamic_tunnel_write_id="$(echo "$cf_perm_groups" | yq '.result[] | select(.name == "Cloudflare Tunnel Write" or .name == "Argo Tunnel Write" or .name == "Cloudflare One Connectors Write").id' 2>/dev/null | head -n1 | tr -d '"\r\n ')"
-    [ -n "$dynamic_tunnel_write_id" ] && tunnel_write_id="$dynamic_tunnel_write_id"
-
-    local tunnel_read_id
-    tunnel_read_id="$(echo "$cf_perm_groups" | yq '.result[] | select(.name == "Cloudflare Tunnel Read" or .name == "Argo Tunnel Read" or .name == "Cloudflare One Connectors Read").id' 2>/dev/null | head -n1 | tr -d '"\r\n ')"
-
     time="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
     if [[ $cf_token != "" && $cftaz_gen == "yes" ]]; then
@@ -147,14 +132,6 @@ upd_get_cf_tokens() {
             curl -sS -X DELETE "https://api.cloudflare.com/client/v4/user/tokens/$cftaz_id" \
                 -H "Authorization: Bearer $cf_token" \
                 -H "Content-Type: application/json" >/dev/null 2>&1 || true
-        fi
-
-        local account_perms='{"id": "c1fde68c7bcc44588cbb6ddbc16d6480", "name": "Account Settings Read"}'
-        if [ -n "$tunnel_write_id" ]; then
-            account_perms="$account_perms, {\"id\": \"$tunnel_write_id\", \"name\": \"Cloudflare Tunnel Write\"}"
-        fi
-        if [ -n "$tunnel_read_id" ]; then
-            account_perms="$account_perms, {\"id\": \"$tunnel_read_id\", \"name\": \"Cloudflare Tunnel Read\"}"
         fi
 
         # Create Accounts Zones and DNS Token
@@ -172,7 +149,18 @@ upd_get_cf_tokens() {
                 "com.cloudflare.api.account.*": "*"
             },
             "permission_groups": [
-                '"$account_perms"'
+                {
+                    "id": "c1fde68c7bcc44588cbb6ddbc16d6480",
+                    "name": "Account Settings Read"
+                },
+                {
+                    "id": "c07321b023e944ff818fec44d8203567",
+                    "name": "Cloudflare Tunnel Write"
+                },
+                {
+                    "id": "802996d93b3f4f1aa6dbf6a45fc9820f",
+                    "name": "Cloudflare Tunnel Read"
+                }
             ]
         },
         {
@@ -208,6 +196,13 @@ upd_get_cf_tokens() {
     fi
 
     if [[ $cf_token != "" && $cftwp_gen == "yes" ]]; then
+        # Delete old WP token if replacing it
+        if [ -n "$cftwp_id" ]; then
+            curl -sS -X DELETE "https://api.cloudflare.com/client/v4/user/tokens/$cftwp_id" \
+                -H "Authorization: Bearer $cf_token" \
+                -H "Content-Type: application/json" >/dev/null 2>&1 || true
+        fi
+
         # Create WP Cloudflare Super Page Cache Token
         echo "Creating new Cloudflare Token for WordPress Super Page Cache."
         curl -sS -X POST "https://api.cloudflare.com/client/v4/user/tokens" \
