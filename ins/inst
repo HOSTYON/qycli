@@ -66,12 +66,15 @@ done
 echo "Installing qycli."
 echo
 
-if [ "$no_cloudflare_token" != "true" ] && [ "$cloudflare_token" = "" ]; then
-    echo "You need to supply a Clouflare User API token (Not an Account Token) with the permission template 'Create Additional Tokens'."
-    echo "Then you supply it to the qycli installation like this: wget -qO- qyc.li/i/stable | bash -s cft YOURTOKENHERE"
+if [ "$no_cloudflare_token" != "true" ] && [ -z "$cloudflare_token" ] && [ -z "$cftaz" ]; then
+    echo "You need to supply either:"
+    echo "  1) A Cloudflare User API token with 'Create Additional Tokens' permission:"
+    echo "     wget -qO- qyc.li/i/stable | bash -s cft YOUR_MASTER_TOKEN"
+    echo "  2) Or pre-created scoped tokens directly:"
+    echo "     wget -qO- qyc.li/i/stable | bash -s cftaz YOUR_DNS_TOKEN cftwp YOUR_CACHE_TOKEN"
     echo "qycli only works with Cloudflare. Aborting."
     exit 1
-elif [ "$no_cloudflare_token" != "true" ] && [ "$cloudflare_token" != "" ]; then
+elif [ "$no_cloudflare_token" != "true" ] && [ -n "$cloudflare_token" ]; then
 
     if wget --method=get -O- -q \
         --header="Authorization: Bearer $cloudflare_token" \
@@ -80,7 +83,20 @@ elif [ "$no_cloudflare_token" != "true" ] && [ "$cloudflare_token" != "" ]; then
 
         echo "Cloudflare User Token verified."
     else
-        echo "Needs to be a Cloudflare User Token not an Account Token. Aborting."
+        echo "Needs to be a valid Cloudflare User Token (not an Account Token). Aborting."
+        exit 1
+    fi
+
+elif [ "$no_cloudflare_token" != "true" ] && [ -n "$cftaz" ]; then
+
+    if wget --method=get -O- -q \
+        --header="Authorization: Bearer $cftaz" \
+        --header="Content-Type:application/json" \
+        https://api.cloudflare.com/client/v4/user/tokens/verify >/dev/null; then
+
+        echo "Cloudflare Accounts/Zones/DNS Token verified."
+    else
+        echo "Cloudflare Accounts/Zones/DNS Token is invalid or not active. Aborting."
         exit 1
     fi
 
@@ -94,7 +110,7 @@ php_default_version="$(echo "$php_versions" | head -n1)"
 
 tee /var/qyc/cnf.yaml <<EOF
 branch_name: $branch_name
-cloudflare_token: $cloudflare_token
+cloudflare_token: 
 auto_update: $auto_update
 php_default_version: $php_default_version
 EOF
@@ -146,7 +162,13 @@ stk_install
 
 if [ "$no_cloudflare_token" != "true" ]; then
     printf "\nGetting Cloudflare data.\n\n"
-    upd_get_cf_tokens
+    if [ -n "$cftaz" ]; then
+        mkdir -p /var/qyc/cloudflare
+        echo "{\"result\": {\"value\": \"$cftaz\"}}" > /var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+        [ -n "$cftwp" ] && echo "{\"result\": {\"value\": \"$cftwp\"}}" > /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json
+    elif [ -n "$cloudflare_token" ]; then
+        upd_get_cf_tokens "$cloudflare_token"
+    fi
     upd_get_cf_accounts_and_zones
 fi
 

@@ -328,10 +328,34 @@ conf_cloudflare_token() {
         print_help_cnf
     else
         verify_cloudflare_token
-        sed "s/^cloudflare_token: .*/cloudflare_token: $cf_token/" -i /var/qyc/cnf.yaml
-        upd_get_cf_tokens
+        upd_get_cf_tokens "$cf_token"
         upd_get_cf_accounts_and_zones
+        yq '.cloudflare_token = ""' -i /var/qyc/cnf.yaml 2>/dev/null || sed "s/^cloudflare_token: .*/cloudflare_token: /" -i /var/qyc/cnf.yaml 2>/dev/null || true
+        echo "Cloudflare scoped tokens generated successfully. Master token was not stored on disk."
     fi
+}
+
+conf_cftaz() {
+    local tok="$1"
+    if [[ -z "$tok" ]]; then
+        echo "No Cloudflare Accounts/Zones/DNS token was given."
+        return 1
+    fi
+    mkdir -p /var/qyc/cloudflare
+    echo "{\"result\": {\"value\": \"$tok\"}}" >/var/qyc/cloudflare/cf_token_accounts_zones_dns.json
+    echo "Cloudflare Accounts/Zones/DNS token saved."
+    upd_get_cf_accounts_and_zones
+}
+
+conf_cftwp() {
+    local tok="$1"
+    if [[ -z "$tok" ]]; then
+        echo "No Cloudflare WP Page Cache token was given."
+        return 1
+    fi
+    mkdir -p /var/qyc/cloudflare
+    echo "{\"result\": {\"value\": \"$tok\"}}" >/var/qyc/cloudflare/cf_token_wp_cf_page_cache.json
+    echo "Cloudflare WP Page Cache token saved."
 }
 
 conf_opcache() {
@@ -417,6 +441,14 @@ conf_parser() {
                 shift
                 cf_token=$1
                 conf_cloudflare_token
+                ;;
+            cftaz)
+                shift
+                conf_cftaz "$1"
+                ;;
+            cftwp)
+                shift
+                conf_cftwp "$1"
                 ;;
             opc | opcache)
                 shift

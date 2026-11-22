@@ -55,13 +55,67 @@ get_cftwp() {
     fi
 }
 
+# shellcheck disable=SC2120
 upd_get_cf_tokens() {
+    local master_input_token="$1"
     get_cftaz
     get_cftwp
 
-    cf_token=$(yq .cloudflare_token /var/qyc/cnf.yaml 2>/dev/null | tr -d '"\r\n ')
+    cf_token="${master_input_token:-$(yq .cloudflare_token /var/qyc/cnf.yaml 2>/dev/null | tr -d '"\r\n ')}"
+    [[ "$cf_token" == "null" ]] && cf_token=""
     cf_token_accounts_zones_dns="$cftaz"
     cf_token_wp_cf_page_cache="$cftwp"
+
+    local cftaz_gen=no
+    local cftwp_gen=no
+
+    local tunnel_write_id="c07321b023e944ff818fec44d8203567"
+
+    if [[ -n "$cf_token_accounts_zones_dns" ]]; then
+        cf_token_accounts_zones_dns_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+            -H "Authorization: Bearer $cf_token_accounts_zones_dns" \
+            -H "Content-Type: application/json")"
+        if [[ $(yq .success <<<"$cf_token_accounts_zones_dns_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_accounts_zones_dns_verify_answer") == "active" ]]; then
+            echo "Cloudflare Accounts and Zones DNS token is valid and active."
+            # Check if existing token has Cloudflare Tunnel Write permission (if policies are stored)
+            if [ -s /var/qyc/cloudflare/cf_token_accounts_zones_dns.json ] && grep -q '"policies"' /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null; then
+                if ! grep -q "$tunnel_write_id" /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null; then
+                    echo "Cloudflare Accounts and Zones DNS token is missing Cloudflare Tunnel permissions. Regenerating token."
+                    cftaz_gen=yes
+                fi
+            fi
+        else
+            echo "Cloudflare Accounts and Zones DNS token appears to not be functional anymore. Generating new token."
+            cftaz_gen=yes
+        fi
+    else
+        cftaz_gen=yes
+    fi
+
+    if [[ -n "$cf_token_wp_cf_page_cache" ]]; then
+        cf_token_wp_cf_page_cache_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+            -H "Authorization: Bearer $cf_token_wp_cf_page_cache" \
+            -H "Content-Type: application/json")"
+        if [[ $(yq .success <<<"$cf_token_wp_cf_page_cache_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_wp_cf_page_cache_verify_answer") == "active" ]]; then
+            echo "Cloudflare WordPress Page Cache token is valid and active."
+        else
+            echo "Cloudflare WordPress Page Cache token appears to not be functional anymore. Generating new token."
+            cftwp_gen=yes
+        fi
+    else
+        cftwp_gen=yes
+    fi
+
+    if [[ $cftaz_gen != "yes" && $cftwp_gen != "yes" ]]; then
+        echo "All Cloudflare scoped tokens are valid and active."
+        return 0
+    fi
+
+    if [[ -z "$cf_token" ]]; then
+        echo "Cloudflare generative master token is required to generate scoped tokens, but none was provided." >&2
+        echo "Please provide it via 'qyc conf cft <token>' or configure pre-created tokens with 'qyc conf cftaz <token>'. Aborting." >&2
+        return 1
+    fi
 
     cf_token_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
         -H "Authorization: Bearer $cf_token" \
@@ -79,65 +133,12 @@ upd_get_cf_tokens() {
         -H "Authorization: Bearer $cf_token" \
         -H "Content-Type: application/json")"
 
-    local tunnel_write_id
-    tunnel_write_id="$(echo "$cf_perm_groups" | yq '.result[] | select(.name == "Cloudflare Tunnel Write" or .name == "Argo Tunnel Write" or .name == "Cloudflare One Connectors Write").id' 2>/dev/null | head -n1 | tr -d '"\r\n ')"
-    [ -z "$tunnel_write_id" ] && tunnel_write_id="c07321b023e944ff818fec44d8203567"
+    local dynamic_tunnel_write_id
+    dynamic_tunnel_write_id="$(echo "$cf_perm_groups" | yq '.result[] | select(.name == "Cloudflare Tunnel Write" or .name == "Argo Tunnel Write" or .name == "Cloudflare One Connectors Write").id' 2>/dev/null | head -n1 | tr -d '"\r\n ')"
+    [ -n "$dynamic_tunnel_write_id" ] && tunnel_write_id="$dynamic_tunnel_write_id"
 
     local tunnel_read_id
     tunnel_read_id="$(echo "$cf_perm_groups" | yq '.result[] | select(.name == "Cloudflare Tunnel Read" or .name == "Argo Tunnel Read" or .name == "Cloudflare One Connectors Read").id' 2>/dev/null | head -n1 | tr -d '"\r\n ')"
-
-    if [[ $cf_token_accounts_zones_dns != "" ]]; then
-        cf_token_accounts_zones_dns_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
-            -H "Authorization: Bearer $cf_token_accounts_zones_dns" \
-            -H "Content-Type: application/json")"
-        if [[ $(yq .success <<<"$cf_token_accounts_zones_dns_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_accounts_zones_dns_verify_answer") == "active" ]]; then
-            echo "Cloudflare Accounts and Zones DNS token is valid and active."
-            # Check if existing token has Cloudflare Tunnel Write permission
-            if [ -n "$tunnel_write_id" ] && ! grep -q "$tunnel_write_id" /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null; then
-                echo "Cloudflare Accounts and Zones DNS token is missing Cloudflare Tunnel permissions. Regenerating token."
-                cftaz_gen=yes
-            elif [ -z "$cftaz_id" ]; then
-                cf_token_accounts_zones_dns_id="$(yq .result.id <<<"$cf_token_accounts_zones_dns_verify_answer")"
-                # Restore API result
-                curl -sS -X GET https://api.cloudflare.com/client/v4/user/tokens/"$cf_token_accounts_zones_dns_id" \
-                    -H "Authorization: Bearer $cf_token" \
-                    -H "Content-Type: application/json" \
-                    >/var/qyc/cloudflare/cf_token_accounts_zones_dns.json
-                yq '.result.value = '\""$cf_token_accounts_zones_dns"\"'' -i /var/qyc/cloudflare/cf_token_accounts_zones_dns.json
-            else
-                mv /var/qyc/cloudflare/cf_token_accounts_zones.json /var/qyc/cloudflare/cf_token_accounts_zones_dns.json 2>/dev/null
-            fi
-        else
-            echo "Cloudflare Accounts and Zones DNS token appears to not be functional anymore. Generating new token."
-            cftaz_gen=yes
-        fi
-
-    else
-        cftaz_gen=yes
-    fi
-
-    if [[ $cf_token_wp_cf_page_cache != "" ]]; then
-        cf_token_wp_cf_page_cache_verify_answer="$(curl -s -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
-            -H "Authorization: Bearer $cf_token_wp_cf_page_cache" \
-            -H "Content-Type: application/json")"
-        if [[ $(yq .success <<<"$cf_token_wp_cf_page_cache_verify_answer") == "true" && $(yq .result.status <<<"$cf_token_wp_cf_page_cache_verify_answer") == "active" ]]; then
-            echo "Cloudflare WordPress Page Cache token is valid and active."
-            if [ -z "$cftwp_id" ]; then
-                cf_token_wp_cf_page_cache_id="$(yq .result.id <<<"$cf_token_wp_cf_page_cache_verify_answer")"
-                # Restore API result
-                curl -sS -X GET https://api.cloudflare.com/client/v4/user/tokens/"$cf_token_wp_cf_page_cache_id" \
-                    -H "Authorization: Bearer $cf_token" \
-                    -H "Content-Type: application/json" \
-                    >/var/qyc/cloudflare/cf_token_wp_cf_page_cache.json
-                yq ".result.value = '$cf_token_wp_cf_page_cache'" -i /var/qyc/cloudflare/cf_token_wp_cf_page_cache.json
-            fi
-        else
-            echo "Cloudflare WordPress Page Cache token appears to not be functional anymore. Generating new token."
-            cftwp_gen=yes
-        fi
-    else
-        cftwp_gen=yes
-    fi
 
     time="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
@@ -265,6 +266,11 @@ upd_get_cf_tokens() {
         }
     ]
 }' >/var/qyc/cloudflare/cf_token_wp_cf_page_cache.json
+    fi
+
+    if [[ $cftaz_gen == "yes" || $cftwp_gen == "yes" ]]; then
+        yq '.cloudflare_token = ""' -i /var/qyc/cnf.yaml 2>/dev/null || sed "s/^cloudflare_token: .*/cloudflare_token: /" -i /var/qyc/cnf.yaml 2>/dev/null || true
+        echo "Cloudflare scoped tokens generated successfully. Master token was not stored on disk."
     fi
 }
 

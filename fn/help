@@ -155,7 +155,9 @@ Usage:
 
 Available options:
   php                           values: 8.4|8.3|8.2|8.1|7.4    Change the installed php versions, the first one will be the default
-  cft | cloudflaretoken         value:  <CloudflareToken>      Change the Cloudflare Token to be used
+  cft | cloudflaretoken         value:  <CloudflareToken>      Generative Cloudflare Token (used once in memory to mint scoped tokens)
+  cftaz                         value:  <AccountsZonesDNSToken> Cloudflare Accounts, Zones & DNS Token (scoped fallback)
+  cftwp                         value:  <PageCacheToken>       Cloudflare WordPress Super Page Cache Token (scoped fallback)
   aupd | autoupd | autoupdate   values: on|yes|off|no          Turn automatic updates for the server and qycli on or off
   opc | opcache                 values: on|off                 Turn Zend OPCache for PHP on or off
   qycv | qycliversion           value: stable|beta|dev         Sets the qycli version
