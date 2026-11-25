@@ -158,7 +158,7 @@ upd_get_cf_tokens() {
                     "name": "Cloudflare Tunnel Write"
                 },
                 {
-                    "id": "802996d93b3f4f1aa6dbf6a45fc9820f",
+                    "id": "efea2ab8357b47888938f101ae5e053f",
                     "name": "Cloudflare Tunnel Read"
                 }
             ]
