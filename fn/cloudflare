@@ -538,8 +538,8 @@ EOF
     return 0
 }
 
-upd_cloudflared_config() {
-    local tmp_dir="/run/qyc/cloudflared_acc"
+upd_unycfd_config() {
+    local tmp_dir="/run/qyc/unycfd_acc"
     rm -rf "$tmp_dir"
     mkdir -p "$tmp_dir" /etc/cloudflared /var/qyc/cloudflare/tunnels
 
@@ -568,7 +568,7 @@ upd_cloudflared_config() {
         echo "No tunnel-mode sites active."
         if command -v systemctl >/dev/null 2>&1; then
             local running_services
-            running_services=$(systemctl list-units --type=service --state=running 'cloudflared@*' 2>/dev/null | awk '/cloudflared@/ {print $1}')
+            running_services=$(systemctl list-units --type=service --state=running 'unycfd@*' 'cloudflared@*' 2>/dev/null | awk '/(unycfd|cloudflared)@/ {print $1}')
             for svc in $running_services; do
                 systemctl stop "$svc" 2>/dev/null || true
                 systemctl disable "$svc" 2>/dev/null || true
@@ -583,18 +583,28 @@ upd_cloudflared_config() {
     fi
 
     # Ensure systemd template service is installed (and updated)
-    if [ ! -f /etc/systemd/system/cloudflared@.service ] || grep -q '%I' /etc/systemd/system/cloudflared@.service 2>/dev/null; then
-        cat <<'EOF' >/etc/systemd/system/cloudflared@.service
+    if [ ! -f /etc/systemd/system/unycfd@.service ] || ! grep -q '/var/qyc/bin/unycfd' /etc/systemd/system/unycfd@.service 2>/dev/null; then
+        cat <<'EOF' >/etc/systemd/system/unycfd@.service
 [Unit]
-Description=Cloudflare Tunnel for Account %i
-After=network.target
+Description=unycfd Cloudflare Tunnel for Account %i
+After=network-online.target
+Wants=network-online.target
+Documentation=https://github.com/unycfd/unycfd
 
 [Service]
-TimeoutStartSec=0
+TimeoutStartSec=60
 Type=notify
-ExecStart=/var/qyc/bin/cloudflared tunnel --config /etc/cloudflared/config-%i.yml run
+Environment=MALLOC_ARENA_MAX=1
+ExecStart=/var/qyc/bin/unycfd tunnel --config /etc/cloudflared/config-%i.yml run
 Restart=on-failure
 RestartSec=5s
+KillMode=mixed
+TimeoutStopSec=15
+LimitNOFILE=65536
+
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
@@ -602,12 +612,18 @@ EOF
         systemctl daemon-reload 2>/dev/null || true
     fi
 
-    # Stop and disable legacy un-templated cloudflared.service if running
-    if systemctl is-active --quiet cloudflared 2>/dev/null; then
-        systemctl stop cloudflared 2>/dev/null || true
-        systemctl disable cloudflared 2>/dev/null || true
-        rm -f /etc/systemd/system/cloudflared.service
-        systemctl daemon-reload 2>/dev/null || true
+    # Stop and disable legacy cloudflared services if running
+    if command -v systemctl >/dev/null 2>&1; then
+        local legacy_services
+        legacy_services=$(systemctl list-units --all --type=service 'cloudflared*' 2>/dev/null | awk '/cloudflared/ {print $1}')
+        for svc in $legacy_services; do
+            systemctl stop "$svc" 2>/dev/null || true
+            systemctl disable "$svc" 2>/dev/null || true
+        done
+        if [ -f /etc/systemd/system/cloudflared.service ] || [ -f /etc/systemd/system/cloudflared@.service ]; then
+            rm -f /etc/systemd/system/cloudflared.service /etc/systemd/system/cloudflared@.service
+            systemctl daemon-reload 2>/dev/null || true
+        fi
     fi
 
     # Clean up legacy single-tunnel files and UUID symlinks
@@ -671,17 +687,17 @@ EOF
   - service: http_status:404
 EOF
 
-        systemctl enable "cloudflared@${acc_slug}" 2>/dev/null || true
-        systemctl restart "cloudflared@${acc_slug}" 2>/dev/null || true
-        echo "Cloudflare Tunnel for account $acc_slug ($acc_id) updated and running (edge-ip-version: $edge_ip_version)."
+        systemctl enable "unycfd@${acc_slug}" 2>/dev/null || true
+        systemctl restart "unycfd@${acc_slug}" 2>/dev/null || true
+        echo "Cloudflare Tunnel (unycfd) for account $acc_slug ($acc_id) updated and running (edge-ip-version: $edge_ip_version)."
     done
 
-    # Clean up stale cloudflared@ instances that no longer have sites
+    # Clean up stale unycfd@ instances that no longer have sites
     local running_units
-    running_units=$(systemctl list-units --type=service --state=running 'cloudflared@*' 2>/dev/null | awk '/cloudflared@/ {print $1}')
+    running_units=$(systemctl list-units --type=service --state=running 'unycfd@*' 2>/dev/null | awk '/unycfd@/ {print $1}')
     for unit in $running_units; do
         local running_instance
-        running_instance=$(echo "$unit" | sed -E 's/cloudflared@(.*)\.service/\1/')
+        running_instance=$(echo "$unit" | sed -E 's/unycfd@(.*)\.service/\1/')
         local is_active=false
         for act in "${active_accounts[@]}"; do
             if [ "$act" = "$running_instance" ]; then

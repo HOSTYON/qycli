@@ -170,14 +170,25 @@ stk_crowdsec_install() {
 #    chown -R qycli:qycli /var/qyc/lib/filebrowser
 #}
 
-stk_cloudflared_install() {
-    if ! command -v cloudflared >/dev/null 2>&1; then
-        echo "Installing cloudflared from binary release..."
+stk_unycfd_install() {
+    if ! command -v unycfd >/dev/null 2>&1; then
+        echo "Installing unycfd from binary release..."
+        local arch
+        case "$(uname -m)" in
+        aarch64 | arm64) arch="aarch64-unknown-linux-musl" ;;
+        *) arch="x86_64-unknown-linux-musl" ;;
+        esac
         mkdir -p /var/qyc/bin
-        wget -qO /var/qyc/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
-        chmod +x /var/qyc/bin/cloudflared
-        ln -sf /var/qyc/bin/cloudflared /usr/local/bin/cloudflared
-        ln -sf /var/qyc/bin/cloudflared /bin/cloudflared
+        if wget -qO /var/qyc/bin/unycfd.tmp "https://github.com/unycfd/unycfd/releases/latest/download/unycfd-${arch}" && [ -s /var/qyc/bin/unycfd.tmp ]; then
+            chmod +x /var/qyc/bin/unycfd.tmp
+            mv -f /var/qyc/bin/unycfd.tmp /var/qyc/bin/unycfd
+            ln -sf /var/qyc/bin/unycfd /usr/local/bin/unycfd
+            ln -sf /var/qyc/bin/unycfd /bin/unycfd
+        else
+            rm -f /var/qyc/bin/unycfd.tmp
+            echo "Failed to download unycfd binary." >&2
+            return 1
+        fi
     fi
 }
 
@@ -189,7 +200,7 @@ stk_install() {
     stk_mariadb_install
     stk_wpcli_install
     stk_crowdsec_install
-    stk_cloudflared_install
+    stk_unycfd_install
     # stk_openlitespeed_install
     # stk_valkey_install
     # stk_filebrowser_install

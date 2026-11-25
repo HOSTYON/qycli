@@ -319,7 +319,7 @@ get_public_ips() {
 
 tunnel_and_infos() {
     local dom="$1"
-    stk_cloudflared_install
+    stk_unycfd_install
     domain_parser "$dom"
 
     if tunnel_id=$(cf_get_or_create_tunnel "$root_domain") && [ -n "$tunnel_id" ] && [[ ! "$tunnel_id" =~ [[:space:]] ]]; then
@@ -331,7 +331,7 @@ tunnel_and_infos() {
             cf_dns_cname_entry
         fi
 
-        upd_cloudflared_config
+        upd_unycfd_config
         conf_openresty_listeners
         print_tunnel_dns_info
         print_login_info
@@ -770,7 +770,7 @@ del_site() {
 DROP USER ${dbnaming}@localhost;    
 DROP DATABASE ${dbnaming};
 EOF
-    upd_cloudflared_config
+    upd_unycfd_config
     conf_openresty_listeners
     echo "Database deleted."
     echo "$domain deleted."
@@ -1185,7 +1185,7 @@ fn_migrate_to_tunnel() {
         return 1
     fi
 
-    stk_cloudflared_install
+    stk_unycfd_install
 
     local migrated_count=0
     for dom in "${target_domains[@]}"; do
@@ -1223,7 +1223,7 @@ fn_migrate_to_tunnel() {
         return 1
     fi
 
-    upd_cloudflared_config
+    upd_unycfd_config
     conf_openresty_listeners
 
     echo "Migration to tunnel mode completed successfully ($migrated_count domain(s) migrated)."
@@ -1251,14 +1251,14 @@ set_ingress() {
         echo "Switching $domain to dns mode..."
         yq '.ingress_mode = "dns"' -i /var/www/"$domain"/conf/qyc-site.yaml
         del_dns_entries
-        upd_cloudflared_config
+        upd_unycfd_config
         conf_openresty_listeners
         dns_and_infos
     elif [[ "$target_mode" == "rproxy" ]]; then
         echo "Switching $domain to rproxy mode..."
         yq '.ingress_mode = "rproxy"' -i /var/www/"$domain"/conf/qyc-site.yaml
         del_dns_entries
-        upd_cloudflared_config
+        upd_unycfd_config
         conf_openresty_listeners
         print_rproxy_info "$domain"
     fi

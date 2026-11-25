@@ -161,19 +161,69 @@ upd_stack() {
     conf_openresty_complete
     upd_php
     upd_psl
-    upd_cloudflared
+    upd_unycfd
+    if command -v systemctl >/dev/null 2>&1 && systemctl list-units --type=service --state=running 'unycfd@*' 2>/dev/null | grep -q unycfd@; then
+        upd_unycfd_config
+    fi
 }
 
-upd_cloudflared() {
-    echo "Updating cloudflared..."
+upd_unycfd() {
+    echo "Updating unycfd..."
+    local arch
+    case "$(uname -m)" in
+    aarch64 | arm64) arch="aarch64-unknown-linux-musl" ;;
+    *) arch="x86_64-unknown-linux-musl" ;;
+    esac
     mkdir -p /var/qyc/bin
-    wget -qO /var/qyc/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
-    chmod +x /var/qyc/bin/cloudflared
-    ln -sf /var/qyc/bin/cloudflared /usr/local/bin/cloudflared
-    ln -sf /var/qyc/bin/cloudflared /bin/cloudflared
+    if wget -qO /var/qyc/bin/unycfd.tmp "https://github.com/unycfd/unycfd/releases/latest/download/unycfd-${arch}" && [ -s /var/qyc/bin/unycfd.tmp ]; then
+        chmod +x /var/qyc/bin/unycfd.tmp
+        mv -f /var/qyc/bin/unycfd.tmp /var/qyc/bin/unycfd
+        ln -sf /var/qyc/bin/unycfd /usr/local/bin/unycfd
+        ln -sf /var/qyc/bin/unycfd /bin/unycfd
+    else
+        rm -f /var/qyc/bin/unycfd.tmp
+        echo "Failed to download unycfd binary." >&2
+        return 1
+    fi
+}
+
+migrate_cloudflared_to_unycfd() {
+    local needs_migration=0
+    if [ -e /var/qyc/bin/cloudflared ] || [ -e /usr/local/bin/cloudflared ] || [ -e /bin/cloudflared ] ||
+        [ -f /etc/systemd/system/cloudflared@.service ] || [ -f /etc/systemd/system/cloudflared.service ]; then
+        needs_migration=1
+    elif command -v systemctl >/dev/null 2>&1 && systemctl list-units --all --type=service 'cloudflared*' 2>/dev/null | grep -q cloudflared; then
+        needs_migration=1
+    fi
+
+    if [ "$needs_migration" -eq 0 ]; then
+        return 0
+    fi
+
+    echo "Migrating cloudflared to unycfd..."
+    upd_unycfd || return 1
+
+    if command -v systemctl >/dev/null 2>&1; then
+        local cf_units
+        cf_units=$(systemctl list-units --all --type=service 'cloudflared*' 2>/dev/null | awk '/cloudflared/ {print $1}')
+        for unit in $cf_units; do
+            systemctl stop "$unit" 2>/dev/null || true
+            systemctl disable "$unit" 2>/dev/null || true
+        done
+        if systemctl is-active --quiet cloudflared 2>/dev/null || systemctl is-enabled --quiet cloudflared 2>/dev/null; then
+            systemctl stop cloudflared 2>/dev/null || true
+            systemctl disable cloudflared 2>/dev/null || true
+        fi
+        rm -f /etc/systemd/system/cloudflared@.service /etc/systemd/system/cloudflared.service
+        systemctl daemon-reload 2>/dev/null || true
+    fi
+
+    rm -f /var/qyc/bin/cloudflared /usr/local/bin/cloudflared /bin/cloudflared
+    upd_unycfd_config
 }
 
 upd_parser() {
+    migrate_cloudflared_to_unycfd
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
         qyc | qycli)
@@ -184,9 +234,12 @@ upd_parser() {
             shift
             upd_stack
             ;;
-        cloudflared)
+        unycfd | cloudflared)
             shift
-            upd_cloudflared
+            upd_unycfd
+            if command -v systemctl >/dev/null 2>&1 && systemctl list-units --type=service --state=running 'unycfd@*' 2>/dev/null | grep -q unycfd@; then
+                upd_unycfd_config
+            fi
             ;;
         cf | cloudflareinfo)
             shift
