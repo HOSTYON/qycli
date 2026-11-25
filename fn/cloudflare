@@ -668,19 +668,25 @@ ingress:
 EOF
         while IFS= read -r dom; do
             [ -z "$dom" ] && continue
-            if [[ "$dom" != *"."*"."* ]]; then
-                cat <<EOF >>"$cfg_file"
-  - hostname: $dom
-    service: unix:/run/openresty/nginx.sock
-  - hostname: www.$dom
-    service: unix:/run/openresty/nginx.sock
-EOF
-            else
-                cat <<EOF >>"$cfg_file"
-  - hostname: $dom
-    service: unix:/run/openresty/nginx.sock
-EOF
+            local site_hosts=()
+            if [ -s "/var/www/$dom/conf/or/names.conf" ]; then
+                while IFS= read -r host_entry; do
+                    [ -z "$host_entry" ] && continue
+                    site_hosts+=("$host_entry")
+                done < <(tr -s ' \t\r\n' '\n' <"/var/www/$dom/conf/or/names.conf" | grep -vE '^(server_name|;|#.*)$' | awk '!seen[$0]++')
             fi
+            if [ "${#site_hosts[@]}" -eq 0 ]; then
+                site_hosts+=("$dom")
+                if [[ "$dom" != *"."*"."* ]]; then
+                    site_hosts+=("www.$dom")
+                fi
+            fi
+            for host_entry in "${site_hosts[@]}"; do
+                cat <<EOF >>"$cfg_file"
+  - hostname: $host_entry
+    service: unix:/run/openresty/nginx.sock
+EOF
+            done
         done <"$dom_file"
 
         cat <<'EOF' >>"$cfg_file"

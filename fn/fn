@@ -910,11 +910,25 @@ set_alias() {
             exit
         fi
 
-        if grep "$aliasdomain" /var/www/"$domain"/conf/or/names.conf >/dev/null; then
+        if grep -qw "$aliasdomain" /var/www/"$domain"/conf/or/names.conf; then
             printf "\nAlias domain name already exists.\n\n"
         else
             sed -i "/;/i$aliasdomain" /var/www/"$domain"/conf/or/names.conf
             systemctl reload uny-openresty
+            if [[ "$(yq .ingress_mode /var/www/"$domain"/conf/qyc-site.yaml 2>/dev/null)" == "tunnel" ]]; then
+                upd_unycfd_config
+                (
+                    site_domain="$domain"
+                    domain_parser "$site_domain"
+                    site_acc=$(cf_get_account_id_for_domain "$root_domain")
+                    tunnel_id=$(cf_get_or_create_tunnel "$site_acc")
+                    domain_parser "$aliasdomain"
+                    get_cf_token_dns
+                    if [ -n "$tunnel_id" ] && [ -n "$cf_token_dns" ] && [ -n "$root_domain_zone_id" ]; then
+                        cf_dns_cname_entry
+                    fi
+                )
+            fi
             echo "Alias domain name $aliasdomain successfully added to site $domain." && printf "\n"
         fi
     elif [[ "$1" == "del" || "$1" == "delete" ]]; then
@@ -929,16 +943,19 @@ set_alias() {
             exit
         fi
 
-        if grep "$aliasdomain" /var/www/"$domain"/conf/or/names.conf >/dev/null; then
-            sed -i "/$aliasdomain/d" /var/www/"$domain"/conf/or/names.conf
+        if grep -qw "$aliasdomain" /var/www/"$domain"/conf/or/names.conf; then
+            sed -i "/^${aliasdomain//./\\.}$/d" /var/www/"$domain"/conf/or/names.conf
             systemctl reload uny-openresty
+            if [[ "$(yq .ingress_mode /var/www/"$domain"/conf/qyc-site.yaml 2>/dev/null)" == "tunnel" ]]; then
+                upd_unycfd_config
+            fi
             echo "Alias domain name $aliasdomain successfully deleted from site $domain." && printf "\n"
         else
             printf "\nAlias domain name does not exists.\n\n"
         fi
     elif [[ "$1" == "ls" || "$1" == "list" ]]; then
         echo "All domain names of site $domain:"
-        sed "s/server_name//" -i /var/www/"$domain"/conf/or/names.conf | sed "s/;//"
+        sed -e "s/server_name//" -e "s/;//" /var/www/"$domain"/conf/or/names.conf | grep -v '^[[:space:]]*$'
     else
         print_help_set
     fi
